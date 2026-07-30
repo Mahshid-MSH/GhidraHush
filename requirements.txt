@@ -1,0 +1,6 @@
+ollama
+pyghidra
+pycparser
+pefile
+matplotlib 
+python-dotenv
