@@ -5,7 +5,7 @@ import re
 from symbol_db import SymbolDB
 import argparse
 from symbol_db import SymbolDB
-from system_apis import ALL_IGNORED_FUNCTIONS
+import pefile
 
 class CCodeEnhancer:
     """Process C code for beautification using Ollama"""
@@ -118,10 +118,11 @@ class CCodeEnhancer:
         db = SymbolDB()
         # Parse the prototype to get function name
         match = re.search(r'([\w\s\*]+)\s+(\w+)\s*\(', prototype)
+        ALL_IGNORED_FUNCTIONS=get_ignored_functions()
         if match:
             func_name = match.group(2).strip()
             if func_name in ALL_IGNORED_FUNCTIONS:
-                print(f"[!] Skipping system/libc API prototype: {func_name}")
+                print(f"Skipping system/libc API prototype: {func_name}")
                 return
 
         if db.parse_and_upsert_prototype(prototype):
@@ -139,9 +140,7 @@ class CCodeEnhancer:
         
         # Pre-process types (GUARANTEES undefined4 -> uint32_t)
         cleaned_code = self.pre_process_ghidra_types(original_code)
-        
         result = self.beautify_c_code(cleaned_code)
-        
         # Extract prototype and append to header
         prototype = self.extract_prototype(result)
         
@@ -155,7 +154,39 @@ class CCodeEnhancer:
         return {
             'original': file_path,
             'beautified': beautified_path
-        }
+            }
+
+
+def get_ignored_functions():
+    path = os.environ.get('INPUT_EXE_PATH')
+    pe = pefile.PE(path)
+
+    dynamic_api_functions = set()
+
+    # It's good practice to check if the directory exists, 
+    # as some packed or obfuscated binaries might strip the standard import table.
+    if hasattr(pe, 'DIRECTORY_ENTRY_IMPORT'):
+        for entry in pe.DIRECTORY_ENTRY_IMPORT:
+            # entry.dll contains the library name (e.g., b'KERNEL32.dll')
+            dll_name = entry.dll.decode('utf-8')
+            
+            # entry.imports contains the actual functions imported from this DLL
+            for imp in entry.imports:
+                # Functions can be imported by name or by ordinal
+                if imp.name:
+                    func_name = imp.name.decode('utf-8')
+                    dynamic_api_functions.add(func_name)
+                    # print(f"[*] Found: {dll_name} -> {func_name}")
+                else:
+                    # Handle ordinal imports if necessary
+                    # print(f"[*] Found: {dll_name} -> Ordinal {imp.ordinal}")
+                    pass
+                    
+    print(f"Total dynamic imported functions found: {len(dynamic_api_functions)}")
+    print(dynamic_api_functions)
+
+    ALL_IGNORED_FUNCTIONS = dynamic_api_functions
+    return ALL_IGNORED_FUNCTIONS
 
 
 if __name__ == "__main__":
