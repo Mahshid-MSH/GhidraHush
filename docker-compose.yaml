@@ -1,0 +1,25 @@
+services:
+  app:
+    build: .
+    container_name: agentic_compiler_app
+    volumes:
+      - .:/app
+    environment:
+      - OLLAMA_HOST=${OLLAMA_HOST}
+      - LLM_MODEL=${LLM_MODEL}
+      - OUTPUT_EXECUTABLE=${OUTPUT_EXECUTABLE}
+    depends_on:
+      - ollama
+    stdin_open: true # Allows interactive CLI inputs like entering the malware exe path
+    tty: true
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama_service
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+volumes:
+  ollama_data:
