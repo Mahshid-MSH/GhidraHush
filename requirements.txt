@@ -4,3 +4,4 @@ pycparser
 pefile
 matplotlib 
 python-dotenv
+PyYAML
