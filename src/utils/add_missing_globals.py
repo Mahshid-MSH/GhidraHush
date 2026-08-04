@@ -54,8 +54,8 @@ def append_missing_declarations(header_path, source_path, missing, workspace_dir
     for name in missing:
         db.add_or_update_global(name, gtype="uintptr_t", value_or_expr="0", is_string=False)
     
-    db.export_header(header_path)
-    db.export_source(source_path)
+    db.export_header(os.path.basename(header_path))
+    db.export_source(os.path.basename(source_path))
     print(f"Added {len(missing)} missing DAT_ global(s) to Symbol DB and re-exported headers.")
 
 def add_missing_values(workspace_dir="."):
