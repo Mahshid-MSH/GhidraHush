@@ -146,7 +146,6 @@ def generate_global_files(path_to_binary, workspace_dir="."):
                             # (b & 0xFF) safely converts them to unsigned Python integers (0 to 255).
                             hex_bytes = [f"0x{(b & 0xFF):02X}" for b in raw_bytes]
                             value_expr = "{ " + ", ".join(hex_bytes) + " }"
-                            
                             # Ensure the C type becomes an array if we are outputting raw bytes
                             if '[' not in c_type:
                                 length = data.getLength()
