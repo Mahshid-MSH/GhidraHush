@@ -11,11 +11,11 @@ from src.utils.ast_patcher import analyze_ast_types, proactive_header_patch, cle
 
 class CompilerOrchestrator:
     def __init__(self, model_name, base_url, max_retries, compiler, workspace_dir="."):
-        self.gcc = GCCService(compiler)
+        # FIX: Explicitly pass workspace_dir to GCCService
+        self.gcc = GCCService(compiler, workspace_dir=workspace_dir)
         self.agent = PatchAgent(model_name, base_url)
         self.max_retries = max_retries
-        self.workspace_dir = workspace_dir
-
+        self.workspace_dir = os.path.abspath(workspace_dir)
         self.dir_success = os.path.join(workspace_dir, "compiled_successfully")
         self.dir_failed = os.path.join(workspace_dir, "failed_functions")
         self.dir_output = os.path.join(workspace_dir, "output_objects")
@@ -106,8 +106,10 @@ class CompilerOrchestrator:
                             if self.apply_header_patch(self.header_path, header_patches):
                                 self.gcc.recompile_globals()
                                 
-                            func_patches = llm_response.get("function_patches", [])
-                            fixed_code, function_patched = self.agent.apply_function_patch(broken_code, func_patches)
+                            #func_patches = llm_response.get("function_patches", [])
+                            #fixed_code, function_patched = self.agent.apply_function_patch(broken_code, func_patches)
+                            full_fixed_code = llm_response.get("full_fixed_code", "")
+                            fixed_code, function_patched = self.agent.apply_function_patch(broken_code, full_fixed_code)
                             if function_patched:
                                 with open(filepath, "w", encoding="utf-8") as f:
                                     f.write(fixed_code)
