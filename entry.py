@@ -14,6 +14,20 @@ from src.ghidra_scripts.dump_global_values import generate_global_files
 from src.utils.add_missing_globals import add_missing_values
 from src.compiler.orchestrator import CompilerOrchestrator
 
+# ==========================================
+# Terminal Color Definitions
+# ==========================================
+class Colors:
+    HEADER = '\033[95m'
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    RESET = '\033[0m'
+    BOLD = '\033[1m'
+    DIM = '\033[2m'
+
 STAGES = {
     1: "Extract functions from binary (Ghidra)",
     2: "Extract global variables & data (Ghidra)",
@@ -43,7 +57,7 @@ def get_or_create_workspace(base_name="run", existing_workspace=None):
     """Returns an existing workspace or creates a new unique workspace."""
     if existing_workspace:
         if not os.path.exists(existing_workspace):
-            print(f"Error: Specified workspace '{existing_workspace}' does not exist.")
+            print(f"{Colors.RED}{Colors.BOLD}Error:{Colors.RESET} {Colors.RED}Specified workspace '{existing_workspace}' does not exist.{Colors.RESET}")
             sys.exit(1)
         return os.path.abspath(existing_workspace)
 
@@ -65,9 +79,9 @@ def get_or_create_workspace(base_name="run", existing_workspace=None):
 
 def display_interactive_menu(workspace_dir):
     """Displays a menu showing pipeline stages and returns the chosen stage."""
-    print("\n" + "=" * 60)
-    print(f" PIPELINE CONTROL MENU | Workspace: {os.path.basename(workspace_dir)}")
-    print("=" * 60)
+    print(f"\n{Colors.CYAN}" + "=" * 60)
+    print(f"{Colors.BOLD} PIPELINE CONTROL MENU | Workspace: {os.path.basename(workspace_dir)}")
+    print("=" * 60 + f"{Colors.RESET}")
     
     # Check progress heuristics
     has_extracted = os.path.exists(os.path.join(workspace_dir, "extracted_functions"))
@@ -78,36 +92,37 @@ def display_interactive_menu(workspace_dir):
     has_output_objs = os.path.exists(os.path.join(workspace_dir, "output_objects"))
 
     for stage_num, stage_name in STAGES.items():
-        status = "[ ]"
-        if stage_num == 1 and has_extracted: status = "[\033[92m✓\033[0m]"
-        elif stage_num == 2 and has_globals: status = "[\033[92m✓\033[0m]"
-        elif stage_num == 3 and has_processed: status = "[\033[92m✓\033[0m]"
-        elif stage_num == 4 and has_globals: status = "[\033[92m✓\033[0m]"
-        elif stage_num == 5 and has_main: status = "[\033[92m✓\033[0m]"
-        elif stage_num == 6 and has_compiled_main: status = "[\033[92m✓\033[0m]"
-        elif stage_num == 7 and has_output_objs: status = "[\033[92m✓\033[0m]"
+        status = f"{Colors.DIM}[ ]{Colors.RESET}"
+        if stage_num == 1 and has_extracted: status = f"{Colors.GREEN}{Colors.RESET}"
+        elif stage_num == 2 and has_globals: status = f"{Colors.GREEN}{Colors.RESET}"
+        elif stage_num == 3 and has_processed: status = f"{Colors.GREEN}{Colors.RESET}"
+        elif stage_num == 4 and has_globals: status = f"{Colors.GREEN}{Colors.RESET}"
+        elif stage_num == 5 and has_main: status = f"{Colors.GREEN}{Colors.RESET}"
+        elif stage_num == 6 and has_compiled_main: status = f"{Colors.GREEN}{Colors.RESET}"
+        elif stage_num == 7 and has_output_objs: status = f"{Colors.GREEN}{Colors.RESET}"
         
-        print(f"  {stage_num}. {status} {stage_name}")
+        print(f"  {Colors.CYAN}{stage_num}.{Colors.RESET} {status} {stage_name}")
 
-    print("  0. Exit")
-    print("-" * 60)
+    print(f"  {Colors.CYAN}0.{Colors.RESET} {Colors.RED}Exit{Colors.RESET}")
+    print(f"{Colors.CYAN}" + "-" * 60 + f"{Colors.RESET}")
     
     while True:
         try:
-            choice = input("Select stage to start/resume from (0-8): ").strip()
+            choice = input(f"{Colors.YELLOW}{Colors.BOLD}Select stage to start/resume from (0-8): {Colors.RESET}").strip()
             if choice == "0":
-                print("Exiting pipeline.")
+                print(f"{Colors.RED}Exiting pipeline.{Colors.RESET}")
                 sys.exit(0)
             choice_num = int(choice)
             if 1 <= choice_num <= 8:
                 return choice_num
-            print("Invalid option. Please enter a number between 0 and 8.")
+            print(f"{Colors.RED}Invalid option. Please enter a number between 0 and 8.{Colors.RESET}")
         except ValueError:
-            print("Invalid input. Please enter a valid number.")
+            print(f"{Colors.RED}Invalid input. Please enter a valid number.{Colors.RESET}")
 
 def start_pipeline():
+    if os.name == 'nt':
+        os.system('color')   
     load_dotenv()
-    
     parser = argparse.ArgumentParser(description="Automated binary decompilation and source code extractor.")
     parser.add_argument(
         "--input", "-i", 
@@ -132,27 +147,23 @@ def start_pipeline():
     )
     args = parser.parse_args()
 
-    # Determine workspace directory
     target_workspace = args.workspace
     if args.resume and not target_workspace:
         target_workspace = get_latest_workspace()
         if not target_workspace:
-            print("No previous workspace found to resume.")
+            print(f"{Colors.RED}No previous workspace found to resume.{Colors.RESET}")
             sys.exit(1)
 
-    # Determine input executable path
     input_exe_path = args.input
     if not input_exe_path and not target_workspace:
-        input_exe_path = input("Please enter the path to the exe malware:\n").strip()
+        input_exe_path = input(f"{Colors.YELLOW}Please enter the path to the exe:\n> {Colors.RESET}").strip()
         if not input_exe_path:
-            print("Error: No executable path provided.")
+            print(f"{Colors.RED}{Colors.BOLD}Error:{Colors.RESET} {Colors.RED}No executable path provided.{Colors.RESET}")
             sys.exit(1)
 
     if input_exe_path:
         set_key(".env", "INPUT_EXE_PATH", input_exe_path)
         os.environ["INPUT_EXE_PATH"] = input_exe_path
-
-    # Prepare Workspace
     if target_workspace:
         workspace_dir = os.path.abspath(target_workspace)
     else:
@@ -160,9 +171,9 @@ def start_pipeline():
         base_workspace_name = os.path.splitext(binary_name)[0]
         workspace_dir = get_or_create_workspace(base_workspace_name)
 
-    print(f"\nActive Workspace: {workspace_dir}")
+    print(f"\n{Colors.GREEN}{Colors.BOLD}Active Workspace:{Colors.RESET} {workspace_dir}")
 
-    # Determine starting stage (Command Line Flag vs Interactive Menu)
+    # Determine starting stage
     if args.start_stage is not None:
         start_stage = args.start_stage
     elif target_workspace or args.resume:
@@ -173,50 +184,52 @@ def start_pipeline():
     model_name = os.environ.get("LLM_MODEL")
     output_binary_path = os.environ.get("OUTPUT_EXECUTABLE", "binary_reconstructed.exe")
     
-    print(f"\nRunning Pipeline Starting From Stage {start_stage}: {STAGES[start_stage]}")
-    print("=" * 60)
+    print(f"\n{Colors.HEADER}{Colors.BOLD}Running Pipeline Starting From Stage {start_stage}: {STAGES[start_stage]}{Colors.RESET}")
+    print(f"{Colors.HEADER}" + "=" * 60 + f"{Colors.RESET}")
+    def print_stage(num, title):
+        print(f"\n{Colors.BLUE}{Colors.BOLD}▶ Stage {num}: {title}{Colors.RESET}")
 
     # ======================= Phase 1: Function Extraction ===========================
     if start_stage <= 1:
-        print("\nStage 1: Extract functions from binary")
+        print_stage(1, "Extract functions from binary")
         extract_functions(input_exe_path, workspace_dir=workspace_dir)
 
     # ================ Phase 2: Extract global variables and data ====================
     if start_stage <= 2:
-        print("\nStage 2: Extract global variables and data")
+        print_stage(2, "Extract global variables and data")
         generate_global_files(input_exe_path, workspace_dir=workspace_dir)
 
     # =======================     Phase 3: Code Enhancer   ===========================
     if start_stage <= 3:
-        print("\nStage 3: Beautify and refactor extracted code")
+        print_stage(3, "Beautify and refactor extracted code")
         processor = CCodeEnhancer(model_name=model_name)
         
         extracted_dir = os.path.join(workspace_dir, "extracted_functions")
         if not os.path.exists(extracted_dir):
-            print(f"Error: {extracted_dir} does not exist. Cannot run Stage 3.")
+            print(f"{Colors.RED}Error: {extracted_dir} does not exist. Cannot run Stage 3.{Colors.RESET}")
             sys.exit(1)
             
         c_files = processor.find_c_files(extracted_dir)
 
         if not c_files:
-            print(f"No .c files found in directory: {extracted_dir}")
+            print(f"{Colors.YELLOW}No .c files found in directory: {extracted_dir}{Colors.RESET}")
         else:
             for c_file in c_files:
                 processor.process_function_file(c_file, workspace_dir=workspace_dir)
 
     # ======================= Phase 4: Add Missing Globals ===========================
     if start_stage <= 4:
-        print("\nStage 4: Add missing global declarations")
+        print_stage(4, "Add missing global declarations")
         add_missing_values(workspace_dir=workspace_dir)
 
     # ======================= Phase 5: Add main file =================================
     if start_stage <= 5:
-        print("\nStage 5: Generating main wrapper")
+        print_stage(5, "Generating main wrapper")
         generate_main_wrapper(workspace_dir=workspace_dir)
 
     # ======================= Phase 6: Compiling globals =============================
     if start_stage <= 6:
-        print("\nStage 6: Compiling globals and main")
+        print_stage(6, "Compiling globals and main")
         source_globals = os.path.join(workspace_dir, "LLM_globals.c")
         obj_globals = os.path.join(workspace_dir, "globals.o")
         main_path = os.path.join(workspace_dir, "main.c")
@@ -232,12 +245,12 @@ def start_pipeline():
                 check=True
             )
         except subprocess.CalledProcessError as e:
-            print(f"Failed during Stage 6 compilation: {e}")
+            print(f"{Colors.RED}{Colors.BOLD}Failed during Stage 6 compilation:{Colors.RESET} {Colors.RED}{e}{Colors.RESET}")
             sys.exit(1)
 
     # ================== Phase 7: Agentic compiler with retry logic ===================
     if start_stage <= 7:
-        print("\nStage 7: Agentic compiler with retry logic")
+        print_stage(7, "Agentic compiler with retry logic")
         try:
             orchestrator = CompilerOrchestrator(
                 model_name=model_name,
@@ -249,12 +262,12 @@ def start_pipeline():
             processed_dir = os.path.join(workspace_dir, "processed_functions")
             orchestrator.process_directory(processed_dir)    
         except Exception as e:
-            print(f"Agentic compiler encountered a fatal error: {e}")
+            print(f"{Colors.RED}{Colors.BOLD}Agentic compiler encountered a fatal error:{Colors.RESET} {Colors.RED}{e}{Colors.RESET}")
             sys.exit(1)
 
     # ================== Phase 8: Link final executable  ==============================
     if start_stage <= 8:
-        print("\nStage 8: Link final executable")
+        print_stage(8, "Link final executable")
         object_files = glob.glob(os.path.join(workspace_dir, "output_objects", "*.o"))
         
         obj_globals = os.path.join(workspace_dir, "globals.o")
@@ -274,11 +287,11 @@ def start_pipeline():
             link_result = subprocess.run(linker_cmd)
             
             if link_result.returncode == 0:
-                print(f"\n[\033[92mSUCCESS\033[0m] Build successful: {executable_path}")
+                print(f"\n[{Colors.GREEN}{Colors.BOLD}SUCCESS{Colors.RESET}] Build successful: {Colors.BOLD}{executable_path}{Colors.RESET}")
             else:
-                print("\n[\033[91mFAILED\033[0m] Linkage failed.")
+                print(f"\n[{Colors.RED}{Colors.BOLD}FAILED{Colors.RESET}] Linkage failed.")
         else:
-            print("\n[\033[91mFAILED\033[0m] Build failed: No object files (.o) found in output_objects/.")
+            print(f"\n[{Colors.RED}{Colors.BOLD}FAILED{Colors.RESET}] Build failed: No object files (.o) found in output_objects/.")
 
 if __name__ == "__main__":
     start_pipeline()
