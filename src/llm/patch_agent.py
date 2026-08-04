@@ -102,6 +102,40 @@ class PatchAgent:
         deduped_lines = [x for x in relevant_lines if not (x in seen or seen.add(x))]
         return "\n".join(deduped_lines)
 
+    def build_whole_function_prompt(self, c_code, error_log, retrieved_header_context, attempt=1):
+        prompt = f"""You are a C/C++ bug-fixing assistant.
+        Your task is to fix compiler errors by outputting the ENTIRE corrected source code.
+
+        ### RELEVANT GLOBAL HEADER CONTEXT (LLM_globals.h):
+        {retrieved_header_context}
+
+        ### COMPILER ERRORS:
+        {error_log}
+
+        ### BROKEN SOURCE CODE:
+        {c_code}
+
+        ### INSTRUCTIONS:
+        1. IDENTIFY THE ERROR TYPE: Is this a structural error (too many/few arguments, undeclared) or a type error?
+        2. HEADER PATCHES: If the error involves an invalid cast from a function returning `void`, or mismatched arguments, you MUST write a new prototype in `header_patches` to fix the return type or signature. 
+        3. TYPES SECOND: Explicitly cast all global variables, raw memory addresses, and DAT_... variables to the exact types expected.
+        4. UNDECLARED VARIABLES & SCOPE: If an error states a variable is undeclared, you MUST add its declaration at the VERY TOP of the function block. NEVER declare variables inside `if` blocks, `for` loops, or `do-while` loops, as they will lose scope.
+        5. RETURN COMPLETE CODE: You must return the entirety of the C code provided above, with your fixes seamlessly integrated. Do not truncate the code.
+
+        ### REQUIRED JSON FORMAT:
+        You must respond ONLY with a valid JSON object matching this exact schema. If no header patch is needed, leave the list empty [].
+        {{
+            "reasoning": "Explain whether this is a structural or type error, and exactly what you changed.",
+            "full_fixed_code": "The complete, fully corrected C code string, including all includes and the full function block.",
+            "header_patches": [
+                {{
+                    "replace": "int FUN_00401000(char *a);" 
+                }}
+            ]
+        }}
+        """
+        return prompt
+
     def build_surgical_prompt(self, c_code, error_log, retrieved_header_context, attempt=1):
         lines = c_code.split('\n')
         line_numbered_code = "\n".join(f"{i+1:3d} | {line}" for i, line in enumerate(lines))
@@ -150,8 +184,20 @@ class PatchAgent:
         """
         return prompt
 
+
+    def apply_function_patch(self, c_code, full_fixed_code):
+        """Replaces the entire broken code with the LLM's generated whole function."""
+        if not full_fixed_code or full_fixed_code.strip() == "":
+            print("Function Patch Failed: LLM returned empty code.")
+            return c_code, False
+
+        print(" Applied Whole-Function Patch successfully.")
+        return full_fixed_code, True
+
+    """
+
     def apply_function_patch(self, c_code, function_patches):
-        """Applies string replacements based on JSON patch definitions."""
+        #Applies string replacements based on JSON patch definitions.
         if not function_patches:
             return c_code, False
 
@@ -179,11 +225,13 @@ class PatchAgent:
 
         return modified_code, applied_count > 0
 
+    """
+
     def fix_with_llm(self, filepath, c_code, error_log, header_path, attempt):
         # FIXED: Pass header_path explicitly into this method from the orchestrator
         isolated_error = self.extract_highest_priority_error(error_log)
         header_context = self.retrieve_header_context(header_path, c_code, isolated_error)
-        prompt = self.build_surgical_prompt(c_code, isolated_error, header_context, attempt)
+        prompt = self.build_whole_function_prompt(c_code, isolated_error, header_context, attempt)
         
         print(f"Asking LLM for JSON patches for {os.path.basename(filepath)} (Attempt {attempt})...")
                 

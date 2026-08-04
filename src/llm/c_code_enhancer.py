@@ -38,12 +38,12 @@ class CCodeEnhancer:
         prompt = f"""You are an expert C/c++ programmer. Refactor the following Ghidra C/C++ code.
         
         ### RULES:
-            1. OUTPUT HEADER: The very first line must be exactly: #include "LLM_globals.h"
-            2. FUNCTION NAMING: Keep the original function name UNLESS it matches a real Windows API (e.g., Process32Next, CreateFile, ReadProcessMemory, CreateToolhelp32Snapshot, WriteFile, etc.). If it does, rename it to My_<OriginalName> (e.g., My_Process32Next). Do NOT change other names.
-            3. LOCAL VARIABLES: Rename cryptic locals (local_1c, etc.) to meaningful names, but always declare them with proper C types at the top of the function. DO NOT leave any “local_” identifiers undeclared.
+            1. OUTPUT HEADER: The very first line must be exactly: #include "LLM_globals.h". Immediately below that line, you must add any standard system headers required by the code (e.g., #include <windows.h>, #include <stdint.h>, #include <stdio.h>).
+            2. FUNCTION NAMING: Keep the original function names exactly as they are. Do NOT rename any standard Windows API functions (e.g., CreateFileW, GetFileSize, MapViewOfFile)
+            3. LOCAL VARIABLES: Rename cryptic locals (local_1c, etc.) to meaningful names, but always declare them with proper C types at the top of the function. DO NOT leave ANY variables (including Ghidra variables like psVar1, iVar2) undeclared. Scan the entire function body and ensure every variable used has a matching declaration at the top of the function block.
             4. TYPE REPLACEMENT: Use only standard <stdint.h> types (uint32_t, int32_t, uint16_t, uint8_t, etc.). Replace any remaining non‑standard types (undefined*, dword, word, byte, uint, ushort) completely.
             5. UNION/STRUCT DEFINITIONS: If the code references an unknown type like union_530 or _LARGE_INTEGER, you MUST insert a minimal definition before its first use. Use a header guard:
-
+            6. You must strictly enforce the C89/C90 standard for variable declarations. ALL variables MUST be declared at the absolute beginning of the function block, immediately following the opening bracket. Do not declare any variables inline, inside if statements, or inside for/while/do-while loops.
             ### CRITICAL RULES FOR SEARCH-AND-REPLACE BLOCKS
             **HEADER GUARD IMMUNITY:** Do not modify file-level preprocessor guards (`#ifndef`, `#define`, `#endif`) unless they are proven to be syntactically broken. If you must fix them, use clean, separate lines.
             #ifndef MY_UNION_530
@@ -130,7 +130,6 @@ class CCodeEnhancer:
         if not prototype:
             return
         db = SymbolDB(workspace_dir=workspace_dir)
-        # Parse the prototype to get function name
         match = re.search(r'([\w\s\*]+)\s+(\w+)\s*\(', prototype)
         ALL_IGNORED_FUNCTIONS=get_ignored_functions()
         if match:
@@ -183,21 +182,20 @@ def get_ignored_functions():
         for entry in pe.DIRECTORY_ENTRY_IMPORT:
             # entry.dll contains the library name (e.g., b'KERNEL32.dll')
             dll_name = entry.dll.decode('utf-8')
-            
             # entry.imports contains the actual functions imported from this DLL
             for imp in entry.imports:
                 # Functions can be imported by name or by ordinal
                 if imp.name:
                     func_name = imp.name.decode('utf-8')
                     dynamic_api_functions.add(func_name)
-                    # print(f"[*] Found: {dll_name} -> {func_name}")
+                    # print(f"Found: {dll_name} -> {func_name}")
                 else:
                     # Handle ordinal imports if necessary
-                    # print(f"[*] Found: {dll_name} -> Ordinal {imp.ordinal}")
+                    # print(f"Found: {dll_name} -> Ordinal {imp.ordinal}")
                     pass
                     
-    print(f"Total dynamic imported functions found: {len(dynamic_api_functions)}")
-    print(dynamic_api_functions)
+    #print(f"Total dynamic imported functions found: {len(dynamic_api_functions)}")
+    #print(dynamic_api_functions)
 
     ALL_IGNORED_FUNCTIONS = dynamic_api_functions
     return ALL_IGNORED_FUNCTIONS
