@@ -189,10 +189,8 @@ class SymbolDB:
         """Remove a function entry from the database."""
         with self._get_conn() as conn:
             cursor = conn.cursor()
-            # Check if the function exists
             cursor.execute("SELECT 1 FROM functions WHERE name = ?", (name,))
             if cursor.fetchone():
-                # Delete it from the SQL database
                 cursor.execute("DELETE FROM functions WHERE name = ?", (name,))
                 conn.commit()
                 return True
