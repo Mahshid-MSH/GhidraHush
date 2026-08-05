@@ -4,7 +4,6 @@ import re
 import warnings
 from database.symbol_db import SymbolDB
 
-
 C_KEYWORDS = {
     'auto', 'break', 'case', 'char', 'const', 'continue', 'default', 'do', 
     'double', 'else', 'enum', 'extern', 'float', 'for', 'goto', 'if', 'int', 
@@ -67,7 +66,6 @@ def map_ghidra_type_to_c(dt):
 
 
 def generate_global_files(path_to_binary, workspace_dir="."):
-    # Use workspace_dir to set up your output paths correctly
     header_path = os.path.join(workspace_dir, "LLM_globals.h")
     source_path = os.path.join(workspace_dir, "LLM_globals.c")
     db = SymbolDB(workspace_dir=workspace_dir)    
@@ -110,7 +108,6 @@ def generate_global_files(path_to_binary, workspace_dir="."):
             seen_names.add(name)
             
             data = listing.getDataAt(addr)
-            
             # Handle completely undefined memory labels
             if not data or not data.isDefined():
                 db.add_or_update_global(name, gtype="uintptr_t", value_or_expr="0", is_string=False)
@@ -153,7 +150,6 @@ def generate_global_files(path_to_binary, workspace_dir="."):
                     except Exception:
                         # Fallback if getBytes() fails on uninitialized memory segments
                         value_expr = "0"
-                        
                 db.add_or_update_global(name, gtype=c_type, value_or_expr=value_expr, is_string=False)
 
     db.export_header("LLM_globals.h")
