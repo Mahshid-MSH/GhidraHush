@@ -1,16 +1,18 @@
 services:
   app:
-    build: .
-    container_name: agentic_compiler_app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: GhidraDeforger
     volumes:
       - .:/app
+    env_file:
+      - ./.env
     environment:
-      - OLLAMA_HOST=${OLLAMA_HOST}
-      - LLM_MODEL=${LLM_MODEL}
-      - OUTPUT_EXECUTABLE=${OUTPUT_EXECUTABLE}
+      - OLLAMA_HOST=http://ollama:11434
     depends_on:
       - ollama
-    stdin_open: true # Allows interactive CLI inputs like entering the malware exe path
+    stdin_open: true
     tty: true
 
   ollama:
