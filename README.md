@@ -1,7 +1,6 @@
-```markdown
 # GhidraDeforger
 
-```
+```text
                                                                                                                              
               ,,          ,,        ,,                                            ,...                                       
   .g8"""bgd `7MM          db      `7MM                   `7MM"""Yb.             .d' ""                                       
@@ -108,4 +107,3 @@ The orchestration pipeline (`src/entry.py`) consists of 8 distinct phases:
 
 
 * You only need to run `docker compose build` if you modify system-level dependencies in the `Dockerfile` or `requirements.txt`.
-
