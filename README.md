@@ -1,6 +1,20 @@
 ```markdown
 # GhidraDeforger
 
+```
+                                                                                                                             
+              ,,          ,,        ,,                                            ,...                                       
+  .g8"""bgd `7MM          db      `7MM                   `7MM"""Yb.             .d' ""                                       
+.dP'     `M   MM                    MM                     MM    `Yb.           dM`                                          
+dM'       `   MMpMMMb.  `7MM   ,M""bMM  `7Mb,od8 ,6"Yb.    MM     `Mb  .gP"Ya  mMMmm,pW"Wq.`7Mb,od8 .P"Ybmmm .gP"Ya `7Mb,od8 
+MM            MM    MM    MM ,AP    MM    MM' "'8)   MM    MM      MM ,M'   Yb  MM 6W'   `Wb MM' "':MI  I8  ,M'   Yb  MM' "' 
+MM.    `7MMF' MM    MM    MM 8MI    MM    MM     ,pm9MM    MM     ,MP 8M""""""  MM 8M     M8 MM     WmmmP"  8M""""""  MM     
+`Mb.     MM   MM    MM    MM `Mb    MM    MM    8M   MM    MM    ,dP' YM.    ,  MM YA.   ,A9 MM    8M       YM.    ,  MM     
+  `"bmmmdPY .JMML  JMML..JMML.`Wbmd"MML..JMML.  `Moo9^Yo..JMMmmmdP'    `Mbmmd'.JMML.`Ybmd9'.JMML.   YMMMMMb  `Mbmmd'.JMML.   
+                                                                                                   6'     dP                 
+                                                                                                   Ybmmmd'                   
+```
+
 GhidraDeforger is an automated binary reverse engineering and orchestration toolchain. Designed for security researchers, it leverages the Ghidra decompiler API and Large Language Models (LLMs) to automatically extract, refactor, patch, and recompile C code. This creates a powerful framework for malware analysis, threat hunting, and executing structural mutation and robustness testing on compiled binaries.
 
 ## 🏗️ Project Architecture
@@ -22,9 +36,9 @@ Ensure you have the following installed on your host system:
 Before running the pipeline for the first time, you must build the environment and pull the required LLM into the Ollama service.
 
 1. **Start the containers in detached mode:**
-   ```bash
-   docker compose up -d
 
+```bash
+   docker compose up -d
 ```
 
 2. **Pull the LLM model into Ollama:**
@@ -34,13 +48,11 @@ docker compose exec ollama ollama run [the LLM of your choice]
 
 ```
 
-
 3. **Verify the application container builds successfully (Optional):**
 ```bash
 docker compose run --rm app
 
 ```
-
 
 ## 💻 Usage
 
@@ -97,5 +109,3 @@ The orchestration pipeline (`src/entry.py`) consists of 8 distinct phases:
 
 * You only need to run `docker compose build` if you modify system-level dependencies in the `Dockerfile` or `requirements.txt`.
 
-```
-```
