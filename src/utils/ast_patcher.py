@@ -21,43 +21,47 @@ def sanitize_code_for_pycparser(c_code):
     return clean
 
 
-class AssignmentVisitor(c_ast.NodeVisitor):
-    def __init__(self):
-        self.function_calls = []
-        self.local_vars = {}
-
-    def visit_Decl(self, node):
-        if isinstance(node.type, c_ast.TypeDecl):
-            type_name = " ".join(node.type.type.names)
-            self.local_vars[node.name] = type_name
-        elif isinstance(node.type, c_ast.PtrDecl):
-            if hasattr(node.type.type, 'type') and hasattr(node.type.type.type, 'names'):
-                type_name = " ".join(node.type.type.type.names) + " *"
-                self.local_vars[node.name] = type_name
-            elif hasattr(node.type.type, 'names'):
-                type_name = " ".join(node.type.type.names) + " *"
-                self.local_vars[node.name] = type_name
+class CodeCleaner(c_ast.NodeVisitor):
 
     def visit_Assignment(self, node):
-        rval = node.rvalue
-        while isinstance(rval, c_ast.Cast):
-            rval = rval.expr
-
-        if isinstance(rval, c_ast.FuncCall):
-            if isinstance(rval.name, c_ast.ID):
-                func_name = rval.name.name
-                
-                if isinstance(node.lvalue, c_ast.ID):
-                    var_name = node.lvalue.name
-                    var_type = self.local_vars.get(var_name, "unknown")
-                    
-                    self.function_calls.append({
-                        "func_name": func_name,
-                        "assigned_var": var_name,
-                        "required_return_type": var_type
-                    })
-        
+        # Catch assignments like: socketHandle = sth (where sth is int) or pointer = 0x1234
+        if isinstance(node.rvalue, c_ast.Constant) and node.rvalue.type == 'int':
+            # Wrap the rvalue with a cast to (void*)(uintptr_t)
+            uintptr_type = c_ast.TypeDecl(declname='', quals=[], type=c_ast.IdentifierType(['uintptr_t']))
+            void_ptr_type = c_ast.PtrDecl(quals=[], type=c_ast.TypeDecl(declname='', quals=[], type=c_ast.IdentifierType(['void'])))
+            
+            # Cast constant to (void*)(uintptr_t)(value)
+            inner_cast = c_ast.Cast(c_ast.Typename(name=None, quals=[], type=uintptr_type), node.rvalue)
+            node.rvalue = c_ast.Cast(c_ast.Typename(name=None, quals=[], type=void_ptr_type), inner_cast)
+            
         self.generic_visit(node)
+
+    def clean_node(self, node):
+        """Recursively unwraps Casts and converts *(ptr + offset) into ptr[offset]."""
+        for attr_name in getattr(node, '__slots__', []):
+            attr = getattr(node, attr_name)
+            if attr is None:
+                continue
+                
+            if isinstance(attr, list):
+                for i, child in enumerate(attr):
+                    if isinstance(child, c_ast.Node):
+                        self.clean_node(child)
+                        
+                        if isinstance(child, c_ast.Cast):
+                            attr[i] = child.expr
+                        elif isinstance(child, c_ast.UnaryOp) and child.op == '*':
+                            if isinstance(child.expr, c_ast.BinaryOp) and child.expr.op == '+':
+                                attr[i] = c_ast.ArrayRef(name=child.expr.left, subscript=child.expr.right)
+                                
+            elif isinstance(attr, c_ast.Node):
+                self.clean_node(attr)
+                
+                if isinstance(attr, c_ast.Cast):
+                    setattr(node, attr_name, attr.expr)
+                elif isinstance(attr, c_ast.UnaryOp) and attr.op == '*':
+                    if isinstance(attr.expr, c_ast.BinaryOp) and attr.expr.op == '+':
+                        setattr(node, attr_name, c_ast.ArrayRef(name=attr.expr.left, subscript=attr.expr.right))
 
 
 def analyze_ast_types(c_code):
@@ -111,6 +115,20 @@ def proactive_header_patch(header_path, ast_analysis):
 # --- NEW: AST Code Mutator and Cleaner ---
 
 class CodeCleaner:
+
+    def visit_Assignment(self, node):
+        # Catch assignments like: socketHandle = sth (where sth is int)
+        # or pointer = 0x1234
+        if isinstance(node.rvalue, c_ast.Constant) and node.rvalue.type == 'int':
+            # Wrap the rvalue with a cast to (void*)(uintptr_t)
+            uintptr_type = c_ast.TypeDecl(declname='', quals=[], type=c_ast.IdentifierType(['uintptr_t']))
+            void_ptr_type = c_ast.PtrDecl(quals=[], type=c_ast.TypeDecl(declname='', quals=[], type=c_ast.IdentifierType(['void'])))
+            # Cast constant to (void*)(uintptr_t)(value)
+            inner_cast = c_ast.Cast(c_ast.Typename(name=None, quals=[], type=uintptr_type), node.rvalue)
+            node.rvalue = c_ast.Cast(c_ast.Typename(name=None, quals=[], type=void_ptr_type), inner_cast)
+            
+        self.generic_visit(node)
+
     def clean_node(self, node):
         """Recursively unwraps Casts and converts *(ptr + offset) into ptr[offset]."""
         for attr_name in getattr(node, '__slots__', []):
@@ -171,7 +189,7 @@ def clean_decompiled_code(c_code):
         print(f"[AST Cleaner] Skipping cast cleanup due to parse error: {e}")
         return c_code
 
-    # 3. Strip ALL fake typedefs (including Ghidra types) so they aren't written to the clean code
+    # 3. Strip ALL fake typedefs so they aren't written to the clean code
     typedef_names = [
         'HANDLE', 'LPWSTR', 'LPVOID', 'uintptr_t', 'uint8_t', 'DWORD', 
         'BOOL', 'BYTE', 'WORD', 'uint',
@@ -180,9 +198,10 @@ def clean_decompiled_code(c_code):
     if hasattr(ast, 'ext'):
         ast.ext = [n for n in ast.ext if not (isinstance(n, c_ast.Typedef) and n.name in typedef_names)]
 
-    # 4. Mutate the AST to remove casts and simplify pointers
+    # 4. Mutate the AST
     cleaner = CodeCleaner()
-    cleaner.clean_node(ast)
+    cleaner.clean_node(ast)  # Step 1: Strip unwanted Ghidra casts/simplify pointers
+    cleaner.visit(ast)       # Step 2: Traverse AST & wrap raw integer assignments with (void*)(uintptr_t)
 
     # 5. Regenerate code
     generator = c_generator.CGenerator()
