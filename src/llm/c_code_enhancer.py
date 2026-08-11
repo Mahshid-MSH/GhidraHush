@@ -75,33 +75,29 @@ class CCodeEnhancer:
             print(f"Raw output: {cleaned_response}")
             return {} # Fallback to empty if it fails
     
-    def beautify_c_code(self, c_code):
-        prompt = f"""You are an expert C/c++ programmer. Refactor the following Ghidra C/C++ code.
-        
-        ### RULES:
-            1. OUTPUT HEADER: The very first line must be exactly: #include "LLM_globals.h". Immediately below that line, you must add any standard system headers required by the code (e.g., #include <windows.h>, #include <stdint.h>, #include <stdio.h>).
-            2. FUNCTION NAMING: Keep the original function names exactly as they are. Do NOT rename any standard Windows API functions (e.g., CreateFileW, GetFileSize, MapViewOfFile)
-            3. LOCAL VARIABLES: Rename cryptic locals (local_1c, etc.) to meaningful names, but always declare them with proper C types at the top of the function. DO NOT leave ANY variables (including Ghidra variables like psVar1, iVar2) undeclared. Scan the entire function body and ensure every variable used has a matching declaration at the top of the function block.
-            4. TYPE REPLACEMENT: Use only standard <stdint.h> types (uint32_t, int32_t, uint16_t, uint8_t, etc.). Replace any remaining non‑standard types (undefined*, dword, word, byte, uint, ushort) completely.
-            5. UNION/STRUCT DEFINITIONS: If the code references an unknown type like union_530 or _LARGE_INTEGER, you MUST insert a minimal definition before its first use. Use a header guard:
-            6. You must strictly enforce the C89/C90 standard for variable declarations. ALL variables MUST be declared at the absolute beginning of the function block, immediately following the opening bracket. Do not declare any variables inline, inside if statements, or inside for/while/do-while loops.
-            ### CRITICAL RULES FOR SEARCH-AND-REPLACE BLOCKS
-            **HEADER GUARD IMMUNITY:** Do not modify file-level preprocessor guards (`#ifndef`, `#define`, `#endif`) unless they are proven to be syntactically broken. If you must fix them, use clean, separate lines.
-            #ifndef MY_UNION_530
-            #define MY_UNION_530
-            typedef union "{" SYSTEM_INFO s; /* adjust members as needed */ "}" union_530; You don't need to add the additional "" I have put here for readability. 
-            #endif
-            
-            6. NO GHIDRA ARTIFACTS: Remove all __cdecl, __stdcall, __fastcall. Strip leading underscores from struct/union names (e.g., _TOKEN_PRIVILEGES → TOKEN_PRIVILEGES).
-            7. DYNAMIC FUNCTION POINTERS: If a global variable like DAT_00409f74 is called as a function, you MUST cast it to the correct function pointer type. Do NOT write (*DAT_...)(...). Correct example:
-            ((BOOL (*)(HANDLE, LPVOID))DAT_00409f74)(hProcess, addr);
-            8. POINTER CASTS FOR API CALLS: When a DAT_… global is passed to an API that expects a pointer (e.g., ReadProcessMemory, StrStrA), cast it to the appropriate pointer type (LPVOID, LPCSTR, etc.). Example:
-            ReadProcessMemory(h, (LPVOID)DAT_004095a0, buffer, size, &bytesRead);
-            9. STRING LITERALS: Replace global string holders (s_…_004…) with the actual string literal. Example: s_SeDebugPrivilege_004074c4 → "SeDebugPrivilege".
-            10. VOID FUNCTIONS: If a function returns void, NEVER assign its return value. Do not write `int x = VoidFunc();`. Just call `VoidFunc();`.
-            11. CONST CORRECTNESS: When a string literal is assigned to a pointer, declare the pointer as const char*.
-            12. GLOBAL VARIABLES: Keep all DAT_xxx names exactly as they are. Do not rename them. They are declared as uint32_t in the header; treat them as generic handles. If you need to store a pointer in a DAT_… variable, cast it explicitly.
+    def beautify_c_code(self, c_code, callee_prototypes=""):
+        context_block = ""
+        if callee_prototypes:
+            context_block = f"\n### KNOWN CALLEE PROTOTYPES:\nThe following functions are called in this file. You MUST strictly cast arguments to match these exact signatures:\n{callee_prototypes}\n"
 
+        prompt = f"""You are an expert C/c++ programmer. Refactor the following Ghidra C/C++ code.
+        ### RULES:
+            1. OUTPUT HEADER: The very first line must be exactly: #include "LLM_globals.h". Immediately below that line, you must add any standard system headers required by the code.
+            2. FUNCTION NAMING: Keep the original function names exactly as they are. Do NOT rename any standard Windows API functions.
+            3. LOCAL VARIABLES: Rename cryptic locals (local_1c, etc.) to meaningful names, but always declare them with proper C types at the top of the function. DO NOT leave ANY variables undeclared.
+            4. TYPE REPLACEMENT: Use only standard <stdint.h> types (uint32_t, int32_t, uint16_t, uint8_t, etc.). Replace any remaining non‑standard types completely.
+            5. UNION/STRUCT DEFINITIONS: If the code references an unknown type, you MUST insert a minimal definition before its first use with a header guard.
+            6. C89/C90 STANDARD: ALL variables MUST be declared at the absolute beginning of the function block.
+            7. NO GHIDRA ARTIFACTS: Remove all __cdecl, __stdcall, __fastcall. Strip leading underscores from struct/union names.
+            8. DYNAMIC FUNCTION POINTERS: If a global variable is called as a function, you MUST cast it to the correct function pointer type.
+            9. POINTER CASTS FOR API CALLS: When a global is passed to an API that expects a pointer, cast it to the appropriate pointer type.
+            10. STRING LITERALS: Replace global string holders with the actual string literal.
+            11. VOID FUNCTIONS: If a function returns void, NEVER assign its return value.
+            12. CONST CORRECTNESS: When a string literal is assigned to a pointer, declare the pointer as const char*.
+            13. GLOBAL VARIABLES: Keep all DAT_xxx names exactly as they are. Treat them as generic handles.
+            
+            **HEADER GUARD IMMUNITY:** Do not modify file-level preprocessor guards unless proven broken.
+            {context_block}
         
         ### OUTPUT FORMAT:
         You MUST return ONLY a valid C code block wrapped in standard backticks (```c). Do not add explanations.
@@ -109,7 +105,6 @@ class CCodeEnhancer:
         ### INPUT CODE:
         {c_code}
         """
-
         print("Beautifying C code with LLM ...")
 
         response = ""
@@ -140,8 +135,7 @@ class CCodeEnhancer:
         match = re.search(r"```[a-zA-Z]*\s*\n(.*?)```", llm_output, re.DOTALL)
         
         if match:
-            return match.group(1).strip()
-            
+            return match.group(1).strip()  
         # Fallback: If the LLM just returned raw C code without backticks
         if "#include" in llm_output:
             return llm_output.strip()
@@ -169,14 +163,6 @@ class CCodeEnhancer:
         if not prototype:
             return
         db = SymbolDB(workspace_dir=workspace_dir)
-        match = re.search(r'([\w\s\*]+)\s+(\w+)\s*\(', prototype)
-        ALL_IGNORED_FUNCTIONS=get_ignored_functions()
-        if match:
-            func_name = match.group(2).strip()
-            if func_name in ALL_IGNORED_FUNCTIONS:
-                print(f"Skipping system/libc API prototype: {func_name}")
-                return
-
         if db.parse_and_upsert_prototype(prototype):
             db.export_header(header_path)
             print(f"Synced prototype to DB & Header: {prototype}")
@@ -192,14 +178,11 @@ class CCodeEnhancer:
             original_code = f.read()
             
         print(f"\nProcessing: {os.path.basename(file_path)}")
-        
         # Pre-process Ghidra types and beautify the code
         cleaned_code = self.pre_process_ghidra_types(original_code)
         result = self.beautify_c_code(cleaned_code)
-        
         if is_worthy:
             result = self.apply_custom_prompt(result)
-            
         # Extract prototype and append to header
         prototype = self.extract_prototype(result)
         self.append_prototype_to_header(prototype, header_path=header_path, workspace_dir=workspace_dir)
@@ -258,33 +241,6 @@ class CCodeEnhancer:
             results.append(res)
 
         return results
-
-def get_ignored_functions():
-    path = os.environ.get('INPUT_EXE_PATH')
-    pe = pefile.PE(path)
-
-    dynamic_api_functions = set()
-    if hasattr(pe, 'DIRECTORY_ENTRY_IMPORT'):
-        for entry in pe.DIRECTORY_ENTRY_IMPORT:
-            # entry.dll contains the library name (e.g., b'KERNEL32.dll')
-            dll_name = entry.dll.decode('utf-8')
-            # entry.imports contains the actual functions imported from this DLL
-            for imp in entry.imports:
-                # Functions can be imported by name or by ordinal
-                if imp.name:
-                    func_name = imp.name.decode('utf-8')
-                    dynamic_api_functions.add(func_name)
-                    # print(f"Found: {dll_name} -> {func_name}")
-                else:
-                    # Handle ordinal imports if necessary
-                    # print(f"Found: {dll_name} -> Ordinal {imp.ordinal}")
-                    pass
-                    
-    #print(f"Total dynamic imported functions found: {len(dynamic_api_functions)}")
-    #print(dynamic_api_functions)
-
-    ALL_IGNORED_FUNCTIONS = dynamic_api_functions
-    return ALL_IGNORED_FUNCTIONS
 
 
 if __name__ == "__main__":
