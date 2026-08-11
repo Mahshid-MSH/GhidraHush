@@ -1,28 +1,13 @@
 # GhidraDeforger
-
-```text
-                                                                                                                             
-              ,,          ,,        ,,                                            ,...                                       
-  .g8"""bgd `7MM          db      `7MM                   `7MM"""Yb.             .d' ""                                       
-.dP'     `M   MM                    MM                     MM    `Yb.           dM`                                          
-dM'       `   MMpMMMb.  `7MM   ,M""bMM  `7Mb,od8 ,6"Yb.    MM     `Mb  .gP"Ya  mMMmm,pW"Wq.`7Mb,od8 .P"Ybmmm .gP"Ya `7Mb,od8 
-MM            MM    MM    MM ,AP    MM    MM' "'8)   MM    MM      MM ,M'   Yb  MM 6W'   `Wb MM' "':MI  I8  ,M'   Yb  MM' "' 
-MM.    `7MMF' MM    MM    MM 8MI    MM    MM     ,pm9MM    MM     ,MP 8M""""""  MM 8M     M8 MM     WmmmP"  8M""""""  MM     
-`Mb.     MM   MM    MM    MM `Mb    MM    MM    8M   MM    MM    ,dP' YM.    ,  MM YA.   ,A9 MM    8M       YM.    ,  MM     
-  `"bmmmdPY .JMML  JMML..JMML.`Wbmd"MML..JMML.  `Moo9^Yo..JMMmmmdP'    `Mbmmd'.JMML.`Ybmd9'.JMML.   YMMMMMb  `Mbmmd'.JMML.   
-                                                                                                   6'     dP                 
-                                                                                                   Ybmmmd'                   
-```
-
 GhidraDeforger is an automated binary reverse engineering and orchestration toolchain. Designed for security researchers, it leverages the Ghidra decompiler API and Large Language Models (LLMs) to automatically extract, refactor, patch, and recompile C code. This creates a powerful framework for malware analysis, threat hunting, and executing structural mutation and robustness testing on compiled binaries.
 
 ## 🏗️ Project Architecture
 
 The repository is structured to cleanly separate orchestration infrastructure from application logic:
 
-* **`/` (Root):** Contains all infrastructure and configuration (`docker-compose.yaml`[cite: 1], `Dockerfile`[cite: 2], `.env`, and `GhidraReforger.sh`[cite: 3]).
-* **`src/`:** Contains the core Python toolchain, including the LLM agents, compiler orchestrators, and Ghidra Python scripts[cite: 4].
-* **`workspace/`:** A dynamically generated I/O directory (ignored by version control) where target binaries are copied, analyzed, and recompiled into isolated `run_X` folders[cite: 3].
+* **`/` (Root):** Contains all infrastructure and configuration (`docker-compose.yaml`, `Dockerfile`, `.env`, and `GhidraReforger.sh`).
+* **`src/`:** Contains the core Python toolchain, including the LLM agents, compiler orchestrators, and Ghidra Python scripts.
+* **`workspace/`:** A dynamically generated I/O directory (ignored by version control) where target binaries are copied, analyzed, and recompiled into isolated `run_X` folders.
 
 ## 🛠️ Prerequisites
 
