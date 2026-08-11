@@ -13,11 +13,12 @@ import json, math
 
 
 class DefensiveEvasion:
-    def __init__(self, model_name=None, base_url=None):
+    def __init__(self, model_name=None, base_url=None, arch="x86"):
         self.base_url = base_url or os.environ.get('OLLAMA_HOST', 'http://ollama:11434')
         self.model_name = model_name or os.environ.get('LLM_MODEL', 'deepseek-coder-v2')
         self.client = Client(host=self.base_url)
-        print(f"DefensiveEvasion initialized with {self.model_name} at {self.base_url}")
+        self.arch = arch               # e.g., "x86 (32-bit)" or "x86_64 (64-bit)"
+        print(f"DefensiveEvasion initialized with {self.model_name} at {self.base_url} for architecture: {self.arch}")
 
     def call_llm(self, prompt, original_code):
         """Send prompt to LLM and extract raw C code from response."""
@@ -45,7 +46,7 @@ class DefensiveEvasion:
     def apply_junk_code_insertion(self, c_code):
         """Insert dead code / junk instructions that do not affect logic."""
         prompt = f"""
-            You are a red‑team developer crafting stealthy C code that must pass static analysis.  
+            You are a red‑team developer crafting stealthy C code that must pass static analysis. The target architecture is **{self.arch}**. 
             The code will be compiled with **Microsoft Visual Studio (MSVC)**. Use MSVC-compatible syntax.  
             Insert **junk code** into the function below using realistic-looking dead logic.  
             Requirements:
@@ -76,7 +77,7 @@ class DefensiveEvasion:
     def apply_string_encryption(self, c_code):
         """Encrypt/obfuscate string literals and add runtime decryption."""
         prompt = f"""
-        You are a red‑team developer writing production evasion code.  
+        You are a red‑team developer writing production evasion code. The target architecture is **{self.arch}**. 
         The code will be compiled with **Microsoft Visual Studio (MSVC)**. Use MSVC-compatible syntax.  
         Obfuscate **all string literals** in the given function by encrypting them at compile time and decrypting at runtime.  
         Detailed requirements:
@@ -99,7 +100,7 @@ class DefensiveEvasion:
     def apply_api_call_substitution(self, c_code):
         """Replace common Windows API calls with alternative (e.g., syscall or NT API)."""
         prompt = f"""
-        You are a red‑team developer implementing a Windows implant that must evade EDR user‑land hooks.  
+        You are a red‑team developer implementing a Windows implant that must evade EDR user‑land hooks. The target architecture is **{self.arch}**. 
         The code will be compiled with **Microsoft Visual Studio (MSVC)**. Use MSVC-compatible syntax.  
         Replace **every high‑level API call** (e.g., `VirtualAlloc`, `WriteFile`, `CreateThread`) with a **direct syscall**.  
         Implementation details:
@@ -121,7 +122,7 @@ class DefensiveEvasion:
     def apply_anti_debugging(self, c_code):
         """Insert anti-debugging checks (e.g., IsDebuggerPresent, NtQueryInformationProcess)."""
         prompt = f"""
-        You are a red‑team developer adding anti‑analysis safeguards to a function.  
+        You are a red‑team developer adding anti‑analysis safeguards to a function. The target architecture is **{self.arch}**.  
         The code will be compiled with **Microsoft Visual Studio (MSVC)**. Use MSVC-compatible syntax.  
         Insert **multiple, varied anti‑debugging checks** that, if triggered, silently corrupt a critical variable rather than terminating (to mislead the analyst).  
         Include at least three of the following techniques, implemented in a way that is not trivially signatured:
@@ -146,7 +147,7 @@ class DefensiveEvasion:
     def apply_control_flow_Obfuscation(self, c_code):
         """Obfuscate control flow using opaque predicates and jump tables."""
         prompt = f"""
-        You are a red‑team developer implementing **anti‑disassembly** tricks that break linear sweep and recursive disassemblers.  
+        You are a red‑team developer implementing **anti‑disassembly** tricks that break linear sweep and recursive disassemblers. The target architecture is **{self.arch}**. 
         The code will be compiled with **Microsoft Visual Studio (MSVC)**. Use MSVC-compatible syntax.  
         Insert at least **three different techniques** into the function.  
         Use the following approaches, adapted for MSVC:
@@ -168,7 +169,7 @@ class DefensiveEvasion:
 
     def apply_anti_disassembly(self, c_code):
         """Insert junk bytes or misalign instructions to confuse disassemblers."""
-        prompt = f"""You are an expert in anti-disassembly techniques.
+        prompt = f"""You are an expert in anti-disassembly techniques. The target architecture is **{self.arch}**. 
         The code will be compiled with **Microsoft Visual Studio (MSVC)**. Use MSVC-compatible syntax.
         Insert anti-disassembly tricks into the given C function. Use methods such as:
         - Inserting junk bytes via `__asm _emit 0x66` (x86) or `_emit` in a separate `__asm` block.
