@@ -169,7 +169,7 @@ class CCodeEnhancer:
         else:
             print(f"Failed to parse prototype for DB: {prototype}")
 
-    def process_function_file(self, file_path, workspace_dir, is_worthy=False):
+    def process_function_file(self, file_path, workspace_dir, call_graph=None, is_worthy=False):
         output_dir = os.path.join(workspace_dir, 'processed_functions')
         os.makedirs(output_dir, exist_ok=True)
         header_path = os.path.join(workspace_dir, "LLM_globals.h")
@@ -177,29 +177,39 @@ class CCodeEnhancer:
         with open(file_path, 'r', encoding='utf-8') as f:
             original_code = f.read()
             
-        print(f"\nProcessing: {os.path.basename(file_path)}")
-        # Pre-process Ghidra types and beautify the code
+        base_name = os.path.splitext(os.path.basename(file_path))[0]
+        print(f"\nProcessing: {base_name}.c")
+        
+        # Fetch known prototypes for functions called by this file
+        callee_prototypes_str = ""
+        if call_graph and base_name in call_graph:
+            db = SymbolDB(workspace_dir=workspace_dir)
+            with db._get_conn() as conn:
+                cursor = conn.cursor()
+                prototypes = []
+                for callee in call_graph[base_name]:
+                    # call_graph format is "funcName_Address", we need just "funcName"
+                    clean_callee = callee.split('_')[0] 
+                    cursor.execute("SELECT return_type, name, parameters FROM functions WHERE name = ?", (clean_callee,))
+                    row = cursor.fetchone()
+                    if row:
+                        prototypes.append(f"{row[0]} {row[1]}({row[2]});")
+                callee_prototypes_str = "\n".join(prototypes)
+
         cleaned_code = self.pre_process_ghidra_types(original_code)
-        result = self.beautify_c_code(cleaned_code)
-        if is_worthy:
-            result = self.apply_custom_prompt(result)
-        # Extract prototype and append to header
+        
+        # Pass the newly generated prototypes string to the LLM
+        result = self.beautify_c_code(cleaned_code, callee_prototypes_str)
+            
         prototype = self.extract_prototype(result)
         self.append_prototype_to_header(prototype, header_path=header_path, workspace_dir=workspace_dir)
         
-        base_name = os.path.splitext(os.path.basename(file_path))[0]
         beautified_path = os.path.join(output_dir, f"{base_name}.c")
-        
         with open(beautified_path, 'w', encoding='utf-8') as f:
             f.write(result)
             
         print(f"Saved beautified file: {beautified_path}")
-        
-        return {
-            'original': file_path,
-            'beautified': beautified_path,
-            'status': 'processed'
-        }
+        return {'original': file_path, 'beautified': beautified_path, 'status': 'processed'}
     
     def process_directory(self, input_dir, workspace_dir):
         """Gathers all .c files, runs batch LLM triage, and beautifies only custom logic."""
