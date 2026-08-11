@@ -1,9 +1,9 @@
-import os
+import os,json,math
 import sys
 from ollama import Client
 import re
 import argparse
-from src.database.symbol_db import SymbolDB
+from database.symbol_db import SymbolDB
 import pefile
 
 class CCodeEnhancer:
@@ -33,6 +33,47 @@ class CCodeEnhancer:
         for pattern, replacement in replacements.items():
             c_code = re.sub(pattern, replacement, c_code)
         return c_code
+
+    
+    def triage_function_names(self, function_names):
+        """Asks the LLM to evaluate a list of function names and identify boilerplate."""
+        
+        prompt = f"""You are an expert reverse engineer. Analyze the following list of function names extracted from a decompiled Windows executable.
+        
+        Categorize each function into one of two categories:
+        1. "IGNORE": Standard C/C++ library functions (e.g., printf, malloc, mbrlen, strnlen), Windows API, or MinGW/CRT compiler boilerplate (e.g., dtoa_lock, __main, exception handlers).
+        2. "PROCESS": Custom application logic. 
+        
+        CRITICAL RULE: Core application entry points (e.g., "main", "WinMain", "DllMain", "entry", "_start") MUST be categorized as "PROCESS". Do not confuse the actual "main" with compiler boilerplate like "__main".
+
+        You MUST respond ONLY with a valid JSON dictionary where the keys are the function names and the values are either "IGNORE" or "PROCESS". Do not wrap the output in markdown. Do not add explanations.
+        
+        Function Names:
+        {json.dumps(function_names)}
+        """
+
+        print(f"[*] Triaging {len(function_names)} functions with LLM...")
+        
+        response = ""
+        for chunk in self.client.generate(model=self.model_name, prompt=prompt, stream=True, options={'temperature': 0}):
+            response += chunk['response']
+            
+        # Clean the response in case the LLM disobeys and wraps it in markdown
+        cleaned_response = response.strip()
+        if cleaned_response.startswith("```json"):
+            cleaned_response = cleaned_response[7:]
+        if cleaned_response.startswith("```"):
+            cleaned_response = cleaned_response[3:]
+        if cleaned_response.endswith("```"):
+            cleaned_response = cleaned_response[:-3]
+            
+        try:
+            triage_results = json.loads(cleaned_response.strip())
+            return triage_results
+        except json.JSONDecodeError as e:
+            print(f"[!] Triage failed to parse JSON: {e}")
+            print(f"Raw output: {cleaned_response}")
+            return {} # Fallback to empty if it fails
     
     def beautify_c_code(self, c_code):
         prompt = f"""You are an expert C/c++ programmer. Refactor the following Ghidra C/C++ code.
@@ -77,21 +118,19 @@ class CCodeEnhancer:
             
         return self.extract_raw_c_code(response, c_code)
 
+
     def extract_prototype(self, text):
-        """Extracts ONLY the FUN_... C function prototype from the generated C code."""
-        pattern = r'([a-zA-Z0-9_ \t\*]+)\s+((?:FUN_|My_|thunk_)[0-9a-fA-F_a-zA-Z]+|entry)\s*\(([^)]*)\)\s*\{'
-        matches = re.findall(pattern, text)
-        
-        prototypes = []
-        for match in matches:
-            return_type = match[0].strip()
-            func_name = match[1].strip()
-            args = match[2].strip()
+        """Extracts the first C function prototype from the generated code."""
+        # Match return_type function_name(parameters) {
+        pattern = r'^([a-zA-Z0-9_ \t\*]+)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)\s*\{'
+        match = re.search(pattern, text, re.MULTILINE)
+        if match:
+            return_type = match.group(1).strip()
+            func_name = match.group(2).strip()
+            args = match.group(3).strip()
             args_cleaned = " ".join(args.split())
-            prototype = f"{return_type} {func_name}({args_cleaned});"
-            prototypes.append(prototype) 
-            
-        return prototypes[0] if prototypes else None
+            return f"{return_type} {func_name}({args_cleaned});"
+        return None
 
     
     def extract_raw_c_code(self, llm_output, original_code):
@@ -144,40 +183,87 @@ class CCodeEnhancer:
         else:
             print(f"Failed to parse prototype for DB: {prototype}")
 
-    def process_function_file(self, file_path, workspace_dir):
+    def process_function_file(self, file_path, workspace_dir, is_worthy=False):
         output_dir = os.path.join(workspace_dir, 'processed_functions')
         os.makedirs(output_dir, exist_ok=True)
         header_path = os.path.join(workspace_dir, "LLM_globals.h")
+        
         with open(file_path, 'r', encoding='utf-8') as f:
             original_code = f.read()
+            
         print(f"\nProcessing: {os.path.basename(file_path)}")
         
-        # Pre-process types (GUARANTEES undefined4 -> uint32_t)
+        # Pre-process Ghidra types and beautify the code
         cleaned_code = self.pre_process_ghidra_types(original_code)
         result = self.beautify_c_code(cleaned_code)
+        
+        if is_worthy:
+            result = self.apply_custom_prompt(result)
+            
         # Extract prototype and append to header
         prototype = self.extract_prototype(result)
-        self.append_prototype_to_header(prototype, header_path=header_path)
+        self.append_prototype_to_header(prototype, header_path=header_path, workspace_dir=workspace_dir)
+        
         base_name = os.path.splitext(os.path.basename(file_path))[0]
         beautified_path = os.path.join(output_dir, f"{base_name}.c")
+        
         with open(beautified_path, 'w', encoding='utf-8') as f:
             f.write(result)
+            
         print(f"Saved beautified file: {beautified_path}")
         
         return {
             'original': file_path,
-            'beautified': beautified_path
-            }
+            'beautified': beautified_path,
+            'status': 'processed'
+        }
+    
+    def process_directory(self, input_dir, workspace_dir):
+        """Gathers all .c files, runs batch LLM triage, and beautifies only custom logic."""
+        c_files = self.find_c_files(input_dir)
+        if not c_files:
+            print(f"[!] No .c files found in {input_dir}")
+            return []
 
+        # Map function names to file paths (e.g., 'printf' -> '/path/to/printf.c')
+        file_map = {os.path.splitext(os.path.basename(f))[0]: f for f in c_files}
+        func_names = list(file_map.keys())
+
+        # Step 1: Batch Triage
+        triage_results = self.triage_function_names(func_names)
+        db = SymbolDB(workspace_dir=workspace_dir)
+
+        results = []
+        print(f"\n[*] Triage complete. Processing custom application logic...\n")
+
+        # Step 2: Refactoring Loop
+        for func_name, file_path in file_map.items():
+            # Default to 'PROCESS' if LLM missed the key in JSON
+            decision = triage_results.get(func_name, "PROCESS").upper()
+
+            if decision == "IGNORE":
+                print(f"[*] Triage: Skipping CRT/Boilerplate function '{func_name}'")
+                
+                # Remove function prototype entry from DB so it's not exported to LLM_globals.h
+                db.remove_function(func_name)
+                
+                results.append({
+                    'original': file_path,
+                    'status': 'ignored_library_function'
+                })
+                continue
+
+            # Step 3: Beautify valid custom logic
+            res = self.process_function_file(file_path, workspace_dir)
+            results.append(res)
+
+        return results
 
 def get_ignored_functions():
     path = os.environ.get('INPUT_EXE_PATH')
     pe = pefile.PE(path)
 
     dynamic_api_functions = set()
-
-    # It's good practice to check if the directory exists, 
-    # as some packed or obfuscated binaries might strip the standard import table.
     if hasattr(pe, 'DIRECTORY_ENTRY_IMPORT'):
         for entry in pe.DIRECTORY_ENTRY_IMPORT:
             # entry.dll contains the library name (e.g., b'KERNEL32.dll')
@@ -202,11 +288,21 @@ def get_ignored_functions():
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Beautify a single C function file using Ollama.")
-    parser.add_argument("input_file", help="Path to the .c file to beautify")
-    parser.add_argument("--model", default=os.environ.get('LLM_MODEL','deepseek-coder-v2'), help="Ollama model to use")
+    parser = argparse.ArgumentParser(description="Beautify C function files using Ollama with LLM Triage.")
+    parser.add_argument("input_path", help="Path to a single .c file OR a directory containing .c files")
+    parser.add_argument("--workspace", default=".", help="Workspace directory for SymbolDB and headers")
+    parser.add_argument("--model", default=os.environ.get('LLM_MODEL', 'deepseek-coder-v2'), help="Ollama model to use")
+    
     args = parser.parse_args()
     enhancer = CCodeEnhancer(model_name=args.model)
     
     print("-" * 50)
-    result = enhancer.process_function_file(args.input_file)
+    
+    if os.path.isdir(args.input_path):
+        # Batch Directory Mode: Performs Triage first, then Beautifies
+        enhancer.process_directory(args.input_path, workspace_dir=args.workspace)
+    elif os.path.isfile(args.input_path):
+        # Single File Mode Fallback
+        enhancer.process_function_file(args.input_path, workspace_dir=args.workspace)
+    else:
+        print(f"[!] Invalid path provided: {args.input_path}")
