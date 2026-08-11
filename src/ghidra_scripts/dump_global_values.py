@@ -62,7 +62,7 @@ def map_ghidra_type_to_c(dt):
         return f"{base_type}{size_part}"
         
     # Fallback for custom structs / raw undefined bytes
-    return "uint8_t"
+    return "uintptr_t"
 
 
 def generate_global_files(path_to_binary, workspace_dir="."):
@@ -75,6 +75,16 @@ def generate_global_files(path_to_binary, workspace_dir="."):
         "glDispatchTable", "TxnScope", "FiberData", "ArbitraryUserPointer", 
         "ThreadLocalStorage", "Win32ThreadInfo", "EtwTraceData", "DeallocationStack"
     ]
+    RUNTIME_SYMBOLS = {
+    "mingw_pcinit", "mingw_pcppinit", "mingw_initcharmax",
+    "mingw_initltsdrot_force", "mingw_initltsdyn_force", "mingw_initltssuo_force",
+    "mingw_app_type", "mainret", "managedapp", "fpreset", "fthunk",
+    "p_92992", "hname", "key_dtor_list", "the_secs", "was_init_94382",
+    "argc", "argv", "envp", "startinfo", "stUserMathErr", "handler",
+    "has_cctor", "initialized", "register_frame_ctor", "switchD",
+    "switchdataD_1400041a4", "switchdataD_1400042d0",
+    "calc_shellcode", "shellcode", "win_shellcode", "caseD_*"  # can use pattern
+    }
     
     print(f"Initializing Ghidra and opening: {path_to_binary}")
     
@@ -98,6 +108,15 @@ def generate_global_files(path_to_binary, workspace_dir="."):
             if not addr.isMemoryAddress() or addr in seen_addresses:
                 continue
             raw_name = sym.getName()
+            if program.getFunctionManager().getFunctionAt(addr) is not None:
+                print(f" Skipping function symbol: {raw_name}")
+                continue
+
+            # Added '.', '?', and '<' to catch Ghidra section labels and C++ artifacts
+            if raw_name.startswith(('_', '.', '?', '<')) or raw_name.startswith('FID_conflict:_') or raw_name.startswith('mingw')or raw_name.startswith('gcc:_') or raw_name.startswith('g++:_'):
+                print(f" Skipping Runtime/Library Global: {raw_name}")
+                continue
+
             if any(ignored_item in raw_name for ignored_item in TEB_PEB_IGNORE_LIST):
                 continue
             seen_addresses.add(addr)
@@ -109,7 +128,49 @@ def generate_global_files(path_to_binary, workspace_dir="."):
             
             data = listing.getDataAt(addr)
             # Handle completely undefined memory labels
+            # Handle completely undefined memory labels (or fragmented ones)
             if not data or not data.isDefined():
+                mem_block = program.getMemory().getBlock(addr)
+                if mem_block:
+                    end_addr = mem_block.getEnd()
+                    
+                    # 1. Find the very next MEANINGFUL symbol address.
+                    # We must IGNORE auto-generated labels so we don't prematurely chop up payloads containing strings.
+                    sym_iter = symbol_table.getSymbolIterator(addr, True)
+                    while sym_iter.hasNext():
+                        s = sym_iter.next()
+                        if s.getAddress().compareTo(addr) > 0:
+                            next_name = s.getName()
+                            
+                            # Skip Ghidra's auto-generated data/string labels
+                            if next_name.startswith("s_") or next_name.startswith("DAT_") or next_name.startswith("STRING_"):
+                                continue
+                                
+                            if s.getAddress().compareTo(end_addr) < 0:
+                                end_addr = s.getAddress()
+                            break
+                            
+                    # Calculate the full size of the block
+                    size = end_addr.subtract(addr)
+                    
+                    # 2. Forcibly read the raw bytes
+                    if 0 < size < 1000000:
+                        try:
+                            mem = program.getMemory()
+                            raw_bytes = []
+                            for i in range(size):
+                                raw_bytes.append(mem.getByte(addr.add(i)))
+                                
+                            hex_bytes = [f"0x{(b & 0xFF):02X}" for b in raw_bytes]
+                            value_expr = "{ " + ", ".join(hex_bytes) + " }"
+                            c_type = f"uint8_t[{size}]"
+                            
+                            db.add_or_update_global(name, gtype=c_type, value_or_expr=value_expr, is_string=False)
+                            continue
+                        except Exception as e:
+                            print(f" [!] Warning: Failed to read raw bytes for {name}: {e}")
+
+                # Ultimate fallback
                 db.add_or_update_global(name, gtype="uintptr_t", value_or_expr="0", is_string=False)
                 continue
 
@@ -132,8 +193,8 @@ def generate_global_files(path_to_binary, workspace_dir="."):
                     # Unwrap the Ghidra Scalar object
                     value_expr = hex(val.getUnsignedValue())
                 elif isinstance(val, Address):
-                    # Format as a C pointer
-                    value_expr = f"(void*){hex(val.getOffset())}"
+                    # Assign raw hex to safely fit into uintptr_t or void*
+                    value_expr = f"0x{val.getOffset():x}"
                 else:
                     # "Give me the raw bytes!" (The Fallback)
                     try:
