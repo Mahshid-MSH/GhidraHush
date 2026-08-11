@@ -49,7 +49,6 @@ def append_missing_declarations(header_path, source_path, missing, workspace_dir
         print("No missing DAT_ globals found.")
         return
 
-    # FIX: Pass the workspace_dir here as well
     db = SymbolDB(workspace_dir=workspace_dir)
     for name in missing:
         db.add_or_update_global(name, gtype="uintptr_t", value_or_expr="0", is_string=False)
@@ -59,14 +58,11 @@ def append_missing_declarations(header_path, source_path, missing, workspace_dir
     print(f"Added {len(missing)} missing DAT_ global(s) to Symbol DB and re-exported headers.")
 
 def add_missing_values(workspace_dir="."):
-    # Build workspace-aware paths
+    """Main function called from pipeline – always uses the workspace's extracted_functions."""
     header_file = os.path.join(workspace_dir, "LLM_globals.h")
     source_file = os.path.join(workspace_dir, "LLM_globals.c")
-    default_source_dir = os.path.join(workspace_dir, "extracted_functions")
+    target_dir = os.path.join(workspace_dir, "extracted_functions")
 
-    # Read from CLI arguments if provided, otherwise fallback to workspace's extracted_functions
-    target_dir = sys.argv[1] if len(sys.argv) > 1 else default_source_dir
-    
     if not os.path.isdir(target_dir):
         print(f"Error: source directory '{target_dir}' not found.")
         sys.exit(1)
@@ -79,11 +75,14 @@ def add_missing_values(workspace_dir="."):
     used = find_used_dat_globals(target_dir)
 
     missing = used - declared
-    
-    # FIX: Add the workspace_dir argument to this function call
+
     append_missing_declarations(header_file, source_file, missing, workspace_dir)
-    
+
     print("Done. Header updated if necessary.")
 
 if __name__ == "__main__":
-    add_missing_values()
+    # For standalone usage, you can pass the workspace directory as argument
+    if len(sys.argv) > 1:
+        add_missing_values(workspace_dir=sys.argv[1])
+    else:
+        add_missing_values()
