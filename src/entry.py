@@ -191,7 +191,6 @@ def run_pipeline():
                 exe_name=exe_name,
                 techniques=techniques
             )
-            
             mark_stage_complete(6)
             print(f"{Colors.GREEN}Stage 6 completed successfully.{Colors.RESET}")
         except Exception as e:
@@ -201,8 +200,6 @@ def run_pipeline():
     # ======================= Phase 7: Compiling globals and main =============================
     elif start_stage == 7:
         print_stage(7, STAGES[7])
-        
-        # Dynamically locate main.c within the workspace
         main_path = None
         for root, dirs, files in os.walk(workspace_dir):
             if "main.c" in files:
@@ -213,14 +210,9 @@ def run_pipeline():
             sys.exit(1)
             
         try:
-            # Instantiate the GCCService dynamically
             gcc_service = GCCService(compiler=target_compiler, workspace_dir=workspace_dir)
-            
-            # Use the module to compile globals
             if not gcc_service.recompile_globals():
                 raise Exception("Failed to compile LLM_globals.c")
-                
-            # Use the module to compile main.c
             success, err_msg = gcc_service.compile_file(filepath=main_path, output_dir=workspace_dir)
             if not success:
                 raise Exception(f"Failed to compile main.c: {err_msg}")
@@ -284,8 +276,6 @@ def run_pipeline():
     elif start_stage == 10:
         print_stage(10, STAGES[10])
         print(f"{Colors.YELLOW}Stage 10 is not yet implemented.{Colors.RESET}")
-        # Optionally mark as complete?  We'll just exit without error.
-        # mark_stage_complete(10)  # Uncomment when implemented
         sys.exit(0)
 
 if __name__ == "__main__":
