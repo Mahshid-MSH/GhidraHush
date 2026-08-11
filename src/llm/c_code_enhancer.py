@@ -52,7 +52,7 @@ class CCodeEnhancer:
         {json.dumps(function_names)}
         """
 
-        print(f"[*] Triaging {len(function_names)} functions with LLM...")
+        print(f"Triaging {len(function_names)} functions with LLM...")
         
         response = ""
         for chunk in self.client.generate(model=self.model_name, prompt=prompt, stream=True, options={'temperature': 0}):
@@ -222,27 +222,27 @@ class CCodeEnhancer:
         """Gathers all .c files, runs batch LLM triage, and beautifies only custom logic."""
         c_files = self.find_c_files(input_dir)
         if not c_files:
-            print(f"[!] No .c files found in {input_dir}")
+            print(f"No .c files found in {input_dir}")
             return []
 
         # Map function names to file paths (e.g., 'printf' -> '/path/to/printf.c')
         file_map = {os.path.splitext(os.path.basename(f))[0]: f for f in c_files}
         func_names = list(file_map.keys())
 
-        # Step 1: Batch Triage
+        # Batch Triage
         triage_results = self.triage_function_names(func_names)
         db = SymbolDB(workspace_dir=workspace_dir)
 
         results = []
-        print(f"\n[*] Triage complete. Processing custom application logic...\n")
+        print(f"\nTriage complete. Processing custom application logic...\n")
 
-        # Step 2: Refactoring Loop
+        # Refactoring Loop
         for func_name, file_path in file_map.items():
             # Default to 'PROCESS' if LLM missed the key in JSON
             decision = triage_results.get(func_name, "PROCESS").upper()
 
             if decision == "IGNORE":
-                print(f"[*] Triage: Skipping CRT/Boilerplate function '{func_name}'")
+                print(f"Triage: Skipping CRT/Boilerplate function '{func_name}'")
                 
                 # Remove function prototype entry from DB so it's not exported to LLM_globals.h
                 db.remove_function(func_name)
@@ -253,7 +253,7 @@ class CCodeEnhancer:
                 })
                 continue
 
-            # Step 3: Beautify valid custom logic
+            # Beautify valid custom logic
             res = self.process_function_file(file_path, workspace_dir)
             results.append(res)
 
