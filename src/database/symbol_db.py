@@ -94,9 +94,10 @@ class SymbolDB:
             conn.commit()
 
     def parse_and_upsert_prototype(self, prototype_str):
-        """Helper to parse a raw prototype string 'int FUN_00401000(char *a);' and insert into DB."""
+        """Helper to parse a raw prototype string 'int FindProcessId(char *a);' and insert into DB."""
         clean = prototype_str.strip().rstrip(';')
-        match = re.search(r'([\w\s\*]+)\s+((?:FUN_|My_|thunk_)[0-9a-fA-F_a-zA-Z]+|entry)\s*\(([^)]*)\)', clean)
+        # Matches return_type function_name(args) for any valid C identifier
+        match = re.search(r'([\w\s\*]+)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)', clean)
         if match:
             return_type = match.group(1).strip()
             func_name = match.group(2).strip()
@@ -123,6 +124,26 @@ class SymbolDB:
             "#ifndef WIN32_LEAN_AND_MEAN",
             "#define WIN32_LEAN_AND_MEAN",
             "#endif\n",
+            "#include <stdint.h>",
+            "#include <inttypes.h>",
+            "#include <stdbool.h>",
+            "#include <stddef.h>",
+            "#include <stdlib.h>",
+            "#include <winreg.h>",
+            "#include <intrin.h>",
+            "#include <stdio.h>",
+            "#include <string.h>\n",
+            "#include <winsock2.h>",
+            "#include <ws2tcpip.h>",
+            "#include <windows.h>\n",
+            "#include <tlhelp32.h>",
+            "#include <shlwapi.h>",
+            "#include <wininet.h>",
+            "#include <urlmon.h>",
+            "#include <wincrypt.h>",
+            "#include <winternl.h>",
+            "#include <iphlpapi.h>",
+            "#include <shlobj.h>\n",
             "// --- GHIDRA DECOMPILER SHIM ---",
             "typedef unsigned char      undefined1;",
             "typedef unsigned short     undefined2;",
@@ -189,8 +210,10 @@ class SymbolDB:
         """Remove a function entry from the database."""
         with self._get_conn() as conn:
             cursor = conn.cursor()
+            # Check if the function exists
             cursor.execute("SELECT 1 FROM functions WHERE name = ?", (name,))
             if cursor.fetchone():
+                # Delete it from the SQL database
                 cursor.execute("DELETE FROM functions WHERE name = ?", (name,))
                 conn.commit()
                 return True
