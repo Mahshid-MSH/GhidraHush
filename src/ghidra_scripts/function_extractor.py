@@ -45,6 +45,9 @@ def extract_functions(file_path, workspace_dir):
                     "__CreateFrameInfo", "try_load_library_from_system_directory",
                     
                     # --- MinGW Specific Setup/Teardown ---
+                    "mingw_get_invalid_parameter_handler",
+                    "mingw_set_invalid_parameter_handler",
+                    "pre_c_init", "pre_cpp_init"
                     "__gcc_deregister_frame", "__gcc_register_frame", 
                     "__do_global_ctors", "__do_global_dtors",
                     "_pei386_runtime_relocator", "__dyn_tls_dtor", "__dyn_tls_init",
@@ -110,7 +113,7 @@ def extract_functions(file_path, workspace_dir):
 
                     # Skip functions starting with underscores (libc / compiler boilerplate)
                     # We also check for 'FID_conflict:_' to catch Ghidra's library matches
-                    if func_name.startswith('_') or func_name.startswith('FID_conflict:_'):
+                    if func_name.startswith('_') or func_name.startswith('FID_conflict:_') or func_name.startswith('pre'):
                         print(f" Skipping Runtime/Library Function: {func_name}")
                         continue
                         
