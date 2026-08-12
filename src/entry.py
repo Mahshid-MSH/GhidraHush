@@ -52,7 +52,12 @@ def mark_stage_complete(stage):
     """Updates LAST_COMPLETED_STAGE inside .env"""
     set_key(ENV_PATH, "LAST_COMPLETED_STAGE", str(stage))
 
-
+def get_arch_from_compiler(compiler_name):
+    """Return a human‑readable architecture string based on the compiler triplet."""
+    if "x86_64" in compiler_name:
+        return "x86_64 (64-bit)"
+    else:
+        return "x86 (32-bit)"
 
 def detect_target_compiler(input_exe_path: str) -> str:
     """
@@ -169,6 +174,7 @@ def run_pipeline():
             sys.exit(1)
 
     # ================== Phase 6: Apply Defensive Evasion ===============================
+    
     elif start_stage == 6:
         print_stage(6, STAGES[6])
         try:
