@@ -46,144 +46,326 @@ class DefensiveEvasion:
     def apply_junk_code_insertion(self, c_code):
         """Insert dead code / junk instructions that do not affect logic."""
         prompt = f"""
-            You are a red‑team developer crafting stealthy C code that must pass static analysis. The target architecture is **{self.arch}**. 
-            The code will be compiled with **Microsoft Visual Studio (MSVC)**. Use MSVC-compatible syntax.  
-            Insert **junk code** into the function below using realistic-looking dead logic.  
-            Requirements:
-                - Use **opaque predicates** that always evaluate to TRUE or FALSE but are hard to statically determine, e.g., based on `__rdtsc()`, a CPUID leaf, or a PEB field that is always set.
-                - Emit **fake Windows API calls** that are never executed because the predicate jumps over them, e.g., `CreateFileW`, `RegOpenKeyExW` inside an always‑false branch.  
-                - Include **dummy error handling** blocks (like calls to `SetLastError` or `FormatMessage`) that are unreachable but look plausible.  
-                - Do NOT use trivial operations such as `int x = 1+1;` or simple constant comparisons.
-                - The function’s original behaviour and side effects must be unchanged.
-                - Avoid adding large static arrays or loops that would inflame size‑based heuristics.
+        You are an expert C developer generating synthesized code variants.
+        Target Architecture: {self.arch}
+        Compiler: Microsoft Visual Studio (MSVC)
 
-            CRITICAL RULE: Every variable, buffer, handle, or pointer you reference MUST be declared 
-                and initialized before use. Do NOT use variables that aren't declared in the current scope.
-                If you add junk code that references API functions, you MUST:
-                1. Declare all variables at the top of the function or block
-                2. Initialize them appropriately (even if the code path is never executed)
-                3. #include any required headers for types like HKEY, LPVOID, etc.
-                Never reference undeclared variables like 'buffer', 'lpMsgBuf', or 'lpBuffer' without 
-                first declaring them with proper types.
-            Additionally, if you introduce any **new helper functions** (e.g., custom predicates), their complete definition must appear **before** they are first called.
+        ### CRITICAL TRANSFORMATION RULE: ADDITIVE-ONLY
+        - DO NOT MOVE, MODIFY, OR WRAP ANY EXISTING CODE INSIDE A DEAD BRANCH.
+        - All original code statements MUST remain outside the `if` block in the live execution path.
+        - Dead branches (`if (opaque_false_condition) {{ ... }}`) must contain ONLY newly generated, self-contained dummy logic.
 
-            ### INPUT CODE:
-            {c_code}
+        ### STRICT COMPILATION & LOGIC RULES
+        1. NO NEW FUNCTIONS: All inserted logic must reside entirely inside existing function bodies.
+        2. PRESERVE ORIGINAL BEHAVIOR: The execution outcome, return values, side effects, and active control flow of the original code must remain 100% identical.
+        3. ISOLATED DUMMY SCOPING: All variables declared inside a dead branch MUST be given unique names prefixed with `dummy_` (e.g., `dummy_buf`, `dummy_status`) to prevent variable shadowing or redefinition errors.
+        4. SELF-CONTAINED HEADERS: Ensure any APIs used in the dead branch are supported by standard Windows/C headers (`<windows.h>`, `<stdio.h>`, `<stdlib.h>`).
 
-            Return only the modified C code in a markdown code block.
+        ### OPAQUE PREDICATE REQUIREMENTS
+        Drive the dead branch using a mathematical invariant that statically looks complex but dynamically evaluates to FALSE at runtime:
+        - Pattern A (Math Invariant): `volatile int dummy_x = 7; if ((dummy_x * (dummy_x + 1)) % 2 != 0) {{ ... }}` (Always False)
+        - Pattern B (System Query): `if (GetPriorityClass(GetCurrentProcess()) == 0xFFFFFFFF) {{ ... }}` (Always False under normal execution)
+        Do NOT use simple `volatile int v = 0; if (v)` or `if (0)`.
+
+        ### VARIETY REQUIREMENT FOR DEAD BRANCH BODY
+        Select ONE random category below for the newly generated dead branch body:
+        - Category A: System info queries (e.g., GetSystemInfo, GetLocalTime, GetUserNameA into dummy buffers).
+        - Category B: Memory & String operations (e.g., malloc dummy buffer, sprintf_s, strlen, free).
+        - Category C: Bitwise/Math loops (e.g., multi-iteration XOR loops over a local dummy array).
+        - Category D: Registry queries (e.g., RegOpenKeyExA on a non-existent key with local cleanup).
+
+        ### STRUCTURAL PATTERN TO FOLLOW:
+        ```c
+        // --- ORIGINAL CODE STATEMENT ---
+        original_statement_1;
+
+        // --- INSERTED DEAD BRANCH (ADDITIVE ONLY) ---
+        volatile int dummy_seed = 12;
+        if ((dummy_seed * dummy_seed + dummy_seed) % 2 != 0) {{
+            // NEW DUMMY LOGIC HERE (Category A, B, C, or D)
+            char dummy_buf[32];
+            memset(dummy_buf, 0, sizeof(dummy_buf));
+        }}
+
+        // --- ORIGINAL CODE STATEMENT CONTINUES ---
+        original_statement_2;
+        ### INPUT CODE:
+        {c_code}
+
+        Return ONLY the complete, modified C source code inside a single markdown code block (```c ... ```).
         """
         return self.call_llm(prompt, c_code)
+
 
     def apply_string_encryption(self, c_code):
-        """Encrypt/obfuscate string literals and add runtime decryption."""
+        """Encrypt string literals and add inline runtime decryption."""
         prompt = f"""
-        You are a red‑team developer writing production evasion code. The target architecture is **{self.arch}**. 
-        The code will be compiled with **Microsoft Visual Studio (MSVC)**. Use MSVC-compatible syntax.  
-        Obfuscate **all string literals** in the given function by encrypting them at compile time and decrypting at runtime.  
-        Detailed requirements:
-        - Use a **randomised algorithm**: choose between XOR‑ADD‑ROL chaining, a 32‑bit LCG‑based stream cipher, or a tiny RC4 implemented inline. Do NOT use a single static XOR key.
-        - Derive the decryption key from a **dynamic value** available at runtime, e.g., the low 32 bits of the tick count (`GetTickCount()`) XORed with a constant, so the key changes every execution.
-        - Store the encrypted strings as `unsigned char[]` arrays.  
-        - Add an inline `decrypt_string(char *buf, size_t len, DWORD key)` function that performs the reverse operations.
-        - **Define the full implementation of `decrypt_string` before it is first called** – do not only declare it.
-        - Replace every original string literal with a call to `decrypt_string` before use.
-        - Ensure the decrypted buffer is cleaned immediately after use to avoid memory‑forensics artefacts (you may overwrite it with zeros).
-        - Do NOT call `malloc` – use stack buffers.
+            You are an expert C developer generating synthesized code variants.
+            Target Architecture: {self.arch}
+            Compiler: Microsoft Visual Studio (MSVC)
 
-        ### INPUT CODE:
-        {c_code}
+            ### STRICT COMPILATION & LOGIC RULES
+            1. NO NEW FUNCTIONS: You are strictly forbidden from creating any decryption helper functions. ALL decryption loops must be 100% inline where the string is needed.
+            2. PRESERVE EXECUTION FLOW: The decrypted string at runtime MUST exactly match the original string literal. Do not change the logic of the host application.
+            3. INLINE DECRYPTION: Decrypt strings in-place within stack-allocated byte arrays directly in the local scope. If a string is passed directly into a function call (e.g., `printf("hello")`), you must hoist the string declaration and decryption loop BEFORE the function call.
+            4. ISOLATED NAMING: Use randomized variable names for local buffers, keys, and loop counters (e.g., `enc_buf_1`, `dec_key_a`) to prevent classifier overfitting. 
+            5. DETERMINISTIC KEYING: Use a simple XOR key (e.g., single-byte or multi-byte).
 
-        Return only the modified C code in a markdown code block.
-        """
+            ### STRUCTURAL PATTERN TO FOLLOW:
+            Do not use this exact code, but follow this structural layout for every string you replace:
+
+            ```c
+            // --- ORIGINAL CODE STATEMENT ---
+            // CreateFileA("C:\\secret.txt", ...);
+
+            // --- TRANSFORMED CODE ---
+            unsigned char enc_str_1[] = {{ 0x01, 0x18, 0x11, 0x17, 0x07, 0x06, 0x4c, 0x16, 0x1a, 0x16, 0x5e, 0x00 }};
+            unsigned char dec_key_1 = 0x42;
+            for (int i_1 = 0; i_1 < sizeof(enc_str_1) - 1; i_1++) {{
+                enc_str_1[i_1] ^= dec_key_1;
+            }}
+            CreateFileA((char*)enc_str_1, ...);
+            memset(enc_str_1, 0, sizeof(enc_str_1)); // Cleanup immediately after use
+
+            ```
+            ### TASK
+            Identify all string literals in the C function below. Replace each string literal with the inline stack-buffer setup, decryption loop, and cleanup exactly as shown in the structural pattern. Ensure necessary headers (`<string.h>`) are present.
+
+            ### INPUT CODE:
+
+            {c_code}
+
+            Return ONLY the complete, modified C source code inside a single markdown code block (`c ... `).
+            """
         return self.call_llm(prompt, c_code)
 
-    def apply_api_call_substitution(self, c_code):
-        """Replace common Windows API calls with alternative (e.g., syscall or NT API)."""
-        prompt = f"""
-        You are a red‑team developer implementing a Windows implant that must evade EDR user‑land hooks. The target architecture is **{self.arch}**. 
-        The code will be compiled with **Microsoft Visual Studio (MSVC)**. Use MSVC-compatible syntax.  
-        Replace **every high‑level API call** (e.g., `VirtualAlloc`, `WriteFile`, `CreateThread`) with a **direct syscall**.  
-        Implementation details:
-        - Write an inline assembly syscall stub that sets `eax` to the SSN, sets `r10` (x64) appropriately, and issues `syscall`. On x86, use `int 0x2E` or `sysenter`. For MSVC, use `__asm` blocks on x86 only; for x64 use a separate .asm file or a wrapper that invokes a syscall stub via a manually crafted jump (e.g., using `_syscall` intrinsic if available). Adapt to what MSVC supports.
-        - Retrieve the SSN **dynamically** from a clean ntdll.dll mapped from disk (Hell’s Gate / Halos Gate technique). Briefly explain the resolution in code comments.  
-        - If you cannot fit the full dynamic resolution, fall back to a **fixed SSN** but XOR it with a constant to avoid static signatures, and note that in a comment.
-        - Adjust the function signature and error handling to match the NTSTATUS style.
-        - If the original function uses a handle from a Win32 API, you may need to first obtain a handle via the corresponding NT path (e.g., `NtOpenProcess` instead of `OpenProcess`).
-        - Ensure that stack alignment (16‑byte) is preserved before the syscall.
-        - Any new functions you create (like a helper to resolve SSNs or a generic syscall stub) must be **completely defined before they are called**.
 
-        ### INPUT CODE:
+    def apply_api_call_substitution(self, c_code):
+        """Replace common Windows API calls with alternative NT API calls."""
+        prompt = f"""
+        You are an expert C developer generating synthesized code variants.
+        Target Architecture: {self.arch}
+        Compiler: Microsoft Visual Studio (MSVC)
+
+        ### CRITICAL TRANSFORMATION RULES
+        1. NO NEW FUNCTIONS: All translations must happen inline. Do not create wrapper functions for the NT APIs.
+        2. NATIVE API TRANSLATION: Identify high-level Win32 API calls (e.g., `VirtualAlloc`, `CreateFile`, `OpenProcess`) and replace them with their Native API equivalents (`NtAllocateVirtualMemory`, `NtCreateFile`, `NtOpenProcess`).
+        3. DYNAMIC RESOLUTION: Do not rely on static linking to `ntdll.lib`. Dynamically resolve the function pointers inline using `GetModuleHandleA("ntdll.dll")` and `GetProcAddress`.
+        4. TYPE CONVERSION: Inline the necessary setup for NT structures (e.g., `OBJECT_ATTRIBUTES`, `CLIENT_ID`, `UNICODE_STRING`) and change return type checks to handle `NTSTATUS` (e.g., checking if `status == 0` for `STATUS_SUCCESS`).
+        5. NO INLINE ASM ON X64: Keep all logic in standard C. Do not use `__asm` or fake syscall intrinsics.
+
+        ### STRUCTURAL PATTERN TO FOLLOW
+        Do not copy this exact code, but follow this structural layout for API substitutions:
+
+        ```c
+        // --- ORIGINAL CODE STATEMENT ---
+        // HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
+
+        // --- TRANSFORMED CODE ---
+        HANDLE dummy_hProcess = NULL;
+        HMODULE dummy_ntdll = GetModuleHandleA("ntdll.dll");
+        if (dummy_ntdll) {{
+            typedef NTSTATUS(WINAPI* PNT_OPEN_PROCESS)(PHANDLE, ACCESS_MASK, PVOID, PVOID);
+            PNT_OPEN_PROCESS dummy_NtOpenProcess = (PNT_OPEN_PROCESS)GetProcAddress(dummy_ntdll, "NtOpenProcess");
+            
+            if (dummy_NtOpenProcess) {{
+                // Inline setup of required NT structures
+                struct _CLIENT_ID {{
+                    HANDLE UniqueProcess;
+                    HANDLE UniqueThread;
+                }} dummy_cid;
+                dummy_cid.UniqueProcess = (HANDLE)(ULONG_PTR)pid;
+                dummy_cid.UniqueThread = 0;
+
+                struct _OBJECT_ATTRIBUTES {{
+                    ULONG Length;
+                    HANDLE RootDirectory;
+                    void* ObjectName;
+                    ULONG Attributes;
+                    void* SecurityDescriptor;
+                    void* SecurityQualityOfService;
+                }} dummy_oa;
+                memset(&dummy_oa, 0, sizeof(dummy_oa));
+                dummy_oa.Length = sizeof(dummy_oa);
+
+                // Native API Call
+                NTSTATUS dummy_status = dummy_NtOpenProcess(&dummy_hProcess, PROCESS_ALL_ACCESS, &dummy_oa, &dummy_cid);
+            }}
+        }}
+        INPUT CODE:
         {c_code}
 
-        Return only the modified C code in a markdown code block.
+        Return ONLY the complete, modified C source code inside a single markdown code block (c ... ).
         """
         return self.call_llm(prompt, c_code)
 
     def apply_anti_debugging(self, c_code):
-        """Insert anti-debugging checks (e.g., IsDebuggerPresent, NtQueryInformationProcess)."""
+        """Insert anti-debugging checks inline."""
         prompt = f"""
-        You are a red‑team developer adding anti‑analysis safeguards to a function. The target architecture is **{self.arch}**.  
-        The code will be compiled with **Microsoft Visual Studio (MSVC)**. Use MSVC-compatible syntax.  
-        Insert **multiple, varied anti‑debugging checks** that, if triggered, silently corrupt a critical variable rather than terminating (to mislead the analyst).  
-        Include at least three of the following techniques, implemented in a way that is not trivially signatured:
-        1. **PEB.BeingDebugged** – read it directly from the PEB via `__readfsdword(0x30) + 2` (x86) or `__readgsqword(0x60) + 2` (x64).  
-        2. **NtGlobalFlag** – check for `0x70` mask at PEB+0x68 (32‑bit) or PEB+0xBC (64‑bit).  
-        3. **Heap flags** – read `HeapFlags` and `ForceFlags` from the default process heap.  
-        4. **Hardware breakpoint detection** – use `GetThreadContext` to check `Dr0`–`Dr3` registers.  
-        5. **Timing check** – use `__rdtsc()` and `CPUID` to measure a small section and compare with expected time.  
-        6. **OutputDebugString** trick – call `OutputDebugStringA` with a known string and then call `GetLastError`; if no error is set, a debugger is present.  
+            You are an expert C developer generating synthesized code variants.
+            Target Architecture: {self.arch}
+            Compiler: Microsoft Visual Studio (MSVC)
 
-        On detection, do **not** call `ExitProcess`. Instead, modify an internal variable that will subtly alter the function’s behaviour later (e.g., change a flag so that subsequent decryption produces garbage).  
-        Make the checks look like normal error‑handling code.  
-        If you add any **helper functions** (e.g., a custom detection routine), provide their full definition before they are invoked.
+            ### CRITICAL TRANSFORMATION RULE: ADDITIVE-ONLY
+            - DO NOT MOVE, MODIFY, OR WRAP ANY EXISTING CODE.
+            - All original code statements MUST remain intact in the live execution path.
 
-        ### INPUT CODE:
-        {c_code}
+            ### STRICT COMPILATION & LOGIC RULES
+            1. FEATURE ISOLATION: Implement exactly ONE of the following anti-debugging techniques:
+            - PEB.BeingDebugged inspection (using __readfsdword or __readgsqword).
+            - NtGlobalFlag inspection.
+            - Timing check (__rdtsc and __cpuid).
+            - OutputDebugStringA error check.
+            2. NO NEW FUNCTIONS: All logic must be injected directly into the existing function body. Do not create static, inline, or helper functions.
+            3. SAFE EVASION: Do NOT attempt to corrupt existing variables. Define a unique local flag (e.g., `dummy_is_debugged`). If a debugger is detected, gracefully return from the function (e.g., `return 0;` or `return NULL;`) to prevent crashes.
+            4. DEPENDENCIES: Ensure required headers (`<windows.h>`, `<intrin.h>`) are included at the top of the file.
 
-        Return only the modified C code in a markdown code block.
-        """
+            ### STRUCTURAL PATTERN TO FOLLOW:
+            Do not copy this exact code, but follow this structural layout for the anti-debugging injection:
+
+            ```c
+            // --- ORIGINAL CODE HEADERS ---
+            #include <windows.h>
+            #include <intrin.h> // Ensure this is present for rdtsc
+
+            void original_function() {{
+                // --- INSERTED ANTI-DEBUGGING (ADDITIVE ONLY) ---
+                int dummy_is_debugged = 0;
+                
+                // Example: Timing check
+                unsigned __int64 dummy_tsc1 = __rdtsc();
+                Sleep(0); 
+                unsigned __int64 dummy_tsc2 = __rdtsc();
+                if ((dummy_tsc2 - dummy_tsc1) > 0xFFFFF) {{
+                    dummy_is_debugged = 1;
+                }}
+
+                if (dummy_is_debugged) {{
+                    return; // Safe, silent exit. No ExitProcess, no variable corruption.
+                }}
+
+                // --- ORIGINAL CODE CONTINUES ---
+                original_statement_1;
+                original_statement_2;
+            }}
+            INPUT CODE:
+            {c_code}
+
+            Return ONLY the complete, modified C source code inside a single markdown code block (c ... ).
+            """
         return self.call_llm(prompt, c_code)
 
     def apply_control_flow_Obfuscation(self, c_code):
-        """Obfuscate control flow using opaque predicates and jump tables."""
+        """Obfuscate control flow using opaque predicates or state-machine dispatchers."""   
+        # Architecture-specific technique isolation
+        if self.arch == "x86":
+            tech_rules = """
+            - Opaque conditional jump using MSVC __asm blocks and volatile condition checks.
+            - Control Flow Flattening using a volatile state variable inside a while-switch loop."""
+        else: # x64
+            tech_rules = """
+            - Opaque conditional jump using volatile global/memory reads to create an unreachable branch containing MSVC intrinsics (__nop()).
+            - Control Flow Flattening using a volatile state variable inside a while-switch loop.
+            - Do NOT use inline assembly (__asm) or _emit directives on x64."""
+
         prompt = f"""
-        You are a red‑team developer implementing **anti‑disassembly** tricks that break linear sweep and recursive disassemblers. The target architecture is **{self.arch}**. 
-        The code will be compiled with **Microsoft Visual Studio (MSVC)**. Use MSVC-compatible syntax.  
-        Insert at least **three different techniques** into the function.  
-        Use the following approaches, adapted for MSVC:
-        1. **Opaque conditional jump** – use a predicate that is hard to determine statically (based on `__rdtsc()` or a PEB value) to create a conditional jump that always goes one way. The “dead” branch contains junk bytes or confusing instructions.
-        2. **Overlapping instructions** – if targeting x86, you may use `__asm` blocks with `_emit` to craft overlapping instructions. For x64, simulate the effect with dummy `__noop()` sequences and misaligned labels that confuse linear disassemblers.
-        3. **False return** – on x86, use `__asm` to push a fake return address and execute `ret`, but ensure the address points to the next real instruction. For x64, simulate with a call to a helper that adjusts the stack.
-        4. **`EB FF` trick** – on x86, place a 2‑byte `jmp` that lands inside another instruction. On x64, mimic with `__nop()` sleds that look like other opcodes.
-        5. **Insert junk prefixes** – use MSVC’s `__nop()`, `_emit(0x66)`, `_emit(0x67)`, etc., where applicable.
+            You are an expert C developer generating synthesized code variants.
+            Target Architecture: {self.arch}
+            Compiler: Microsoft Visual Studio (MSVC)
 
-        Make sure the function still compiles and runs correctly, and that the tricks are commented in the source with `// anti‑disasm`.  
-        Any introduced helper functions (e.g., a wrapper for `_emit`) must be fully defined before use.
+            ### TASK
+            Inject a single control-flow obfuscation transformation into the provided C function.
 
-        ### INPUT CODE:
-        {c_code}
+            ### CONSTRAINTS
+            1. FEATURE ISOLATION: Implement EXACTLY ONE of the following techniques matching target rules:{tech_rules}
+            2. NO NEW FUNCTIONS: You are strictly forbidden from creating helper functions or separate function bodies. All logic must reside entirely inside the existing function.
+            3. PRESERVE EXECUTION FLOW & LOGIC: All original logic, side effects, and return values must execute in the exact same sequence as the original code.
+            4. ISOLATED SCOPING: Use localized, uniquely named variables (e.g., `dummy_state`, `dummy_cond`) to prevent variable shadowing.
 
-        Return only the modified C code in a markdown code block.
-        """
+            ### STRUCTURAL PATTERN TO FOLLOW (CONTROL FLOW FLATTENING EXAMPLE):
+            Do not copy this exact code, but follow this structural layout if flattening control flow:
+
+            ```c
+            // --- TRANSFORMED CONTROL FLOW STRUCTURE ---
+            int dummy_state = 1;
+            while (dummy_state != 0) {{
+                switch (dummy_state) {{
+                    case 1:
+                        // Original Block 1
+                        original_statement_1;
+                        dummy_state = 2;
+                        break;
+                    case 2:
+                        // Original Block 2
+                        original_statement_2;
+                        dummy_state = 0; // Terminate state loop
+                        break;
+                    default:
+                        dummy_state = 0;
+                        break;
+                }}
+            }}
+            INPUT CODE:
+            {c_code}
+
+            Return ONLY the complete, modified C source code inside a single markdown code block (c ... ).
+            """
         return self.call_llm(prompt, c_code)
-
+    
     def apply_anti_disassembly(self, c_code):
-        """Insert junk bytes or misalign instructions to confuse disassemblers."""
-        prompt = f"""You are an expert in anti-disassembly techniques. The target architecture is **{self.arch}**. 
-        The code will be compiled with **Microsoft Visual Studio (MSVC)**. Use MSVC-compatible syntax.
-        Insert anti-disassembly tricks into the given C function. Use methods such as:
-        - Inserting junk bytes via `__asm _emit 0x66` (x86) or `_emit` in a separate `__asm` block.
-        - Using misaligned jumps or call instructions (x86 `__asm` with `jmp`, `call`).
-        - Obfuscating immediate values with dummy arithmetic.
-        - For x64, avoid architecture‑dependent inline assembly and instead use compiler intrinsics like `__noop()`, `__debugbreak()`, or opaque conditionals based on runtime checks.
-        The function must still compile and execute correctly under MSVC.
-        Any new function you add (e.g., a small wrapper for `_emit`) must be defined in full before it is used.
+        """Insert architecture-aware anti-disassembly tricks inline."""
+        # Define architecture-specific rules in Python
+        if self.arch == "x86":
+            arch_rules = """
+                Use exactly ONE of the following x86 MSVC-compatible techniques:
+                - Insert junk bytes inside a dead/unreachable branch using `__asm { _emit 0x66 }`.
+                - Use misaligned jumps (e.g., jumping 1 byte into a multi-byte instruction) using `__asm { jmp ... }`.
+                - Obfuscate immediate values with complex, dummy arithmetic using volatile variables."""
+        elif self.arch == "x64":
+            arch_rules = """
+                Use exactly ONE of the following x64 MSVC-compatible techniques:
+                - Create opaque conditional branches (using volatile variables or __rdtsc()) where the dead branch contains MSVC intrinsics like __nop().
+                - Obfuscate immediate values with complex, dummy arithmetic using volatile variables.
+                - Do NOT use inline assembly, _emit, or __debugbreak(). Keep the control flow strictly in C."""
+        else:
+            raise ValueError("Unsupported architecture")
+        # Build the strict prompt
+        prompt = f"""
+            You are an expert C developer generating synthesized code variants. 
+            Target Architecture: {self.arch}
+            Compiler: Microsoft Visual Studio (MSVC)
 
-        ### INPUT CODE:
-        {c_code}
+            ### CRITICAL TRANSFORMATION RULE: ADDITIVE-ONLY
+            - DO NOT MOVE, MODIFY, OR WRAP ANY EXISTING CODE INSIDE A DEAD BRANCH.
+            - All original code statements MUST remain outside the `if` block in the live execution path.
 
-        Return only the modified C code in a markdown code block.
-        """
+            ### STRICT COMPILATION & LOGIC RULES
+            1. FEATURE ISOLATION: {arch_rules}
+            2. NO NEW FUNCTIONS: All inserted logic must reside entirely inside existing function bodies. Do NOT create helper functions.
+            3. PRESERVE ORIGINAL BEHAVIOR: The execution outcome, return values, and side effects of the original code must remain 100% identical.
+            4. ISOLATED DUMMY SCOPING: All variables declared for opaque predicates or dummy arithmetic MUST be given unique names prefixed with `dummy_` (e.g., `dummy_cond`, `dummy_junk`) to prevent variable shadowing.
+            5. SELF-CONTAINED HEADERS: Ensure any APIs used are supported by standard Windows/C headers (`<windows.h>`, `<intrin.h>`).
+
+            ### STRUCTURAL PATTERN TO FOLLOW (OPAQUE PREDICATE EXAMPLE):
+            Do not copy this exact code, but follow this structural layout for inserting dead branches:
+
+            ```c
+            // --- ORIGINAL CODE STATEMENT ---
+            original_statement_1;
+
+            // --- INSERTED ANTI-DISASSEMBLY (ADDITIVE ONLY) ---
+            volatile int dummy_seed = 12;
+            if ((dummy_seed * dummy_seed + dummy_seed) % 2 != 0) {{
+                // JUNK INSTRUCTIONS HERE (e.g., __nop() for x64, or __asm {{ _emit 0x66 }} for x86)
+            }}
+
+            // --- ORIGINAL CODE STATEMENT CONTINUES ---
+            original_statement_2;
+                    INPUT CODE:
+            {c_code}
+
+            Return ONLY the complete, modified C source code inside a single markdown code block (c ... ).
+            """
         return self.call_llm(prompt, c_code)
 
     # I put it here just in case, a method to apply a list of techniques sequentially
