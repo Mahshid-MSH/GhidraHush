@@ -92,31 +92,43 @@ def extract_functions(file_path, workspace_dir):
                 for function in functions:
                     func_name = function.getName()
                     
-                    # Skip Externals (dynamically linked APIs from import tables)
-                    if function.isExternal():
+                    # 1. Skip Externals & Thunks
+                    if function.isExternal() or function.isThunk():
                         continue   
-                    # Skip Thunks (jump wrappers to imports)
-                    if function.isThunk():
-                        continue   
-                    # Skip Explicit CRT/Compiler Boilerplate Matches
+
+                    # 2. Native Ghidra Library Flag
+                    if function.isLibrary():
+                        print(f" Skipping Ghidra Library Function: {func_name}")
+                        continue
+
+                    # 3. Check Ghidra FID Comments (Catches "Library Function - Single/Multiple Match")
+                    plate_comment = function.getComment() or ""
+                    repeatable_comment = function.getRepeatableComment() or ""
+                    if "Library Function" in plate_comment or "Library Function" in repeatable_comment or "Library:" in plate_comment:
+                        print(f" Skipping FID-identified Library Function: {func_name}")
+                        continue
+
+                    # 4. Skip Ghidra FID Conflicts & CRT Namespaces
+                    if "FID_conflict" in func_name or func_name.startswith("__crt") or "::__crt" in func_name:
+                        print(f" Skipping FID Conflict / CRT Namespace: {func_name}")
+                        continue
+
+                    # 5. Skip Explicit CRT/Compiler Boilerplate Matches
                     if func_name in CRT_IGNORE_LIST:
                         print(f" Skipping CRT Boilerplate: {func_name}")
                         continue 
-                    # Skip via Substring Patterns (Catches MSVC internal helper namespaces)
+
+                    # 6. Skip via Substring Patterns
                     if any(pattern in func_name for pattern in CRT_SUBSTRING_PATTERNS):
                         print(f" Skipping Runtime/Compiler Helper: {func_name}")
                         continue
-                    # Skip Library Functions tagged via FID
-                    tags = [tag.getName() for tag in function.getTags()]
-                    if "LIBRARY" in tags:
-                        continue
 
-                    # Skip functions starting with underscores (libc / compiler boilerplate)
-                    # We also check for 'FID_conflict:_' to catch Ghidra's library matches
-                    if func_name.startswith('_') or func_name.startswith('FID_conflict:_') or func_name.startswith('pre'):
+                    # 7. Skip Library Tags or Leading Underscores/Prefixes
+                    tags = [tag.getName() for tag in function.getTags()]
+                    if "LIBRARY" in tags or func_name.startswith('_') or func_name.startswith('pre'):
                         print(f" Skipping Runtime/Library Function: {func_name}")
                         continue
-                        
+
                     clean_name = f"{func_name}"
                      
                     # Extract Called Functions
