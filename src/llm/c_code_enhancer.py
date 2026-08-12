@@ -38,19 +38,19 @@ class CCodeEnhancer:
     def triage_function_names(self, function_names):
         """Asks the LLM to evaluate a list of function names and identify boilerplate."""
         
-        prompt = f"""You are an expert reverse engineer. Analyze the following list of function names extracted from a decompiled Windows executable.
-        
-        Categorize each function into one of two categories:
-        1. "IGNORE": Standard C/C++ library functions (e.g., printf, malloc, mbrlen, strnlen), Windows API, or MinGW/CRT compiler boilerplate (e.g., dtoa_lock, __main, exception handlers).
-        2. "PROCESS": Custom application logic. 
-        
-        CRITICAL RULE: Core application entry points (e.g., "main", "WinMain", "DllMain", "entry", "_start") MUST be categorized as "PROCESS". Do not confuse the actual "main" with compiler boilerplate like "__main".
+        prompt = f"""You are an expert reverse engineer analyzing decompiled C function names from a stripped executable.
 
-        You MUST respond ONLY with a valid JSON dictionary where the keys are the function names and the values are either "IGNORE" or "PROCESS". Do not wrap the output in markdown. Do not add explanations.
-        
-        Function Names:
-        {json.dumps(function_names)}
-        """
+            Categorize each function as "IGNORE" or "PROCESS":
+            - "IGNORE": Standard C library imports (e.g., printf, malloc), OS API wrappers, or compiler helper functions with known names (e.g., __main, _SEH_prolog, dtoa_lock).
+            - "PROCESS": Any function named "FUN_<ADDRESS>" or explicit application entry points (main, entry, WinMain). 
+
+            CRITICAL RULE: Functions prefixed with "FUN_" are UNNAMED functions. Because this is a stripped binary, "FUN_" functions usually contain core application logic. You MUST default all "FUN_" functions to "PROCESS" unless you are 100% certain from explicit symbol names that it is runtime glue code.
+
+            You MUST respond ONLY with a valid JSON dictionary mapping function names to "IGNORE" or "PROCESS".
+
+            Function Names:
+            {json.dumps(function_names)}
+            """
 
         print(f"Triaging {len(function_names)} functions with LLM...")
         
