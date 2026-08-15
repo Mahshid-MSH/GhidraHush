@@ -124,6 +124,8 @@ class SymbolDB:
             "#ifndef WIN32_LEAN_AND_MEAN",
             "#define WIN32_LEAN_AND_MEAN",
             "#endif\n",
+            "#include <stdint.h>",
+            "#include <windows.h>",
             "// --- GHIDRA DECOMPILER SHIM ---",
             "typedef unsigned char      undefined1;",
             "typedef unsigned short     undefined2;",
