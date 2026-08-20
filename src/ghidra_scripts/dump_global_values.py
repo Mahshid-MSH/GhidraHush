@@ -136,7 +136,7 @@ def generate_global_files(path_to_binary, workspace_dir="."):
                 name = f"{name}_{addr.toString()}"
             seen_names.add(name)
 
-            # --- STRING HANDLING ---
+            # STRING HANDLING
             if is_string_data(data):
                 raw_str = str(data.getValue() or "")
                 val = (raw_str.replace('\\', '\\\\')
@@ -146,7 +146,7 @@ def generate_global_files(path_to_binary, workspace_dir="."):
                               .replace('\t', '\\t'))
                 db.add_or_update_global(name, gtype="const char", value_or_expr=val, is_string=True)
             
-            # --- NON-STRING HANDLING ---
+            # NON-STRING HANDLING:
             else:
                 dt = data.getDataType()
                 c_type, dim = parse_ghidra_type_and_dim(dt)
