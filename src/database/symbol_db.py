@@ -3,7 +3,7 @@
 symbol_db.py
 ------------
 Centralized SQLite Symbol Database for tracking global variables and function prototypes.
-Generates LLM_globals.h and LLM_globals.c directly from the database.
+Generates data_globals.h and data_globals.c directly from the database.
 """
 
 import sqlite3
@@ -106,8 +106,8 @@ class SymbolDB:
             return True
         return False
 
-    def export_header(self, header_name="LLM_globals.h"):
-        """Generates the clean LLM_globals.h file directly from the database."""
+    def export_header(self, header_name="data_globals.h"):
+        """Generates the clean data_globals.h file directly from the database."""
         header_path = os.path.join(self.workspace_dir, header_name)
         with self._get_conn() as conn:
             cursor = conn.cursor()
@@ -119,8 +119,8 @@ class SymbolDB:
 
         lines = [
             "/* Auto-generated Header from Symbol Database */",
-            "#ifndef LLM_GLOBALS_H",
-            "#define LLM_GLOBALS_H\n",
+            "#ifndef DATA_GLOBALS_H",
+            "#define DATA_GLOBALS_H\n",
             "#ifndef WIN32_LEAN_AND_MEAN",
             "#define WIN32_LEAN_AND_MEAN",
             "#endif\n",
@@ -154,13 +154,13 @@ class SymbolDB:
         for name, return_type, parameters in functions_list:
             lines.append(f"{return_type} {name}({parameters});")
 
-        lines.append("\n#endif // LLM_GLOBALS_H\n")    # This line generates errors, because some stuff get added after it!
+        lines.append("\n#endif // DATA_GLOBALS_H\n")    # This line generates errors, because some stuff get added after it!
 
         with open(header_path, "w", encoding="utf-8") as f:
             f.write("\n".join(lines))
 
-    def export_source(self, source_name="LLM_globals.c", header_name="LLM_globals.h"):
-        """Generates the clean LLM_globals.c file directly from the database."""
+    def export_source(self, source_name="data_globals.c", header_name="data_globals.h"):
+        """Generates the clean data_globals.c file directly from the database."""
         source_path = os.path.join(self.workspace_dir, source_name)
         with self._get_conn() as conn:
             cursor = conn.cursor()
