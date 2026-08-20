@@ -13,14 +13,15 @@ import json, math
 
 
 class DefensiveEvasion:
-    def __init__(self, model_name=None, base_url=None, arch="x86"):
+    def __init__(self, model_name=None, base_url=None, arch="x86",workspace_dir="."):
         self.base_url = base_url or os.environ.get('OLLAMA_HOST', 'http://ollama:11434')
         self.model_name = model_name or os.environ.get('LLM_MODEL', 'deepseek-coder-v2')
         self.client = Client(host=self.base_url)
+        self.workspace_dir = workspace_dir
         self.arch = arch               # e.g., "x86 (32-bit)" or "x86_64 (64-bit)"
         print(f"DefensiveEvasion initialized with {self.model_name} at {self.base_url} for architecture: {self.arch}")
 
-    def call_llm(self, prompt, original_code):
+    def call_llm(self, prompt, original_code, base_name="unknown", tech_name="unknown"):
         """Send prompt to LLM and extract raw C code from response."""
         print("Sending request to LLM...")
         response = ""
@@ -28,9 +29,14 @@ class DefensiveEvasion:
             model=self.model_name,
             prompt=prompt,
             stream=True,
-            options={'temperature': 0.3, 'num_ctx': 16384}
+            options={'temperature': 0.6, 'num_ctx': 16384}
         ):
             response += chunk['response']
+        log_dir = os.path.join(self.workspace_dir, "llm_logs")
+        os.makedirs(log_dir, exist_ok=True)
+        log_file = os.path.join(log_dir, f"evasion_{base_name}_{tech_name}.log")
+        with open(log_file, "w", encoding="utf-8") as f:
+            f.write(response)
         return self.extract_code(response, original_code)
 
     def extract_code(self, llm_output, original_code):
@@ -43,93 +49,154 @@ class DefensiveEvasion:
             return llm_output.strip()
         return original_code
 
-    def apply_junk_code_insertion(self, c_code):
-        """Insert dead code / junk instructions that do not affect logic."""
+# improved
+    def apply_junk_code_insertion(self, c_code, base_name="unknown"):
         prompt = f"""
-        You are an expert C developer generating synthesized code variants.
-        Target Architecture: {self.arch}
-        Compiler: Microsoft Visual Studio (MSVC)
+            You are an expert C/C++ developer generating synthesized code variants for AV evasion research.
+            Target architecture: {self.arch}
+            Compiler: Microsoft Visual Studio (MSVC)
+            Source language: C or C++ (preserve the input language; do not convert C to C++ or C++ to C).
 
-        ### CRITICAL TRANSFORMATION RULE: ADDITIVE-ONLY
-        - DO NOT MOVE, MODIFY, OR WRAP ANY EXISTING CODE INSIDE A DEAD BRANCH.
-        - All original code statements MUST remain outside the `if` block in the live execution path.
-        - Dead branches (`if (opaque_false_condition) {{ ... }}`) must contain ONLY newly generated, self-contained dummy logic.
+            ### CRITICAL TRANSFORMATION RULE: ADDITIVE-ONLY
+            - DO NOT MOVE, MODIFY, OR WRAP ANY EXISTING CODE INSIDE A DEAD BRANCH.
+            - All original code statements MUST remain outside the `if` block in the live execution path.
+            - Dead branches (`if (opaque_false_condition) { ... }`) must contain ONLY newly generated, self-contained dummy logic.
+            - The dummy logic may READ existing local variables, but it MUST NOT modify any original variable, global state, or function argument.
+            - You may add required `#include` directives at file scope only if needed; do not remove or modify existing includes.
 
-        ### STRICT COMPILATION & LOGIC RULES
-        1. NO NEW FUNCTIONS: All inserted logic must reside entirely inside existing function bodies.
-        2. PRESERVE ORIGINAL BEHAVIOR: The execution outcome, return values, side effects, and active control flow of the original code must remain 100% identical.
-        3. ISOLATED DUMMY SCOPING: All variables declared inside a dead branch MUST be given unique names prefixed with `dummy_` (e.g., `dummy_buf`, `dummy_status`) to prevent variable shadowing or redefinition errors.
-        4. SELF-CONTAINED HEADERS: Ensure any APIs used in the dead branch are supported by standard Windows/C headers (`<windows.h>`, `<stdio.h>`, `<stdlib.h>`).
+            ### MANDATORY VOLUME AND PLACEMENT
+            - Insert **at least 3 dead branches** in the given function.
+            - Place them at **different locations**: after variable declarations, before loops, inside loops (but not around original statements), and before return statements.
+            - Each dead branch must contain **at least 15 lines** of dummy code.
+            - Each dead branch must use a **different opaque predicate pattern** from the list below.
+            - Each dead branch must use a **different category** from the list below.
 
-        ### OPAQUE PREDICATE REQUIREMENTS
-        Drive the dead branch using a mathematical invariant that statically looks complex but dynamically evaluates to FALSE at runtime:
-        - Pattern A (Math Invariant): `volatile int dummy_x = 7; if ((dummy_x * (dummy_x + 1)) % 2 != 0) {{ ... }}` (Always False)
-        - Pattern B (System Query): `if (GetPriorityClass(GetCurrentProcess()) == 0xFFFFFFFF) {{ ... }}` (Always False under normal execution)
-        Do NOT use simple `volatile int v = 0; if (v)` or `if (0)`.
+            ### OPAQUE PREDICATE REQUIREMENTS
+            Use only the following patterns, one per branch. Do NOT use `if (0)` or `volatile int v = 0; if (v)`.
+            Do NOT use registry APIs in dead branches.
 
-        ### VARIETY REQUIREMENT FOR DEAD BRANCH BODY
-        Select ONE random category below for the newly generated dead branch body:
-        - Category A: System info queries (e.g., GetSystemInfo, GetLocalTime, GetUserNameA into dummy buffers).
-        - Category B: Memory & String operations (e.g., malloc dummy buffer, sprintf_s, strlen, free).
-        - Category C: Bitwise/Math loops (e.g., multi-iteration XOR loops over a local dummy array).
-        - Category D: Registry queries (e.g., RegOpenKeyExA on a non-existent key with local cleanup).
+            Pattern A (Math Invariant):
+            volatile int dummy_x = 7;
+            if ((dummy_x * (dummy_x + 1)) % 2 != 0) {
+                // Dead branch
+            }
 
-        ### STRUCTURAL PATTERN TO FOLLOW:
-        ```c
-        // --- ORIGINAL CODE STATEMENT ---
-        original_statement_1;
+            Pattern B (System Query):
+            if (GetPriorityClass(GetCurrentProcess()) == 0xFFFFFFFF) {
+                // Dead branch
+            }
 
-        // --- INSERTED DEAD BRANCH (ADDITIVE ONLY) ---
-        volatile int dummy_seed = 12;
-        if ((dummy_seed * dummy_seed + dummy_seed) % 2 != 0) {{
-            // NEW DUMMY LOGIC HERE (Category A, B, C, or D)
-            char dummy_buf[32];
-            memset(dummy_buf, 0, sizeof(dummy_buf));
-        }}
+            Pattern C (Combination):
+            volatile DWORD dummy_tick = GetTickCount();
+            if ((dummy_tick ^ 0x5A5A5A5A) == 0xFFFFFFFF && (dummy_tick & 0x80000000) != 0) {
+                // Dead branch
+            }
 
-        // --- ORIGINAL CODE STATEMENT CONTINUES ---
-        original_statement_2;
-        ### INPUT CODE:
-        {c_code}
+            ### DEAD BRANCH BODY REQUIREMENTS
+            - The body must be self-contained but may read existing local variables; do not modify them.
+            - Declare all dummy variables with `volatile` where possible to prevent compiler elimination.
+            - Use at least 3 different Windows/C runtime API or standard C/C++ functions in each body.
+            - Include dummy loops with at least 2 iterations that compute a dummy result and then discard it.
+            - End each body with `memset` or `SecureZeroMemory` on dummy buffers to appear realistic.
+            - Ensure no variable shadowing or redefinition.
+            - Keep dummy code valid for the detected input language. If the input is C, use only C-compatible code. If the input is C++, you may use C++ constructs, but do not alter the original code.
 
-        Return ONLY the complete, modified C source code inside a single markdown code block (```c ... ```).
-        """
-        return self.call_llm(prompt, c_code)
+            CATEGORIES (choose one per branch, no repeats within the same function)
+
+            A: System info queries
+            GetSystemInfo, GetLocalTime, GetUserNameA, GetComputerNameA
+
+            B: Memory & String operations
+            malloc, sprintf_s, strlen, memcpy, memset, free
+
+            C: Bitwise/Math loops
+            XOR loops over local dummy array, polynomial hash
+
+            ### STRUCTURAL PATTERN TO FOLLOW
+
+            // --- ORIGINAL CODE STATEMENT ---
+            original_statement_1;
+
+            // --- INSERTED DEAD BRANCH 1 (ADDITIVE ONLY) ---
+            volatile int dummy_x_1 = 7;
+            if ((dummy_x_1 * (dummy_x_1 + 1)) % 2 != 0) {
+                // NEW DUMMY LOGIC HERE (Category A, at least 15 lines)
+                ...
+            }
+
+            // --- ORIGINAL CODE STATEMENT CONTINUES ---
+            original_statement_2;
+
+            // --- INSERTED DEAD BRANCH 2 (ADDITIVE ONLY) ---
+            volatile DWORD dummy_tick_2 = GetTickCount();
+            if ((dummy_tick_2 ^ 0x5A5A5A5A) == 0xFFFFFFFF && (dummy_tick_2 & 0x80000000) != 0) {
+                // NEW DUMMY LOGIC HERE (Category B, at least 15 lines)
+                ...
+            }
+
+            // --- ORIGINAL CODE STATEMENT CONTINUES ---
+            original_statement_3;
+
+            // --- INSERTED DEAD BRANCH 3 (ADDITIVE ONLY) ---
+            if (GetPriorityClass(GetCurrentProcess()) == 0xFFFFFFFF) {
+                // NEW DUMMY LOGIC HERE (Category C, at least 15 lines)
+                ...
+            }
+
+            INPUT CODE:
+            {c_code}
+
+            Return ONLY the complete, modified source code inside a single markdown code block.
+            Use ```c or ```cpp according to the detected input language.
+            """
+        return self.call_llm(prompt, c_code, base_name, "junk_code")
 
 
-    def apply_string_encryption(self, c_code):
-        """Encrypt string literals and add inline runtime decryption."""
+    def apply_string_encryption(self, c_code, base_name="unknown"):
+        """Encrypt string literals and add global runtime decryption helper functions."""
         prompt = f"""
             You are an expert C developer generating synthesized code variants.
             Target Architecture: {self.arch}
             Compiler: Microsoft Visual Studio (MSVC)
 
             ### STRICT COMPILATION & LOGIC RULES
-            1. NO NEW FUNCTIONS: You are strictly forbidden from creating any decryption helper functions. ALL decryption loops must be 100% inline where the string is needed.
-            2. PRESERVE EXECUTION FLOW: The decrypted string at runtime MUST exactly match the original string literal. Do not change the logic of the host application.
-            3. INLINE DECRYPTION: Decrypt strings in-place within stack-allocated byte arrays directly in the local scope. If a string is passed directly into a function call (e.g., `printf("hello")`), you must hoist the string declaration and decryption loop BEFORE the function call.
-            4. ISOLATED NAMING: Use randomized variable names for local buffers, keys, and loop counters (e.g., `enc_buf_1`, `dec_key_a`) to prevent classifier overfitting. 
-            5. DETERMINISTIC KEYING: Use a simple XOR key (e.g., single-byte or multi-byte).
+            1. USE HELPER FUNCTIONS: Do not use inline decryption loops. You must write dedicated encryption/decryption helper functions ABOVE the main function (or at the global scope).
+            2. PRESERVE EXECUTION FLOW: The decrypted string at runtime MUST exactly match the original string literal. Do not change the underlying logic of the host application.
+            3. OBFUSCATE STRINGS: The LLM must statically encrypt the plaintext strings. Replace original string literals in the target code with these encrypted byte arrays.
+            4. CALL THE HELPER: Wherever the original string was used, pass your encrypted byte array to your decryption helper function before use.
+            5. ISOLATED NAMING: Use randomized or inconspicuous variable names for local buffers, keys, and the helper functions themselves (e.g., `init_data_buffer`, `transform_buffer`) to avoid obvious "decrypt" signatures. 
+            6. DETERMINISTIC KEYING: Implement a reliable cipher in your helper function (e.g., XOR, simple substitution, or custom rolling key).
 
             ### STRUCTURAL PATTERN TO FOLLOW:
             Do not use this exact code, but follow this structural layout for every string you replace:
 
             ```c
-            // --- ORIGINAL CODE STATEMENT ---
-            // CreateFileA("C:\\secret.txt", ...);
+            #include <string.h>
 
-            // --- TRANSFORMED CODE ---
-            unsigned char enc_str_1[] = {{ 0x01, 0x18, 0x11, 0x17, 0x07, 0x06, 0x4c, 0x16, 0x1a, 0x16, 0x5e, 0x00 }};
-            unsigned char dec_key_1 = 0x42;
-            for (int i_1 = 0; i_1 < sizeof(enc_str_1) - 1; i_1++) {{
-                enc_str_1[i_1] ^= dec_key_1;
+            // --- HELPER FUNCTIONS DECLARED ABOVE MAIN ---
+            void transform_string_helper(unsigned char* buffer, size_t len, unsigned char key) {{
+                for (size_t i = 0; i < len; i++) {{
+                    buffer[i] ^= key;
+                }}
             }}
-            CreateFileA((char*)enc_str_1, ...);
-            memset(enc_str_1, 0, sizeof(enc_str_1)); // Cleanup immediately after use
 
+            // ... other code ...
+
+            void some_function() {{
+                // --- ORIGINAL CODE STATEMENT ---
+                // CreateFileA("C:\\secret.txt", ...);
+
+                // --- TRANSFORMED CODE ---
+                unsigned char enc_str_1[] = {{ 0x01, 0x18, 0x11, 0x17, 0x07, 0x06, 0x4c, 0x16, 0x1a, 0x16, 0x5e, 0x00 }};
+                transform_string_helper(enc_str_1, sizeof(enc_str_1) - 1, 0x42);
+                
+                CreateFileA((char*)enc_str_1, ...);
+                memset(enc_str_1, 0, sizeof(enc_str_1)); // Cleanup immediately after use
+            }}
             ```
+
             ### TASK
-            Identify all string literals in the C function below. Replace each string literal with the inline stack-buffer setup, decryption loop, and cleanup exactly as shown in the structural pattern. Ensure necessary headers (`<string.h>`) are present.
+            Identify all string literals in the C function below. Generate the necessary decryption helper functions at the global scope. Replace each string literal with an encrypted stack-buffer setup, a call to your decryption helper, and cleanup exactly as shown in the structural pattern. Ensure necessary headers (`<string.h>`) are present.
 
             ### INPUT CODE:
 
@@ -137,69 +204,119 @@ class DefensiveEvasion:
 
             Return ONLY the complete, modified C source code inside a single markdown code block (`c ... `).
             """
-        return self.call_llm(prompt, c_code)
+        return self.call_llm(prompt, c_code, base_name, "string_encryption")
 
-
-    def apply_api_call_substitution(self, c_code):
+#improved
+    def apply_api_call_substitution(self, c_code, base_name="unknown"):
         """Replace common Windows API calls with alternative NT API calls."""
         prompt = f"""
-        You are an expert C developer generating synthesized code variants.
-        Target Architecture: {self.arch}
-        Compiler: Microsoft Visual Studio (MSVC)
+            You are an expert C developer generating synthesized code variants.
+            Target Architecture: {self.arch}
+            Compiler: Microsoft Visual Studio (MSVC)
 
-        ### CRITICAL TRANSFORMATION RULES
-        1. NO NEW FUNCTIONS: All translations must happen inline. Do not create wrapper functions for the NT APIs.
-        2. NATIVE API TRANSLATION: Identify high-level Win32 API calls (e.g., `VirtualAlloc`, `CreateFile`, `OpenProcess`) and replace them with their Native API equivalents (`NtAllocateVirtualMemory`, `NtCreateFile`, `NtOpenProcess`).
-        3. DYNAMIC RESOLUTION: Do not rely on static linking to `ntdll.lib`. Dynamically resolve the function pointers inline using `GetModuleHandleA("ntdll.dll")` and `GetProcAddress`.
-        4. TYPE CONVERSION: Inline the necessary setup for NT structures (e.g., `OBJECT_ATTRIBUTES`, `CLIENT_ID`, `UNICODE_STRING`) and change return type checks to handle `NTSTATUS` (e.g., checking if `status == 0` for `STATUS_SUCCESS`).
-        5. NO INLINE ASM ON X64: Keep all logic in standard C. Do not use `__asm` or fake syscall intrinsics.
+            ### CRITICAL TRANSFORMATION RULES
+            1. NO NEW FUNCTIONS: All translations must happen inline inside the existing function body.
+            2. ALLOWED NT API SUBSTITUTION MAP (use ONLY these documented ntdll.dll exports):
+            - VirtualAlloc       -> NtAllocateVirtualMemory
+            - VirtualProtect     -> NtProtectVirtualMemory
+            - WriteProcessMemory -> NtWriteVirtualMemory
+            - OpenProcess        -> NtOpenProcess
+            - CreateFileA/W      -> NtCreateFile
+            - ReadFile           -> NtReadFile
+            - CloseHandle        -> NtClose
 
-        ### STRUCTURAL PATTERN TO FOLLOW
-        Do not copy this exact code, but follow this structural layout for API substitutions:
+            You may also use the following REAL NT APIs if the original code already uses related functionality:
+            - NtQueryInformationProcess
+            - NtQuerySystemInformation
+            - NtTerminateProcess
+            - NtReadVirtualMemory
+            - NtWriteVirtualMemory
 
-        ```c
-        // --- ORIGINAL CODE STATEMENT ---
-        // HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
+            3. DO NOT replace any API that is NOT in the map above.
+            Especially leave these unchanged:
+            - CreateToolhelp32Snapshot
+            - Process32First
+            - Process32Next
+            - Module32First
+            - Module32Next
+            - _stricmp, strcmp, memcpy, printf, etc.
+            - Any function for which you are not 100% sure a real ntdll export exists.
 
-        // --- TRANSFORMED CODE ---
-        HANDLE dummy_hProcess = NULL;
-        HMODULE dummy_ntdll = GetModuleHandleA("ntdll.dll");
-        if (dummy_ntdll) {{
-            typedef NTSTATUS(WINAPI* PNT_OPEN_PROCESS)(PHANDLE, ACCESS_MASK, PVOID, PVOID);
-            PNT_OPEN_PROCESS dummy_NtOpenProcess = (PNT_OPEN_PROCESS)GetProcAddress(dummy_ntdll, "NtOpenProcess");
-            
-            if (dummy_NtOpenProcess) {{
-                // Inline setup of required NT structures
-                struct _CLIENT_ID {{
-                    HANDLE UniqueProcess;
-                    HANDLE UniqueThread;
-                }} dummy_cid;
-                dummy_cid.UniqueProcess = (HANDLE)(ULONG_PTR)pid;
-                dummy_cid.UniqueThread = 0;
+            NEVER invent NT names such as:
+            NtCreateToolhelp32Snapshot, NtProcess32First, NtProcess32Next, NtModule32First, NtCreateProcess, etc.
+            These DO NOT exist in ntdll.dll and will cause the program to fail or crash.
 
-                struct _OBJECT_ATTRIBUTES {{
-                    ULONG Length;
-                    HANDLE RootDirectory;
-                    void* ObjectName;
-                    ULONG Attributes;
-                    void* SecurityDescriptor;
-                    void* SecurityQualityOfService;
-                }} dummy_oa;
-                memset(&dummy_oa, 0, sizeof(dummy_oa));
-                dummy_oa.Length = sizeof(dummy_oa);
+            4. DYNAMIC RESOLUTION:
+            For each allowed API substitution, inline:
+            - `GetModuleHandleA("ntdll.dll")`
+            - `GetProcAddress`
+            Do not use static `ntdll.lib` linkage.
 
-                // Native API Call
-                NTSTATUS dummy_status = dummy_NtOpenProcess(&dummy_hProcess, PROCESS_ALL_ACCESS, &dummy_oa, &dummy_cid);
+            5. TYPE CONVERSION:
+            Inline the necessary NT structures as local definitions, e.g.:
+            - `OBJECT_ATTRIBUTES`
+            - `CLIENT_ID`
+            - `UNICODE_STRING`
+            - `NTSTATUS`
+            Keep all definitions inside the function to avoid conflicts.
+
+            6. BEHAVIOR PRESERVATION:
+            The transformed code must have the same external behavior, return values, error handling, and control flow as the original. For NTSTATUS success checks, use `if (status == 0)` for `STATUS_SUCCESS`.
+            If the original call fails, set the resulting HANDLE/pointer to an appropriate error value (`NULL`, `INVALID_HANDLE_VALUE`, etc.) to mimic the original behavior.
+
+            7. ADDITIVE-ONLY:
+            Do NOT remove or modify existing code that is not being substituted. If an API is unsupported, leave the original call exactly as is.
+
+            ### STRUCTURAL PATTERN TO FOLLOW
+            For a call to `OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid)`:
+
+            ```c
+            // --- TRANSFORMED CODE ---
+            HANDLE dummy_hProcess = NULL;
+            HMODULE dummy_ntdll = GetModuleHandleA("ntdll.dll");
+            if (dummy_ntdll) {{
+                typedef NTSTATUS(WINAPI* PNT_OPEN_PROCESS)(PHANDLE, ACCESS_MASK, PVOID, PVOID);
+                PNT_OPEN_PROCESS dummy_NtOpenProcess = (PNT_OPEN_PROCESS)GetProcAddress(dummy_ntdll, "NtOpenProcess");
+                if (dummy_NtOpenProcess) {{
+                    struct _CLIENT_ID {{
+                        HANDLE UniqueProcess;
+                        HANDLE UniqueThread;
+                    }} dummy_cid;
+                    dummy_cid.UniqueProcess = (HANDLE)(ULONG_PTR)pid;
+                    dummy_cid.UniqueThread = 0;
+
+                    struct _OBJECT_ATTRIBUTES {{
+                        ULONG Length;
+                        HANDLE RootDirectory;
+                        void* ObjectName;
+                        ULONG Attributes;
+                        void* SecurityDescriptor;
+                        void* SecurityQualityOfService;
+                    }} dummy_oa;
+                    memset(&dummy_oa, 0, sizeof(dummy_oa));
+                    dummy_oa.Length = sizeof(dummy_oa);
+
+                    NTSTATUS dummy_status = dummy_NtOpenProcess(&dummy_hProcess, PROCESS_ALL_ACCESS, &dummy_oa, &dummy_cid);
+                    if (dummy_status != 0) dummy_hProcess = NULL;
+                }}
             }}
-        }}
-        INPUT CODE:
-        {c_code}
 
-        Return ONLY the complete, modified C source code inside a single markdown code block (c ... ).
-        """
-        return self.call_llm(prompt, c_code)
+        ### EXAMPLE OF UNSUPPORTED API (DO NOT REPLACE)
+            Original:
 
-    def apply_anti_debugging(self, c_code):
+            ```
+            HANDLE snapshot_handle = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+            This must be left unchanged because no NT equivalent exists.
+            ```
+
+            INPUT CODE:
+            {c_code}
+
+            Return ONLY the complete, modified C source code inside a single markdown code block (c ...).
+            """
+        return self.call_llm(prompt, c_code, base_name, "api_call_substitution")
+
+    def apply_anti_debugging(self, c_code,base_name="unknown"):
         """Insert anti-debugging checks inline."""
         prompt = f"""
             You are an expert C developer generating synthesized code variants.
@@ -253,9 +370,9 @@ class DefensiveEvasion:
 
             Return ONLY the complete, modified C source code inside a single markdown code block (c ... ).
             """
-        return self.call_llm(prompt, c_code)
+        return self.call_llm(prompt, c_code,base_name, "anti_debugging")
 
-    def apply_control_flow_Obfuscation(self, c_code):
+    def apply_control_flow_obfuscation(self, c_code,base_name="unknown"):
         """Obfuscate control flow using opaque predicates or state-machine dispatchers."""   
         # Architecture-specific technique isolation
         if self.arch == "x86":
@@ -310,9 +427,9 @@ class DefensiveEvasion:
 
             Return ONLY the complete, modified C source code inside a single markdown code block (c ... ).
             """
-        return self.call_llm(prompt, c_code)
+        return self.call_llm(prompt, c_code,base_name, "control_flow_Obfuscation")
     
-    def apply_anti_disassembly(self, c_code):
+    def apply_anti_disassembly(self, c_code,base_name="unknown"):
         """Insert architecture-aware anti-disassembly tricks inline."""
         # Define architecture-specific rules in Python
         if self.arch == "x86":
@@ -366,10 +483,10 @@ class DefensiveEvasion:
 
             Return ONLY the complete, modified C source code inside a single markdown code block (c ... ).
             """
-        return self.call_llm(prompt, c_code)
+        return self.call_llm(prompt, c_code,base_name, "anti_disassembly")
 
     # I put it here just in case, a method to apply a list of techniques sequentially
-    def apply_all_techniques(self, c_code, techniques=None):
+    def apply_all_techniques(self, c_code, techniques=None, base_name="unknown"):
         """Apply a list of techniques in order.
         techniques: list of strings, e.g., ['junk_code_insertion', 'string_encryption', ...]
         If None, apply all.
@@ -388,7 +505,7 @@ class DefensiveEvasion:
             method = getattr(self, f"apply_{tech}", None)
             if method:
                 print(f"Applying {tech}...")
-                code = method(code)
+                code = method(code, base_name=base_name)
             else:
                 print(f"Unknown technique: {tech}")
         return code
@@ -459,7 +576,7 @@ class DefensiveEvasion:
 
             if base_name in worthy_function_names:
                 print(f"Applying evasion to highly scored function: {base_name}")
-                modified_code = self.apply_all_techniques(code, techniques=techniques)
+                modified_code = self.apply_all_techniques(code, techniques=techniques, base_name=base_name)
                 with open(dest_path, 'w', encoding='utf-8') as f:
                     f.write(modified_code)
             else:
