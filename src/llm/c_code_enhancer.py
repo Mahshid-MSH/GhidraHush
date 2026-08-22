@@ -42,20 +42,18 @@ class CCodeEnhancer(BaseLLMAgent):
         return c_code
 
     def _run_llm_pass(self, prompt_template, current_code, pass_name, base_name="unknown", workspace_dir="."):
-        """Helper to run a specific LLM pass and extract the code."""
+        """Helper to run a specific LLM pass utilizing the base agent."""
         print(f"  -> Running {pass_name}...")
         prompt = prompt_template.replace("___C_CODE_PLACEHOLDER___", current_code)
-        response = self.stream_prompt(prompt, options={'temperature': 0, 'num_ctx': 16384})
         
-        # Force the logs into the workspace directory
-        log_dir = os.path.join(workspace_dir, "llm_logs")
-        os.makedirs(log_dir, exist_ok=True)
-        log_file = os.path.join(log_dir, f"enhancer_{base_name}_{pass_name}.log")
-        
-        with open(log_file, "w", encoding="utf-8") as f:
-            f.write(response)
-            
-        return self.extract_raw_c_code(response, current_code)
+        return self.process_llm_task(
+            prompt=prompt,
+            original_code=current_code,
+            workspace_dir=workspace_dir,
+            log_prefix=f"enhancer_{pass_name}",
+            base_name=base_name,
+            options={'temperature': 0, 'num_ctx': 16384}
+        )
 
 
     def beautify_code(self, code, callee_prototypes="", is_cpp=False, base_name="unknown", workspace_dir="."):
@@ -71,41 +69,122 @@ class CCodeEnhancer(BaseLLMAgent):
             "3. SCOPE: Declare variables near their first use, following standard C++ practices."
         )
 
-        pass_1_prompt = f"""You are an expert {lang_name} programmer. Clean up this Ghidra pseudo-code by fixing types and variables.
-        ### RULES:
-        1. FUNCTION NAMING: Keep original function names exactly as they are. Do NOT rename standard Windows API functions.
-        2. LOCAL VARIABLES: Rename cryptic locals (local_1c, etc.) to meaningful names. 
-        {var_rule}
-        4. TYPE REPLACEMENT: Use standard <stdint.h> types (uint32_t, int32_t). {'Keep C++ types like std::string if present.' if is_cpp else ''}
-        5. NO GHIDRA ARTIFACTS: Remove all __cdecl, __stdcall, __fastcall. Strip leading underscores from struct/union/class names.
-        6. DEAD CODE & CASTS: Remove intermediate variables (uVar1, iVar2) that exist only to pass a value to the next line.
-        7. VOID FUNCTIONS: If a function returns void, NEVER assign its return value.
-        8. GLOBAL ARCHITECTURE: All global data (e.g., DAT_xxx, s_xxx) is already declared in `data_globals.h` and defined externally in `data_globals.c`. Keep their names exactly as they are. Do NOT redeclare or redefine them locally.
-        9. COMPILER ARTIFACTS (CRITICAL): Completely REMOVE MSVC stack canaries (`___security_cookie`), Run-Time Checks (`__RTC_CheckEsp`), exception list pointers (`ExceptionList`), and loops that initialize stack memory to `0xcccccccc`. Delete the variables associated with these mechanisms.
-        10.STRICT SCOPE / NO EXTRA FUNCTIONS: You are processing ONE single function. Do NOT include, repeat, define, or reference any other functions (such as functions processed previously, helper functions, or main) that are not explicitly present in the INPUT CODE below. Your output must contain ONLY the refactored version of the provided input function and nothing else.
-        ### EXAMPLE TRANSLATION:
-        // INPUT (Ghidra Types & Dead Variables):
-        undefined8 __stdcall FUN_140001000(undefined4 param_1) {{
+        pass_1_prompt_c = f"""You are an expert C programmer. Clean up the following Ghidra pseudo-code by fixing types and variable names, while preserving the original logic and all side effects.
+
+        ### STRICT RULES
+
+        1. **FUNCTION NAME & SIGNATURE**: Keep the function name exactly as provided. Do not rename it. Preserve the parameter list and return type exactly as given (after type cleanup).
+
+        2. **LOCAL VARIABLES**: Rename local variables that have Ghidra's cryptic names (e.g., `local_1c`, `uVar1`, `iVar2`) to meaningful, readable names that reflect their purpose.  
+        - A **local variable** is any variable declared inside the function body.  
+        - If a variable is used only as an intermediate step in a computation, you may inline it if it improves readability, but **never remove code that has side effects** (function calls, memory writes, etc.).
+
+        3. **C89 COMPLIANCE**: All variables MUST be declared at the top of the function block, before any executable statements. Use `/* comments */` sparingly if they help clarity.
+
+        4. **TYPE REPLACEMENT**: Use standard `<stdint.h>` types: `uint8_t`, `uint16_t`, `uint32_t`, `uint64_t`, `int32_t`, etc. Replace Ghidra's `undefined`, `undefined1/2/4/8`, `long`, `ulong`, `dword`, `word`, `byte` with the appropriate `stdint.h` type.
+
+        5. **REMOVE CALLING CONVENTIONS & COMPILER ARTIFACTS**:
+        - Remove all `__cdecl`, `__stdcall`, `__fastcall` keywords.
+        - Remove Ghidra compiler artifacts: `ExceptionList`, `___security_cookie`, `__security_check_cookie`, `__RTC_CheckEsp`, `__RTC_CheckStackVars`, and any loop that fills stack memory with `0xcccccccc`.
+        - Delete the variables associated with those artifacts.
+
+        6. **PRESERVE LOGIC & SIDE EFFECTS**: Do **not** remove any function call, assignment, loop, condition, or memory operation. Only remove dead variables that are assigned but never used, and only if the assignment has no side effect.
+
+        7. **GLOBAL VARIABLES**: If a variable name looks like a global (e.g., `DAT_`, `s_`, or a known symbol from `data_globals.h`), keep its name **exactly**. Do not rename it, do not redeclare it locally, and do not try to resolve its value. Assume it is declared in `data_globals.h`.
+
+        8. **STRING LITERALS**: Preserve every string literal exactly as it appears. Do not replace it with a global or variable. If a string is inside a local array or passed directly to a function, keep it verbatim.
+
+        9. **ONE FUNCTION ONLY**: Output only the cleaned version of the provided function. Do **not** include any other function, header, or `#include`. Do not add comments or explanations.
+
+        ### EXAMPLE
+
+        **INPUT (Ghidra pseudo-code)**:
+        ```c
+        undefined8 __stdcall FUN_140001000(undefined4 param_1)
+        {{
             undefined8 uVar1;
             int4 local_1c;
             local_1c = param_1;
             uVar1 = (ulonglong)local_1c;
             return uVar1;
         }}
+        ```
+        ### OUTPUT (Cleaned C):
 
-        // OUTPUT (Cleaned Types & Variables):
-        uint64_t FUN_140001000(uint32_t param_1) {{
+        uint64_t FUN_140001000(uint32_t param_1)
+        {{
             uint32_t input_val;
             input_val = param_1;
             return (uint64_t)input_val;
         }}
 
-        ### OUTPUT FORMAT:
-        Return ONLY valid {lang_name} code wrapped in ```{'cpp' if is_cpp else 'c'} backticks. No explanations.
+        ### OUTPUT FORMAT
 
-        ### INPUT CODE:
+        Return ONLY valid C code wrapped in ```c backticks. No explanations.
+        ### INPUT CODE
         ___C_CODE_PLACEHOLDER___
+
         """
+        pass_1_prompt_cpp = f"""You are an expert C++ programmer. Clean up the following Ghidra pseudo-code by fixing types and variable names, while preserving the original logic and all side effects.
+
+            ### STRICT RULES
+
+            1. **FUNCTION NAME & SIGNATURE**: Keep the function name exactly as provided. Do not rename it. Preserve the parameter list and return type exactly as given (after type cleanup).
+
+            2. **LOCAL VARIABLES**: Rename local variables that have Ghidra's cryptic names (e.g., `local_1c`, `uVar1`, `iVar2`) to meaningful, readable names that reflect their purpose.  
+            - A **local variable** is any variable declared inside the function body.  
+            - If a variable is used only as an intermediate step, you may inline it if it improves readability, but **never remove code that has side effects** (function calls, memory writes, etc.).
+
+            3. **C++ SCOPE**: Declare variables as close as possible to their first use, following modern C++ best practices. Do **not** force C89-style declarations.
+
+            4. **TYPE REPLACEMENT**: Use standard `<cstdint>` types: `uint8_t`, `uint16_t`, `uint32_t`, `uint64_t`, `int32_t`, etc. Replace Ghidra's `undefined`, `undefined1/2/4/8`, `long`, `ulong`, `dword`, `word`, `byte` with the appropriate `<cstdint>` type.  
+            Keep C++ standard library types (`std::string`, `std::vector`, etc.) if they appear.
+
+            5. **REMOVE CALLING CONVENTIONS & COMPILER ARTIFACTS**:
+            - Remove all `__cdecl`, `__stdcall`, `__fastcall` keywords.
+            - Remove Ghidra compiler artifacts: `ExceptionList`, `___security_cookie`, `__security_check_cookie`, `__RTC_CheckEsp`, `__RTC_CheckStackVars`, and any loop that fills stack memory with `0xcccccccc`.
+            - Delete the variables associated with those artifacts.
+
+            6. **PRESERVE LOGIC & SIDE EFFECTS**: Do **not** remove any function call, assignment, loop, condition, or memory operation. Only remove dead variables that are assigned but never used, and only if the assignment has no side effect.
+
+            7. **GLOBAL VARIABLES**: If a variable name looks like a global (e.g., `DAT_`, `s_`, or a known symbol from `data_globals.h`), keep its name **exactly**. Do not rename it, do not redeclare it locally, and do not try to resolve its value. Assume it is declared in `data_globals.h`.
+
+            8. **STRING LITERALS**: Preserve every string literal exactly as it appears. Do not replace it with a global or variable. If a string is inside a local array or passed directly to a function, keep it verbatim.
+
+            9. **C++ OBJECTS – DEFER RECONSTRUCTION**: In this pass, do **not** attempt to convert Ghidra's object representations (e.g., `basic_ifstream` with explicit `this` pointers) into idiomatic C++. Just clean the types and variable names as described above. Object reconstruction will be handled in a later pass.
+
+            10. **ONE FUNCTION ONLY**: Output only the cleaned version of the provided function. Do **not** include any other function, header, or `#include`. Do not add comments or explanations.
+
+            ### EXAMPLE
+            **INPUT (Ghidra pseudo-code)**:
+            ```cpp
+            undefined8 __stdcall FUN_140001000(undefined4 param_1)
+            {{
+                undefined8 uVar1;
+                int4 local_1c;
+                local_1c = param_1;
+                uVar1 = (ulonglong)local_1c;
+                return uVar1;
+            }}
+            ```
+            ** OUTPUT (Cleaned C++)**:
+            uint64_t FUN_140001000(uint32_t param_1)
+            {{
+                uint32_t input_val = param_1;
+                return static_cast<uint64_t>(input_val);
+            }}
+
+            ### OUTPUT FORMAT
+            Return ONLY valid C++ code wrapped in ```cpp backticks. No explanations.
+
+            ### INPUT CODE
+            ___C_CODE_PLACEHOLDER___
+            """
+        if is_cpp:
+            pass_1_prompt = pass_1_prompt_cpp
+        else:
+            pass_1_prompt = pass_1_prompt_c
+        
         code_v1 = self._run_llm_pass(pass_1_prompt, code, "Pass_1", base_name,workspace_dir)
         # ---------------------------------------------------------
         # PASS 2: Pointers, Casts & API Signatures
@@ -114,49 +193,114 @@ class CCodeEnhancer(BaseLLMAgent):
         if callee_prototypes:
             context_block = f"\n### KNOWN CALLEE PROTOTYPES:\nYou MUST strictly cast arguments to match these exact signatures:\n{callee_prototypes}\n"
 
-        pass_2_prompt = f"""You are an expert {lang_name} programmer. Fix memory references, pointers, and API calls.
-        ### RULES:
-        1. DYNAMIC FUNCTION POINTERS: If a global variable is called as a function, cast it to the correct function pointer type.
-        2. POINTER CASTS: When a global is passed to an API expecting a pointer, cast it appropriately. {'Use C++ static_cast or reinterpret_cast where appropriate.' if is_cpp else ''}
-        3. GLOBAL STRINGS & DATA: Do NOT replace global string variables with hardcoded inline strings. Since all global strings are defined in `data_globals.c`, you must use the variable name directly (e.g., s_some_string).
-        4. CONST CORRECTNESS: When a string literal is assigned to a pointer, declare it as const char*.
-        5. POINTER RECOVERY: If a parameter/local typed as integer (uintptr_t) is used as a pointer, cast it to the appropriate pointer type. 
-        6. NUMERIC CONSTANTS: Constants like 0x140008164 are often memory addresses, not sizes.
-        7. ARRAYS vs CASTS: Resolve nested pointer casts `(*(char *)((int64_t)j + (int64_t)Buffer))` into clean array indexing `Buffer[j]`.
-        8. GLOBAL POINTERS: Memory addresses (e.g., 0x14000...) are pointers to global variables, NOT string literals. Cast them to (char*) or the appropriate pointer type, never format them as \\x... byte strings.
-        9. NO HARDCODING: NEVER invent, hardcode, or redefine filenames, paths, or strings. Rely completely on the external variables provided by `data_globals.h`.
-        {context_block}
-        10. STRICT SCOPE / NO EXTRA FUNCTIONS: You are processing ONE single function. Do NOT include, repeat, define, or reference any other functions (such as functions processed previously, helper functions, or main) that are not explicitly present in the INPUT CODE below. Your output must contain ONLY the refactored version of the provided input function and nothing else.
-        ### EXAMPLE TRANSLATION:
-        // INPUT (Messy Pointer Casts & Integer APIs):
-        void process_file(uintptr_t filepath, uintptr_t buffer) {{
-            int i = 0;
-            FILE *fp = fopen(filepath, "rb");
-            (*(char *)((int64_t)i + (int64_t)buffer)) = 'A';
-        }}
+        pass_2_prompt_c = f"""You are an expert C programmer. Fix memory references, pointer casts, and API calls in the following cleaned Ghidra pseudo-code.
+            ### STRICT RULES
 
-        // OUTPUT (Clean Pointer Recoveries & Array Indexing):
-        void process_file(uintptr_t filepath, uintptr_t buffer) {{
-            int i = 0;
-            FILE *fp = fopen((const char *)filepath, "rb");
-            ((char *)buffer)[i] = 'A';
-        }}
+            1. **POINTER RECOVERY**: If a parameter or local variable is typed as an integer (`uintptr_t`, `uint32_t`, etc.) but is used as a pointer, cast it to the appropriate pointer type. Example: `(const char *)filepath`.
 
-        ### OUTPUT FORMAT:
-        Return ONLY valid {lang_name} code wrapped in ```{'cpp' if is_cpp else 'c'} backticks. No explanations.
+            2. **ARRAY INDEXING**: Resolve complex pointer arithmetic like `(*(char *)((int64_t)j + (int64_t)Buffer))` into clean array indexing: `Buffer[j]`.
 
-        ### INPUT CODE:
-        ___C_CODE_PLACEHOLDER___
-        """
+            3. **GLOBAL POINTERS**: If a numeric constant (e.g., `0x140008164`) is used as a pointer, cast it to the appropriate pointer type (e.g., `(char *)0x140008164`). Do **not** treat it as a string literal or byte string.
+
+            4. **GLOBAL VARIABLES**: If a variable name looks like a global (e.g., `DAT_`, `s_`, or a known symbol from `data_globals.h`), keep its name exactly. Do **not** replace it with a hardcoded string or number. Assume it is defined in `data_globals.h` and `data_globals.c`.
+
+            5. **STRING LITERALS**: Preserve every string literal exactly as it appears in the input. Do **not** replace a local string literal with a global variable. If a string is a global (e.g., `s_some_string`), keep the variable name.
+
+            6. **CONST CORRECTNESS**: When a string literal is assigned to a pointer, use `const char *`. Example: `const char *msg = "Hello";`.
+
+            7. **FUNCTION POINTERS**: If a global variable is called as a function (e.g., `(*DAT_140001000)(...)`), cast it to the correct function pointer type before calling. Use the known callee prototypes provided below if available.
+
+            8. **API CALLS**: Ensure that all arguments to library/API functions are of the correct type. Cast pointers as needed to match the function signature. If a known callee prototype is provided, adhere to it strictly.
+
+            {context_block}
+
+            9. **ONE FUNCTION ONLY**: Output only the cleaned version of the provided function. Do **not** include any other function, header, or `#include`. Do not add comments or explanations.
+
+            ### EXAMPLE
+
+            **INPUT (Messy Pointer Casts & Integer APIs)**:
+            ```c
+            void process_file(uintptr_t filepath, uintptr_t buffer)
+            {{
+                int i = 0;
+                FILE *fp = fopen(filepath, "rb");
+                (*(char *)((int64_t)i + (int64_t)buffer)) = 'A';
+            }}
+            **OUTPUT (Clean Pointer Recoveries & Array Indexing)**:
+
+            void process_file(uintptr_t filepath, uintptr_t buffer)
+            {{
+                int i = 0;
+                FILE *fp = fopen((const char *)filepath, "rb");
+                ((char *)buffer)[i] = 'A';
+            }}
+            ```
+            ### OUTPUT FORMAT
+            Return ONLY valid C code wrapped in ```c backticks. No explanations.
+
+            ### INPUT CODE
+            ___C_CODE_PLACEHOLDER___
+            """
+        pass_2_prompt_cpp = f"""You are an expert C++ programmer. Fix memory references, pointer casts, and API calls in the following cleaned Ghidra pseudo-code.
+
+            ### STRICT RULES
+
+            1. **POINTER RECOVERY**: If a parameter or local variable is typed as an integer (`uintptr_t`, `uint32_t`, etc.) but is used as a pointer, cast it to the appropriate pointer type using `static_cast` or `reinterpret_cast`. Example: `reinterpret_cast<const char *>(filepath)`.
+
+            2. **ARRAY INDEXING**: Resolve complex pointer arithmetic like `(*(char *)((int64_t)j + (int64_t)Buffer))` into clean array indexing: `Buffer[j]`.
+
+            3. **GLOBAL POINTERS**: If a numeric constant (e.g., `0x140008164`) is used as a pointer, cast it to the appropriate pointer type (e.g., `reinterpret_cast<char *>(0x140008164)`). Do **not** treat it as a string literal or byte string.
+
+            4. **GLOBAL VARIABLES**: If a variable name looks like a global (e.g., `DAT_`, `s_`, or a known symbol from `data_globals.h`), keep its name exactly. Do **not** replace it with a hardcoded string or number. Assume it is defined in `data_globals.h` and `data_globals.c`.
+
+            5. **STRING LITERALS**: Preserve every string literal exactly as it appears in the input. Do **not** replace a local string literal with a global variable. If a string is a global (e.g., `s_some_string`), keep the variable name.
+
+            6. **CONST CORRECTNESS**: When a string literal is assigned to a pointer, use `const char *`. Example: `const char *msg = "Hello";`.
+
+            7. **FUNCTION POINTERS**: If a global variable is called as a function (e.g., `(*DAT_140001000)(...)`), cast it to the correct function pointer type before calling. Use the known callee prototypes provided below if available.
+
+            8. **API CALLS**: Ensure that all arguments to library/API functions are of the correct type. Use `static_cast` or `reinterpret_cast` as necessary to match the function signature. If a known callee prototype is provided, adhere to it strictly.
+
+                {context_block}
+
+            9. **ONE FUNCTION ONLY**: Output only the cleaned version of the provided function. Do **not** include any other function, header, or `#include`. Do not add comments or explanations.
+
+            ### EXAMPLE
+
+            **INPUT (Messy Pointer Casts & Integer APIs)**:
+            ```cpp
+            void process_file(uintptr_t filepath, uintptr_t buffer)
+            {{
+                int i = 0;
+                FILE *fp = fopen(filepath, "rb");
+                (*(char *)((int64_t)i + (int64_t)buffer)) = 'A';
+            }}
+
+            **OUTPUT (Clean Pointer Recoveries & Array Indexing)**:
+            void process_file(uintptr_t filepath, uintptr_t buffer)
+            {{
+                int i = 0;
+                FILE *fp = fopen(reinterpret_cast<const char *>(filepath), "rb");
+                reinterpret_cast<char *>(buffer)[i] = 'A';
+            }}
+
+            ### OUTPUT FORMAT
+            Return ONLY valid C++ code wrapped in ```cpp backticks. No explanations.
+            
+            ### INPUT CODE
+            ___C_CODE_PLACEHOLDER___
+            """
+        if is_cpp:
+            pass_2_prompt = pass_2_prompt_cpp
+        else:
+            pass_2_prompt = pass_2_prompt_c
         code_v2 = self._run_llm_pass(pass_2_prompt, code_v1, "Pass_2", base_name,workspace_dir)
 
         # ---------------------------------------------------------
         # PASS 3: Control Flow, Classes & Final Header
         # ---------------------------------------------------------
-
-
         if is_cpp:
-            pass_3_prompt = f"""You are an expert C++ reverse engineer. You will receive Ghidra pseudo-code. Convert it into clean, standard C++ that compiles with MSVC or GCC.
+            pass_3_prompt_cpp = f"""You are an expert C++ reverse engineer. You will receive Ghidra pseudo-code. Convert it into clean, standard C++ that compiles with MSVC or GCC.
 
             ### HARD REQUIREMENTS
 
@@ -235,41 +379,71 @@ class CCodeEnhancer(BaseLLMAgent):
             ___C_CODE_PLACEHOLDER___
             """
         else:
-            pass_3_prompt = f"""You are an expert C reverse engineer. You will receive Ghidra pseudo-code. Convert it into clean, standard C (C99/C11) that compiles with MSVC or GCC.
+            pass_3_prompt_c = f"""You are an expert C reverse engineer. You will receive Ghidra pseudo-code. Convert it into clean, standard C (C99/C11) that compiles with MSVC or GCC.
 
-            ### HARD REQUIREMENTS
+                ### HARD REQUIREMENTS
+                1. **COMPILABLE OUTPUT**
+                - Your code must be valid C. It will be compiled immediately.
+                - Any line that is not standard C is a failure.
+                - All variables used in the function **must be declared** at the top of the function (C89 style) or at the start of a block, with appropriate types inferred from usage.
+                - If the input references an undeclared variable (e.g., `local_8`, `uVar4`), **declare it** as a local variable with a suitable type based on how it is used.
 
-            1. COMPILABLE OUTPUT
-            Your code must be valid C. It will be compiled immediately.
-            Any line that is not standard C is a failure.
+                2. **NO GHIDRA / COMPILER ARTIFACTS**
+                The following MUST NOT appear anywhere in your output:
+                - `CONCAT44` / `CONCAT31` / `CONCATxx`
+                - `local_X._0_1_`, `local_X._1_3_`, `local_X._2_1_`, etc.
+                - `ExceptionList`
+                - `__security_cookie` / `__security_check_cookie`
+                - `__RTC_CheckEsp` / `__RTC_CheckStackVars`
+                - `LAB_` labels and `goto` statements (resolve into standard `while`/`for` loops or `if`/`else` blocks)
+                - Loops that fill stack memory with `0xcccccccc` (remove them entirely)
 
-            2. NO GHIDRA / COMPILER ARTIFACTS
-            The following MUST NOT appear anywhere in your output:
-            - CONCAT44 / CONCAT31 / CONCATxx
-            - local_X._0_1_, local_X._1_3_, etc.
-            - ExceptionList
-            - __security_cookie / __security_check_cookie
-            - __RTC_CheckEsp / __RTC_CheckStackVars
-            - LAB_ labels and goto (resolve into standard while/for loops or if/else blocks)
-            - Loops that fill stack memory with 0xcccccccc
+                3. **CLEAN UP RAW POINTER ARITHMETIC**
+                - Convert `*(type *)((intptr_t)ptr + offset)` into array indexing `ptr[index]` or struct field access where possible.
+                - If a variable is typed as an integer but used as a pointer, cast it appropriately: `(char *)address`, `(uint32_t *)value`.
+                - Avoid excessive nested casts; use intermediate typed pointers to improve readability.
 
-            3. C STRUCT AND POINTER CLEANUP
-            Ghidra often represents struct access or array indexing as raw pointer arithmetic. Convert these into clean pointer arithmetic, array indexing, or struct access if the type context is clear. Avoid unnecessary nested casts.
+                4. **INCLUDE HEADERS CORRECTLY**
+                - The first line must be:
+                    ```c
+                    #include "data_globals.h"
+                    ```
+                    Then add standard C headers as needed (e.g., <stdio.h>, <stdlib.h>, <string.h>, <stdint.h>).
 
-            4. INCLUDE HEADERS CORRECTLY
-            The first line must be:
-                #include "data_globals.h"
-            Then add standard C headers as needed (e.g., <stdio.h>, <stdlib.h>, <string.h>, <stdint.h>).
+                    Do not include any other project headers.
 
-            5. GLOBAL VARIABLES
-            All global variables, arrays, and strings are declared in data_globals.h. Do NOT redeclare them. Use them directly by name.
+                    GLOBAL VARIABLES
 
-            6. STRICT SCOPE / NO EXTRA FUNCTIONS
-            You are processing ONE single function. Do NOT include, repeat, define, or reference any other functions not explicitly present in the INPUT CODE.
+                        All global variables, arrays, and strings are declared in data_globals.h. Do not redeclare or redefine them.
 
-            ### EXAMPLE TRANSFORMATION
+                        Use them directly by name.
 
-            // INPUT (Decompiled C with raw pointer arithmetic and goto):
+                        Do not replace global names with hardcoded values or strings.
+
+                    PRESERVE BEHAVIOR EXACTLY
+
+                        Keep every function call, assignment, loop condition, and memory operation.
+
+                        Do not remove side effects.
+
+                        When writing to files, use the correct size arguments. If the input shows a literal size (e.g., 464834), keep that number. If the size is derived from strlen or a variable, use the same expression.
+
+                        Do not replace a size with a decompiler address constant like 0x416ba7. If you see such a constant used as a size, infer the correct size from context (e.g., strlen(inf), local_dc, etc.).
+
+                        For memcpy, read, write, etc., the size argument must be an integer expression; if the input shows CONCAT44(a, b), replace it with the actual value (a << 32) | b or a + b only if it makes sense, otherwise use the appropriate size variable.
+
+                    ONE FUNCTION ONLY
+
+                        Output only the cleaned version of the provided function.
+
+                        Do not include any other function, helper, or main.
+
+                        The output must contain the function definition followed by a blank line. No extra text.
+
+                ### EXAMPLE TRANSFORMATION
+
+                **INPUT (Ghidra pseudo-code with raw pointer arithmetic and goto)**:
+                ```c
                 void *puVar1;
                 uint32_t uVar2;
                 puVar1 = malloc(0x18);
@@ -283,25 +457,37 @@ class CCodeEnhancer(BaseLLMAgent):
                     goto LAB_14000100;
                 }}
                 return puVar1;
+                ```
+                **OUTPUT (Idiomatic C99)**:
+                ```c
+                #include "data_globals.h"
+                #include <stdlib.h>
+                #include <stdint.h>
 
-            // OUTPUT (Idiomatic C99):
-                void* obj = malloc(24);
-                if (obj != NULL) {{
-                    *(uint32_t*)obj = param_1;
-                    *(uint64_t*)((char*)obj + 8) = 0;
-                    for (uint32_t i = 0; i < 5; i++) {{
-                        ((uint8_t*)obj)[16 + i] = 0xff;
+                void* FUN_140001000(uint32_t param_1)
+                {{
+                    uint8_t* obj = (uint8_t*)malloc(24);
+                    if (obj != NULL) {{
+                        *(uint32_t*)obj = param_1;
+                        *(uint64_t*)(obj + 8) = 0;
+                        for (uint32_t i = 0; i < 5; i++) {{
+                            obj[16 + i] = 0xff;
+                        }}
                     }}
+                    return obj;
                 }}
-                return obj;
 
-            ### OUTPUT FORMAT
-            Return ONLY valid C code wrapped in ```c backticks. No explanations.
+                ### OUTPUT FORMAT
+                Return ONLY valid C code wrapped in ```c backticks. No explanations.
 
-            ### INPUT CODE:
-            ___C_CODE_PLACEHOLDER___
-            """
-    
+                ### INPUT CODE
+                ___C_CODE_PLACEHOLDER___
+                """
+                            
+        if is_cpp:
+            pass_3_prompt = pass_3_prompt_cpp
+        else:
+            pass_3_prompt = pass_3_prompt_c
         final_code = self._run_llm_pass(pass_3_prompt, code_v2, "Pass_3", base_name,workspace_dir)
         if not final_code:
             final_code = code_v2
