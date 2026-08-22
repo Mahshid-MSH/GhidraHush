@@ -3,7 +3,7 @@
 add_missing_globals.py
 -----------------------
 Scans all .c files in the extracted_functions directory for DAT_XXXXXXXX
-references. If any are missing from LLM_globals.h, appends
+references. If any are missing from data_globals.h, appends
 'extern uintptr_t DAT_XXXXXXXX;' just before the #endif line.
 """
 
@@ -59,8 +59,8 @@ def append_missing_declarations(header_path, source_path, missing, workspace_dir
 
 def add_missing_values(workspace_dir="."):
     """Main function called from pipeline – always uses the workspace's extracted_functions."""
-    header_file = os.path.join(workspace_dir, "LLM_globals.h")
-    source_file = os.path.join(workspace_dir, "LLM_globals.c")
+    header_file = os.path.join(workspace_dir, "data_globals.h")
+    source_file = os.path.join(workspace_dir, "data_globals.c")
     target_dir = os.path.join(workspace_dir, "extracted_functions")
 
     if not os.path.isdir(target_dir):
@@ -79,10 +79,3 @@ def add_missing_values(workspace_dir="."):
     append_missing_declarations(header_file, source_file, missing, workspace_dir)
 
     print("Done. Header updated if necessary.")
-
-if __name__ == "__main__":
-    # For standalone usage, you can pass the workspace directory as argument
-    if len(sys.argv) > 1:
-        add_missing_values(workspace_dir=sys.argv[1])
-    else:
-        add_missing_values()
