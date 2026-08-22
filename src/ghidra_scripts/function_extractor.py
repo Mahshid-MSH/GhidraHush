@@ -89,8 +89,6 @@ def extract_functions(file_path, workspace_dir):
                     if not is_exception:
                         if lower_name.startswith(IGNORED_PREFIXES):
                             continue
-                        if clean_name.startswith('_'):
-                            continue
 
                     # Skip standard Thunks or Externals immediately
                     if not is_exception and (function.isExternal() or function.isThunk()):
@@ -129,10 +127,10 @@ def extract_functions(file_path, workspace_dir):
 
                     # Detect C++ structures
                     if (
-                        "::" in clean_name
-                        or "std::" in c_code
-                        or "operator new" in c_code
-                        or "this" in c_code
+                        # "::" in clean_name => this could trigger false positive, meaning c functions will be interpreted as cpp!
+                        "std::" in c_code
+                        #or "operator new" in c_code
+                        #or "this" in c_code
                     ):
                         binary_has_cpp = True
 
