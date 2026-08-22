@@ -3,7 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: GhidraDeforger
+    container_name: GhidraHush
+    user: "${UID:-1000}:${GID:-1000}" # this is used to allow users modify workspace without sudo
     volumes:
       - .:/app
     env_file:
