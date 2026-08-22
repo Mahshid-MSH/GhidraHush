@@ -132,7 +132,7 @@ if [[ -z "$raw_input_exe" ]]; then
     echo -e "${RED}${BOLD}Error:${RESET} ${RED}No executable path provided.${RESET}"
     exit 1
 fi
-
+raw_input_exe="${raw_input_exe/#\~/$HOME}"
 raw_input_exe=$(realpath "$raw_input_exe" 2>/dev/null || echo "$raw_input_exe")
 
 if [[ ! -f "$raw_input_exe" ]]; then
