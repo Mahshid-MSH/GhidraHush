@@ -3,7 +3,7 @@ import re
 from ollama import Client
 
 class BaseLLMAgent:
-    """Core class to handle LLM connections, streaming, and code extraction."""
+    """Core class to handle LLM connections, streaming, code extraction, and logging."""
     def __init__(self, model_name=None, base_url=None):
         self.base_url = base_url or os.environ.get('OLLAMA_HOST', 'http://ollama:11434')
         self.model_name = model_name or os.environ.get('LLM_MODEL', 'deepseek-coder-v2')
@@ -35,3 +35,16 @@ class BaseLLMAgent:
         if "#include" in llm_output or "void" in llm_output or "int" in llm_output:
             return llm_output.strip()
         return original_code
+
+    def process_llm_task(self, prompt, original_code, workspace_dir, log_prefix, base_name, options=None):
+        """Unified method to stream prompt, log the response, and extract code."""
+
+        response = self.stream_prompt(prompt, options=options)
+        # this is where the logs are saved
+        log_dir = os.path.join(workspace_dir, "llm_logs")
+        os.makedirs(log_dir, exist_ok=True)
+        log_file = os.path.join(log_dir, f"{log_prefix}_{base_name}.log")
+        
+        with open(log_file, "w", encoding="utf-8") as f:
+            f.write(response)
+        return self.extract_raw_c_code(response, original_code)
