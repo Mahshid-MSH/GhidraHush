@@ -4,13 +4,18 @@ import os
 import sys
 import tempfile
 import json
+import glob
 from collections import deque
+from utils.getprocaddress_resolver import resolve_getprocaddress_types, propagate_downstream_types
 
 pyghidra.start("-Xmx8g")
 from ghidra.app.decompiler import DecompInterface, DecompileOptions
 from ghidra.app.plugin.core.analysis import PdbUniversalAnalyzer
 from ghidra.util.task import TaskMonitor
 from java.io import File
+from ghidra.program.model.data import FileDataTypeManager
+from ghidra.program.model.pcode import HighFunctionDBUtil
+from ghidra.program.model.symbol import SourceType
 
 # Keywords that override all filters. If a function name contains these, it will be extracted.
 TARGET_EXCEPTIONS = ["winmain", "entry"]
@@ -26,7 +31,7 @@ def extract_functions(file_path, workspace_dir):
 
     call_graph = {}
 
-    # 1. Look for the raw PDB file
+    # Look for the raw PDB file
     pdb_path = os.path.splitext(file_path)[0] + ".pdb"
     has_pdb = os.path.isfile(pdb_path)
 
@@ -65,12 +70,45 @@ def extract_functions(file_path, workspace_dir):
                 print(f"Analyzing {file_path}...")
                 pyghidra.analyze(program)
 
+                # --- Load All Custom GDT Archives Automatically ---
+                gdt_dir = os.path.abspath("gdt_archives")
+                program_dtmgr = program.getDataTypeManager()
+                gdt_files = glob.glob(os.path.join(gdt_dir, "*.gdt"))
+
+                if gdt_files:
+                    print(f"Found {len(gdt_files)} custom GDT archive(s). Loading into program context...")
+                    
+                    # Start a transaction before modifying the program's data types
+                    tx_gdt = program.startTransaction("Load GDT Archives")
+                    try:
+                        for gdt_path in gdt_files:
+                            print(f"    -> Loading: {os.path.basename(gdt_path)}")
+                            gdt_file = File(gdt_path)
+                            gdt_mgr = FileDataTypeManager.openFileArchive(gdt_file, False)
+                            for dt in gdt_mgr.getAllDataTypes():
+                                program_dtmgr.addDataType(dt, None)
+                            gdt_mgr.close()
+                    finally:
+                        # Commit the changes
+                        program.endTransaction(tx_gdt, True)
+                else:
+                    print(f"No custom GDT archives found in {gdt_dir}. Proceeding with default types.")
+                # --------------------------------------------------
+
                 # Decompiler setup
                 decomp_options = DecompileOptions()
                 decomp_options.setMaxPayloadMBytes(1024)   
                 decompiler = DecompInterface()
                 decompiler.setOptions(decomp_options)
                 decompiler.openProgram(program)
+
+                # --- RUN GETPROCADDRESS TYPE RESOLVER PASS ---
+                print("Running dynamic API function pointer resolver...")
+                target_funcs = resolve_getprocaddress_types(program, decompiler)
+
+                if target_funcs:
+                    propagate_downstream_types(program, decompiler, target_funcs)
+                # ---------------------------------------------
 
                 function_manager = program.getFunctionManager()
                 all_functions = list(function_manager.getFunctions(True))
@@ -84,16 +122,13 @@ def extract_functions(file_path, workspace_dir):
                     lower_name = clean_name.lower()
 
                     is_exception = any(exc in lower_name for exc in TARGET_EXCEPTIONS)
-
                     # FILTER 1: Ignored Prefixes (__scrt, Unwind) & Underscores ---
                     if not is_exception:
                         if lower_name.startswith(IGNORED_PREFIXES):
                             continue
-
                     # Skip standard Thunks or Externals immediately
                     if not is_exception and (function.isExternal() or function.isThunk()):
                         continue
-
                     # Decompile the function
                     results = decompiler.decompileFunction(function, 300, TaskMonitor.DUMMY)
                     c_code = (
@@ -101,42 +136,29 @@ def extract_functions(file_path, workspace_dir):
                         if results.decompileCompleted()
                         else "Decompilation failed!"
                     )
-
                     if c_code == "Decompilation failed!":
                         continue
-
                     if not is_exception:
                         # FILTER 2: Basic Library Strings 
                         if "/* Library Function" in c_code:
-                            continue
-                        
+                            continue         
                         # FILTER 3: Thin wrappers/thunks (e.g. /* fwrite */) 
                         if f"/* {clean_name} */" in c_code:
                             continue
-
                         # FILTER 4: The Header & Prototype Check 
                         header_block = c_code.split('{', 1)[0]
                         if "std::" in header_block or "__thiscall" in header_block:
                             continue
-
                     # Populate the call graph
                     call_graph[clean_name] = [
                         f"{c.getName()}_{c.getEntryPoint().toString()}"
                         for c in function.getCalledFunctions(TaskMonitor.DUMMY)
                     ]
-
                     # Detect C++ structures
-                    if (
-                        # "::" in clean_name => this could trigger false positive, meaning c functions will be interpreted as cpp!
-                        "std::" in c_code
-                        #or "operator new" in c_code
-                        #or "this" in c_code
-                    ):
+                    if "std::" in c_code:
                         binary_has_cpp = True
 
                     extracted_data.append((clean_name, c_code))
-
-                # Write extracted code to files
                 file_ext = ".cpp" if binary_has_cpp else ".c"
 
                 for clean_name, c_code in extracted_data:
@@ -149,7 +171,6 @@ def extract_functions(file_path, workspace_dir):
                         f.write(c_code)
                     print(f" Extracted: {safe_name}{file_ext}")
 
-    # Write call graph after all functions have been extracted
     graph_path = os.path.join(file_output_dir, "call_graph.json")
     with open(graph_path, "w", encoding="utf-8") as f:
         json.dump(call_graph, f, indent=4)
