@@ -33,7 +33,7 @@ STAGES = {
     4: "Resolve & add missing global declarations",
     5: "Generate main wrapper script",
     6: "Apply defensive evasion techniques",
-    7: "Compile LLM_globals.c & main.c",
+    7: "Compile data_globals.c & main.c",
     8: "Agentic compilation loop & patching (LLM)",
     9: "Link output objects into final executable",
     10: "Verify behavioral equivalence against original binary"
@@ -218,7 +218,7 @@ def run_pipeline():
         try:
             gcc_service = GCCService(compiler=target_compiler, workspace_dir=workspace_dir)
             if not gcc_service.recompile_globals():
-                raise Exception("Failed to compile LLM_globals.c")
+                raise Exception("Failed to compile data_globals.c")
             success, err_msg = gcc_service.compile_file(filepath=main_path, output_dir=workspace_dir)
             if not success:
                 raise Exception(f"Failed to compile main.c: {err_msg}")
