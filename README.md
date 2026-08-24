@@ -6,6 +6,9 @@ GhidraHush is a binary reverse engineering and orchestration toolchain. Designed
 
 **Important:** This pipeline is **not totally automated**. It operates on a "human-in-the-loop" philosophy. While the toolchain handles heavy lifting like extraction, LLM interactions, and compilation loops, user oversight—especially for filtering functions and verifying logic—is strictly required for maximum accuracy.
 
+> **Disclaimer:** **For Educational Purposes Only!**
+> GhidraHush is created strictly for research, education, and authorized security assessments. I accept zero responsibility for what you do with this tool. If you decide to do something reckless and end up behind bars, just know I won't be coming to break you out or pay your bail! Use it responsibly.
+
 ## 🌟 The Golden Rule: Tune Your Ghidra
 
 It is absolutely crucial to tune your Ghidra environment before starting the decompilation process. It does not matter even if you have the best sources available and have access to the strongest LLM in the world; if you don't tune Ghidra to give you clean, accurate outputs in the first stage, the LLM will likely struggle to understand the code and context easily. **Just like a guitar, you must tune your Ghidra before playing.**
@@ -101,6 +104,12 @@ The orchestration pipeline consists of 10 distinct phases:
 8. **Agentic compilation loop & patching (LLM):** An autonomous LLM-driven loop that attempts to compile the refactored functions, reads GCC error logs, and patches the source code until compilation succeeds (up to a max retry limit).
 9. **Link output objects into final executable:** Links all generated `.o` files, `globals.o`, and `main.o` into the final executable.
 10. **Verify behavioral equivalence:** (Currently under development) Designed to ensure the reconstructed binary matches the behavior of the original input.
+
+## Contributing
+
+Contributions are more than welcome! This project thrives on community collaboration. Whether you want to squash bugs, refine prompt engineering for the LLM agents, add novel evasion techniques, or expand custom GDT archives—your participation is heavily encouraged!
+
+Feel free to fork the repository, open issues, or submit Pull Requests. Jump in and help take this framework to the next level!
 
 ## Notes
 
