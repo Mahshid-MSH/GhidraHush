@@ -4,7 +4,21 @@
 
 GhidraHush is a binary reverse engineering and orchestration toolchain. Designed for security researchers, it leverages the Ghidra decompiler API and Large Language Models (LLMs) to extract, refactor, and enhance C/C++ code. This creates a powerful framework for malware analysis, threat hunting, and executing structural mutation and robustness testing on compiled binaries.
 
-**Important:** This pipeline is **not totally automated**. It operates on a "human-in-the-loop" philosophy. While the toolchain handles heavy lifting like extraction, LLM interactions, and compilation loops, user oversight—especially for filtering functions and verifying logic is strictly required for maximum accuracy.
+**Important:** This pipeline is **not totally automated**. It operates on a "human-in-the-loop" philosophy. While the toolchain handles heavy lifting like extraction, LLM interactions, and compilation loops, user oversight—especially for filtering functions and verifying logic—is strictly required for maximum accuracy.
+
+## 🌟 The Golden Rule: Tune Your Ghidra
+
+It is absolutely crucial to tune your Ghidra environment before starting the decompilation process. It does not matter even if you have the best sources available and have access to the strongest LLM in the world; if you don't tune Ghidra to give you clean, accurate outputs in the first stage, the LLM will likely struggle to understand the code and context easily. **Just like a guitar, you must tune your Ghidra before playing.**
+
+To achieve optimal decompilation quality, `GhidraHush` automates several core tuning steps directly within `function_extractor.py`:
+
+* **Custom GDT Archives:** If your target binary uses structures or data types that are not part of Ghidra's default type system, you must create a custom Ghidra Data Type (`.gdt`) archive. The extraction pipeline automatically checks the `gdt_archives/` directory and loads all `.gdt` files directly into the program's data type manager before decompilation begins.
+* **Compiler Helper Fixups:** Decompilers often misinterpret compiler-generated helper routines, leading to corrupted stack layouts and incorrect variable boundaries. The `function_extractor.py` script automatically cleans these up so stack items resolve accurately:
+* **MinGW Stack Probes (`chkstk_ms`):** MinGW binaries use stack probes that pollute register state during decompilation. The script locates references to `chkstk_ms` and NOPs out the call sites. This preserves the `EAX` register (which holds the allocation size) and enables Ghidra to calculate local stack frame allocations correctly.
+* **MSVC Stack Allocators (`chkstk`, `alloca_probe`):** For Microsoft-compiled binaries, the script disables inlining on stack allocation functions and explicitly applies the `__chkstk` call fixup to restore accurate stack layout signatures.
+* **Security Cookie Checks (`security_check_cookie`):** Stack security check routines are forced to inline, removing control flow noise so the decompiler can output clear, uncluttered pseudocode.
+
+
 
 ## Input Requirements & Workspace
 
@@ -54,7 +68,7 @@ docker compose exec ollama ollama run [the LLM of your choice]
 
 ```
 
-## Usage & Human-in-the-Loop Workflow
+## Usage & Human-in-The-Loop Workflow
 
 The entire pipeline is controlled via the interactive Bash wrapper.
 
@@ -92,4 +106,3 @@ The orchestration pipeline consists of 10 distinct phases:
 
 * Any changes made to Python files inside `src/` are instantly reflected in the container via volume mounts. You do not need to rebuild the Docker image when modifying application logic.
 * You only need to run `docker compose build` if you modify system-level dependencies in the `Dockerfile` or `requirements.txt`.
-
