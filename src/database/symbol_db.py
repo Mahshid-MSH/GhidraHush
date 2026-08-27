@@ -20,7 +20,6 @@ class SymbolDB:
         return sqlite3.connect(self.db_path)
 
     def _init_db(self):
-        """Creates the required tables if they do not exist."""
         with self._get_conn() as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -39,19 +38,27 @@ class SymbolDB:
                     is_variadic INTEGER NOT NULL DEFAULT 0
                 )
             """)
+            # NEW: Tracks custom struct/enum/union definitions maintaining dependency order
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS call_sites (
+                CREATE TABLE IF NOT EXISTS custom_types (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    caller TEXT NOT NULL,
-                    callee TEXT NOT NULL,
-                    arg_count INTEGER NOT NULL,
-                    arg_types TEXT
+                    name TEXT UNIQUE,
+                    definition TEXT NOT NULL
                 )
             """)
             conn.commit()
 
+    def add_custom_type(self, name, definition):
+        """Inserts a custom type definition, ignoring if it already exists to maintain dependency order."""
+        with self._get_conn() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT OR IGNORE INTO custom_types (name, definition)
+                VALUES (?, ?)
+            """, (name, definition))
+            conn.commit()
+
     def add_or_update_global(self, name, gtype="uintptr_t", value_or_expr="0", is_string=False):
-        """Inserts or updates a global variable entry."""
         with self._get_conn() as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -64,9 +71,27 @@ class SymbolDB:
             """, (name, gtype, value_or_expr, 1 if is_string else 0))
             conn.commit()
 
+    def parse_and_upsert_prototype(self, proto_str):
+        """
+        Parses a C function prototype string (e.g., 'int foo(char *bar, int baz);') 
+        and upserts it into the functions table.
+        """
+        proto_str = proto_str.strip().rstrip(';')
+        # Match return type, function name, and parameter block
+        match = re.match(r'^(.*?)\s+([a-zA-Z_]\w*)\s*\((.*)\)$', proto_str, re.DOTALL)
+        if not match:
+            return False
+            
+        return_type, name, parameters = match.groups()
+        return_type = return_type.strip()
+        name = name.strip()
+        parameters = parameters.strip()
+        
+        is_variadic = 1 if '...' in parameters else 0
+        self.add_or_update_function(name, return_type, parameters, is_variadic)
+        return True
+
     def add_or_update_function(self, name, return_type="void", parameters="void", is_variadic=False):
-        """Inserts or updates a function signature entry."""
-        # Clean up parameters formatting
         parameters = " ".join(parameters.split()) if parameters else "void"
         with self._get_conn() as conn:
             cursor = conn.cursor()
@@ -80,37 +105,14 @@ class SymbolDB:
             """, (name, return_type, parameters, 1 if is_variadic else 0))
             conn.commit()
 
-    def update_function_return_type(self, name, return_type):
-        """Updates the return type of an existing function while keeping parameters intact."""
-        with self._get_conn() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT parameters FROM functions WHERE name = ?", (name,))
-            row = cursor.fetchone()
-            if row:
-                cursor.execute("UPDATE functions SET return_type = ? WHERE name = ?", (return_type, name))
-            else:
-                cursor.execute("INSERT INTO functions (name, return_type, parameters) VALUES (?, ?, ?)", 
-                               (name, return_type, "void"))
-            conn.commit()
-
-    def parse_and_upsert_prototype(self, prototype_str):
-        """Helper to parse a raw prototype string 'int FindProcessId(char *a);' and insert into DB."""
-        clean = prototype_str.strip().rstrip(';')
-        # Matches return_type function_name(args) for any valid C identifier
-        match = re.search(r'([\w\s\*]+)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)', clean)
-        if match:
-            return_type = match.group(1).strip()
-            func_name = match.group(2).strip()
-            args = match.group(3).strip() or "void"
-            self.add_or_update_function(func_name, return_type, args)
-            return True
-        return False
-
     def export_header(self, header_name="data_globals.h"):
-        """Generates the clean data_globals.h file directly from the database."""
         header_path = os.path.join(self.workspace_dir, header_name)
         with self._get_conn() as conn:
             cursor = conn.cursor()
+            # Fetch custom types ordered by ID so nested dependencies are declared correctly!
+            cursor.execute("SELECT definition FROM custom_types ORDER BY id ASC")
+            custom_types_list = cursor.fetchall()
+
             cursor.execute("SELECT name, type, is_string FROM globals ORDER BY name")
             globals_list = cursor.fetchall()
 
@@ -125,7 +127,7 @@ class SymbolDB:
             "#define WIN32_LEAN_AND_MEAN",
             "#endif\n",
             "#include <stdint.h>",
-            "#include <windows.h>",
+            "#include <windows.h>\n",
             "// --- GHIDRA DECOMPILER SHIM ---",
             "typedef unsigned char      undefined1;",
             "typedef unsigned short     undefined2;",
@@ -135,16 +137,20 @@ class SymbolDB:
             "typedef unsigned int       uint;",
             "typedef unsigned short     ushort;",
             "typedef unsigned long      ulong;",
-            "typedef void               code;\n"
-            #"// --- GLOBAL VARIABLES ---"
+            "typedef void               code;\n",
+            "// --- CUSTOM DATA TYPES ---"
         ]
 
+        # Inject definitions directly before globals
+        for (definition,) in custom_types_list:
+            lines.append(definition)
+
+        lines.append("\n// --- GLOBAL VARIABLES ---")
         for name, gtype, is_string in globals_list:
             if is_string:
                 lines.append(f"extern const char {name}[];")
             else:
                 if '[' in gtype:
-                    # Split 'uint8_t[16]' into 'uint8_t' and '16]'
                     base_type, array_part = gtype.split('[', 1)
                     lines.append(f"extern {base_type.strip()} {name}[{array_part};")
                 else:
@@ -154,13 +160,25 @@ class SymbolDB:
         for name, return_type, parameters in functions_list:
             lines.append(f"{return_type} {name}({parameters});")
 
-        lines.append("\n#endif // DATA_GLOBALS_H\n")    # This line generates errors, because some stuff get added after it!
+        # Safely pad the endif to guarantee nothing is appended afterwards
+        lines.append("\n#endif // DATA_GLOBALS_H\n")
 
         with open(header_path, "w", encoding="utf-8") as f:
             f.write("\n".join(lines))
 
+    def update_function_return_type(self, name, return_type):
+        """Updates just the return type of a function, preserving its parameters."""
+        with self._get_conn() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO functions (name, return_type, parameters, is_variadic)
+                VALUES (?, ?, 'void', 0)
+                ON CONFLICT(name) DO UPDATE SET
+                    return_type=excluded.return_type
+            """, (name, return_type))
+            conn.commit()
+
     def export_source(self, source_name="data_globals.c", header_name="data_globals.h"):
-        """Generates the clean data_globals.c file directly from the database."""
         source_path = os.path.join(self.workspace_dir, source_name)
         with self._get_conn() as conn:
             cursor = conn.cursor()
@@ -186,17 +204,3 @@ class SymbolDB:
 
         with open(source_path, "w", encoding="utf-8") as f:
             f.write("\n".join(lines) + "\n")
-
-
-    def remove_function(self, name):
-        """Remove a function entry from the database."""
-        with self._get_conn() as conn:
-            cursor = conn.cursor()
-            # Check if the function exists
-            cursor.execute("SELECT 1 FROM functions WHERE name = ?", (name,))
-            if cursor.fetchone():
-                # Delete it from the SQL database
-                cursor.execute("DELETE FROM functions WHERE name = ?", (name,))
-                conn.commit()
-                return True
-            return False
