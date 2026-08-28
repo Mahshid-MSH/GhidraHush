@@ -114,11 +114,10 @@ Contains the `DefensiveEvasion` class, which applies LLM-driven obfuscation tech
 
 Drives Stage 1 headless Ghidra decompilation. It loads PDB symbols, imports `.gdt` type archives, ignores runtime library thunks/wrappers, applies dynamic `GetProcAddress` resolutions, and outputs extracted C function files along with a call graph mapping (`call_graph.json`).
 
----
 
 #### ⚠️ Stage 2 (`global_data`) vs. Stage 4 (`add_missing`)
 
-### Stage 2 (`global_data`)
+##### Stage 2 (`global_data`)
 
 * **Primary Scope:** Extracts global variables, string constants, structure definitions, and static buffers directly from the binary's memory structures via Ghidra.
 
@@ -126,14 +125,12 @@ Drives Stage 1 headless Ghidra decompilation. It loads PDB symbols, imports `.gd
 * **Data Integrity:** Highly accurate because it derives declarations directly from defined section headers (`.data`, `.bss`) and binary symbol tables.
 
 
-
-### Stage 4 (`add_missing`)
+##### Stage 4 (`add_missing`)
 
 * **Primary Scope:** Performs a secondary scan of extracted `.c` source files, searching for used identifiers that were not caught during Stage 2, and attempts to resolve them against Ghidra symbols.
 
 
 * **Heuristic Reliance:** Uses regular expression heuristics to infer un-annotated memory boundaries and array limits.
-
 
 
 ### Usage Recommendation & Tradeoff
