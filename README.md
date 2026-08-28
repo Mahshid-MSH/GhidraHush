@@ -73,7 +73,7 @@ This module acts as Stage 4 of the pipeline. It parses extracted `.c` function f
 
 Defines the base class (`BaseLLMAgent`) for managing Ollama LLM communications. It standardizes model connections, response streaming, C code extraction from raw markdown responses, and prompt-response logging inside the `llm_logs/` workspace directory.
 
-### 5. `src/llm/c_code_enhancer.py`
+#### 5. `src/llm/c_code_enhancer.py`
 
 Contains the `CCodeEnhancer` agent, which processes decompiled pseudocode through a multi-pass pipeline:
 
@@ -90,7 +90,7 @@ Contains the `CCodeEnhancer` agent, which processes decompiled pseudocode throug
 
 
 
-### 6. `src/llm/evasion_techniques.py`
+#### 6. `src/llm/evasion_techniques.py`
 
 Contains the `DefensiveEvasion` class, which applies LLM-driven obfuscation techniques to mutate generated C functions:
 
@@ -110,7 +110,7 @@ Contains the `DefensiveEvasion` class, which applies LLM-driven obfuscation tech
 
 
 
-### 7. `src/ghidra_scripts/function_extractor.py`
+#### 7. `src/ghidra_scripts/function_extractor.py`
 
 Drives Stage 1 headless Ghidra decompilation. It loads PDB symbols, imports `.gdt` type archives, ignores runtime library thunks/wrappers, applies dynamic `GetProcAddress` resolutions, and outputs extracted C function files along with a call graph mapping (`call_graph.json`).
 
