@@ -48,11 +48,99 @@ The repository is structured to separate orchestration infrastructure from appli
 * **`/` (Root Infrastructure):**
 * `docker-compose.yaml`: Defines the containerized services, mapping volumes and setting up the LLM environment (Ollama) with GPU support.(Feel free to change the GPU support.)
 * `Dockerfile`: Builds the `GhidraHush` container, installing dependencies including Python 3.11, OpenJDK 21, Ghidra 12.1.2, and MinGW compilers for 32-bit binaries.
-* `GhidraReforger.sh`: The interactive Bash wrapper that serves as the entry point. It handles workspace directory creation, copies the target executable, tracks environment variables in `.env`, and launches the specific pipeline stages inside Docker.
+* `GhidraHush.sh`: The interactive Bash wrapper that serves as the entry point. It handles workspace directory creation, copies the target executable, tracks environment variables in `.env`, and launches the specific pipeline stages inside Docker.
 
 * **`src/entry.py`:** The main Python orchestrator. It parses user arguments, and sequentially fires the pipeline stages. It also manages Abstract Syntax Tree (AST) syncing and proactive header patching.
 * **`src/ghidra_scripts/function_extractor.py`:** A headless Ghidra script that analyzes the binary. It configures the decompiler, loads PDBs and custom GDT archives, resolves dynamic API calls, and applies preliminary filters to ignore standard library thunks and compiler-generated wrappers.
 * **`workspace/`:** A dynamically generated I/O directory containing the isolated `run_X` folders where all extraction, LLM processing, and compilation takes place.
+
+
+### Core Scripts
+
+#### 1. `src/utils/getprocaddress_resolver.py`
+
+This module resolves dynamic API calls in obfuscated binaries. It uses P-Code tracing to identify `GetProcAddress` calls, extracts target API names directly from memory, and matches them against loaded Ghidra Data Type (`.gdt`) archives. Once identified, it retypes local variables and propagates these function signature updates downstream to callee parameter lists.
+
+#### 2. `src/ghidra_scripts/extract_global_data.py`
+
+Executing as Stage 2, this script extracts state data directly from the target binary. Using PyGhidra, it parses `.data` and `.bss` memory blocks, collapses large contiguous arrays, extracts string constants, and converts composite structs, unions, and enums into C-compliant headers (`data_globals.h`) and source definitions (`data_globals.c`).
+
+#### 3. `src/utils/add_missing_globals.py`
+
+This module acts as Stage 4 of the pipeline. It parses extracted `.c` function files to identify undeclared identifiers and references missing from `data_globals.h`. It then queries Ghidra's symbol table and listing to resolve the memory location, applies array sizing heuristics to un-parsed memory blobs, and appends missing variable definitions to the database.
+
+#### 4. `src/llm/base_agent.py`
+
+Defines the base class (`BaseLLMAgent`) for managing Ollama LLM communications. It standardizes model connections, response streaming, C code extraction from raw markdown responses, and prompt-response logging inside the `llm_logs/` workspace directory.
+
+### 5. `src/llm/c_code_enhancer.py`
+
+Contains the `CCodeEnhancer` agent, which processes decompiled pseudocode through a multi-pass pipeline:
+
+* **Pass 1:** Normalizes Ghidra data types to `<stdint.h>`, renames cryptically named variables, strips compiler artifacts (e.g., `__RTC_CheckEsp`, security cookies), and enforces standard variable declarations.
+
+
+* **Pass 2:** Cleans pointer arithmetic into array indexing, restores pointer casts, and formats API call arguments.
+
+
+* **Pass 3:** Formats control flow constructs, eliminates raw `goto` statements where possible, and prepares C99/C11 compilable code.
+
+
+* **Topological Sort:** Functions are sorted using a call graph dependency tree so callees are beautified and prototyped before their callers.
+
+
+
+### 6. `src/llm/evasion_techniques.py`
+
+Contains the `DefensiveEvasion` class, which applies LLM-driven obfuscation techniques to mutate generated C functions:
+
+* **Junk Code Insertion:** Adds dead execution branches with opaque math predicates and Windows system API calls.
+
+
+* **Stack-String XOR Obfuscation:** Replaces string literals with volatile character arrays decrypted at runtime using distinct keys.
+
+
+* **Variable Aliasing:** Replaces scalar variables with pointer-indirection stack arrays.
+
+
+* **Control Flow Obfuscation:** Flattens execution flow into state machines using volatile variables and `goto` dispatchers.
+
+
+* **Local Context Struct Packaging:** Packages all local variables inside a single `volatile struct`.
+
+
+
+### 7. `src/ghidra_scripts/function_extractor.py`
+
+Drives Stage 1 headless Ghidra decompilation. It loads PDB symbols, imports `.gdt` type archives, ignores runtime library thunks/wrappers, applies dynamic `GetProcAddress` resolutions, and outputs extracted C function files along with a call graph mapping (`call_graph.json`).
+
+---
+
+### ⚠️ Stage 2 (`global_data`) vs. Stage 4 (`add_missing`)
+
+### Stage 2 (`global_data`)
+
+* **Primary Scope:** Extracts global variables, string constants, structure definitions, and static buffers directly from the binary's memory structures via Ghidra.
+
+
+* **Data Integrity:** Highly accurate because it derives declarations directly from defined section headers (`.data`, `.bss`) and binary symbol tables.
+
+
+
+### Stage 4 (`add_missing`)
+
+* **Primary Scope:** Performs a secondary scan of extracted `.c` source files, searching for used identifiers that were not caught during Stage 2, and attempts to resolve them against Ghidra symbols.
+
+
+* **Heuristic Reliance:** Uses regular expression heuristics to infer un-annotated memory boundaries and array limits.
+
+
+
+### Usage Recommendation & Tradeoff
+
+Do **not** run Stage 4 (`add_missing`) unless you are certain there are legitimate global variables that Ghidra failed to capture during Stage 2.
+
+* **The Tradeoff:** Decompiled pseudocode frequently contains unresolved local stack variables, compiler macros, or temporary identifiers. Running Stage 4 unnecessarily forces the pipeline to turn these unresolved local identifiers into declared globals in `data_globals.h`, introducing **significant noise**, unnecessary stub variables, and cluttered variable scopes.
 
 ## Prerequisites
 
@@ -83,6 +171,11 @@ docker compose exec ollama ollama run [the LLM of your choice]
 
 > **Model Recommendation:** I have personally used the models from WhiteRabbit and have been satisfied with their performance. If you want to try them out, go check out [WhiteRabbitNeo on Hugging Face](https://huggingface.co/WhiteRabbitNeo).
 
+
+## LLM Environment Configuration
+
+Before launching the toolchain, inspect the `.env` file created in your working directory. You must specify the exact model name of the LLM you downloaded into Ollama via the `LLM_MODEL` variable. The agents rely on this variable to route prompts to the correct local model instance.
+
 ## Usage & Human-in-The-Loop Workflow
 
 The entire pipeline is controlled via the interactive Bash wrapper.
@@ -90,7 +183,7 @@ The entire pipeline is controlled via the interactive Bash wrapper.
 1. **Launch the menu:**
 
 ```bash
-./GhidraReforger.sh
+./GhidraHush.sh
 
 ```
 
