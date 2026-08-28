@@ -116,7 +116,7 @@ Drives Stage 1 headless Ghidra decompilation. It loads PDB symbols, imports `.gd
 
 ---
 
-### ⚠️ Stage 2 (`global_data`) vs. Stage 4 (`add_missing`)
+#### ⚠️ Stage 2 (`global_data`) vs. Stage 4 (`add_missing`)
 
 ### Stage 2 (`global_data`)
 
