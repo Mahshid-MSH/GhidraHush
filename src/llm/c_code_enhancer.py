@@ -35,7 +35,8 @@ class CCodeEnhancer(BaseLLMAgent):
             r'__CheckForDebuggerJustMyCode\(&[A-Za-z0-9_]+\);': '',
             r'_RTC_CheckStackVars\(.*?\);': '',
             r'__RTC_CheckEsp\(\);': '',
-            r'__security_check_cookie\(.*?\);': ''    
+            r'__security_check_cookie\(.*?\);': '' ,
+            r'___security_cookie':''   
         }
         for pattern, replacement in replacements.items():
             c_code = re.sub(pattern, replacement, c_code)
@@ -56,8 +57,8 @@ class CCodeEnhancer(BaseLLMAgent):
         )
 
 
-    def beautify_code(self, code, callee_prototypes="", is_cpp=False, base_name="unknown", workspace_dir="."):
-        lang_name = "C++" if is_cpp else "C"
+    def beautify_code(self, code, callee_prototypes="", base_name="unknown", workspace_dir="."):
+        lang_name = "C"
         print(f"Beautifying {lang_name} code via Multi-Pass Pipeline...")
 
         # ---------------------------------------------------------
@@ -65,8 +66,6 @@ class CCodeEnhancer(BaseLLMAgent):
         # ---------------------------------------------------------
         var_rule = (
             "3. C89 STANDARD: ALL variables MUST be declared at the absolute beginning of the function block." 
-            if not is_cpp else 
-            "3. SCOPE: Declare variables near their first use, following standard C++ practices."
         )
 
         pass_1_prompt_c = f"""You are an expert C programmer. Clean up the following Ghidra pseudo-code by fixing types and variable names, while preserving the original logic and all side effects.
@@ -125,67 +124,7 @@ class CCodeEnhancer(BaseLLMAgent):
         ___C_CODE_PLACEHOLDER___
 
         """
-        pass_1_prompt_cpp = f"""You are an expert C++ programmer. Clean up the following Ghidra pseudo-code by fixing types and variable names, while preserving the original logic and all side effects.
-
-            ### STRICT RULES
-
-            1. **FUNCTION NAME & SIGNATURE**: Keep the function name exactly as provided. Do not rename it. Preserve the parameter list and return type exactly as given (after type cleanup).
-
-            2. **LOCAL VARIABLES**: Rename local variables that have Ghidra's cryptic names (e.g., `local_1c`, `uVar1`, `iVar2`) to meaningful, readable names that reflect their purpose.  
-            - A **local variable** is any variable declared inside the function body.  
-            - If a variable is used only as an intermediate step, you may inline it if it improves readability, but **never remove code that has side effects** (function calls, memory writes, etc.).
-
-            3. **C++ SCOPE**: Declare variables as close as possible to their first use, following modern C++ best practices. Do **not** force C89-style declarations.
-
-            4. **TYPE REPLACEMENT**: Use standard `<cstdint>` types: `uint8_t`, `uint16_t`, `uint32_t`, `uint64_t`, `int32_t`, etc. Replace Ghidra's `undefined`, `undefined1/2/4/8`, `long`, `ulong`, `dword`, `word`, `byte` with the appropriate `<cstdint>` type.  
-            Keep C++ standard library types (`std::string`, `std::vector`, etc.) if they appear.
-
-            5. **REMOVE CALLING CONVENTIONS & COMPILER ARTIFACTS**:
-            - Remove all `__cdecl`, `__stdcall`, `__fastcall` keywords.
-            - Remove Ghidra compiler artifacts: `ExceptionList`, `___security_cookie`, `__security_check_cookie`, `__RTC_CheckEsp`, `__RTC_CheckStackVars`, and any loop that fills stack memory with `0xcccccccc`.
-            - Delete the variables associated with those artifacts.
-
-            6. **PRESERVE LOGIC & SIDE EFFECTS**: Do **not** remove any function call, assignment, loop, condition, or memory operation. Only remove dead variables that are assigned but never used, and only if the assignment has no side effect.
-
-            7. **GLOBAL VARIABLES**: If a variable name looks like a global (e.g., `DAT_`, `s_`, or a known symbol from `data_globals.h`), keep its name **exactly**. Do not rename it, do not redeclare it locally, and do not try to resolve its value. Assume it is declared in `data_globals.h`.
-
-            8. **STRING LITERALS**: Preserve every string literal exactly as it appears. Do not replace it with a global or variable. If a string is inside a local array or passed directly to a function, keep it verbatim.
-
-            9. **C++ OBJECTS – DEFER RECONSTRUCTION**: In this pass, do **not** attempt to convert Ghidra's object representations (e.g., `basic_ifstream` with explicit `this` pointers) into idiomatic C++. Just clean the types and variable names as described above. Object reconstruction will be handled in a later pass.
-
-            10. **ONE FUNCTION ONLY**: Output only the cleaned version of the provided function. Do **not** include any other function, header, or `#include`. Do not add comments or explanations.
-
-            ### EXAMPLE
-            **INPUT (Ghidra pseudo-code)**:
-            ```cpp
-            undefined8 __stdcall FUN_140001000(undefined4 param_1)
-            {{
-                undefined8 uVar1;
-                int4 local_1c;
-                local_1c = param_1;
-                uVar1 = (ulonglong)local_1c;
-                return uVar1;
-            }}
-            ```
-            ** OUTPUT (Cleaned C++)**:
-            uint64_t FUN_140001000(uint32_t param_1)
-            {{
-                uint32_t input_val = param_1;
-                return static_cast<uint64_t>(input_val);
-            }}
-
-            ### OUTPUT FORMAT
-            Return ONLY valid C++ code wrapped in ```cpp backticks. No explanations.
-
-            ### INPUT CODE
-            ___C_CODE_PLACEHOLDER___
-            """
-        if is_cpp:
-            pass_1_prompt = pass_1_prompt_cpp
-        else:
-            pass_1_prompt = pass_1_prompt_c
-        
-        code_v1 = self._run_llm_pass(pass_1_prompt, code, "Pass_1", base_name,workspace_dir)
+        code_v1 = self._run_llm_pass(pass_1_prompt_c, code, "Pass_1", base_name,workspace_dir)
         # ---------------------------------------------------------
         # PASS 2: Pointers, Casts & API Signatures
         # ---------------------------------------------------------
@@ -194,192 +133,61 @@ class CCodeEnhancer(BaseLLMAgent):
             context_block = f"\n### KNOWN CALLEE PROTOTYPES:\nYou MUST strictly cast arguments to match these exact signatures:\n{callee_prototypes}\n"
 
         pass_2_prompt_c = f"""You are an expert C programmer. Fix memory references, pointer casts, and API calls in the following cleaned Ghidra pseudo-code.
-            ### STRICT RULES
+        
+        ### STRICT RULES
 
-            1. **POINTER RECOVERY**: If a parameter or local variable is typed as an integer (`uintptr_t`, `uint32_t`, etc.) but is used as a pointer, cast it to the appropriate pointer type. Example: `(const char *)filepath`.
+        1. **POINTER RECOVERY**: If a parameter or local variable is typed as an integer (`uintptr_t`, `uint32_t`, etc.) but is used as a pointer, cast it to the appropriate pointer type. Example: `(const char *)filepath`.
 
-            2. **ARRAY INDEXING**: Resolve complex pointer arithmetic like `(*(char *)((int64_t)j + (int64_t)Buffer))` into clean array indexing: `Buffer[j]`.
+        2. **ARRAY INDEXING**: Resolve complex pointer arithmetic into clean array indexing. If the base variable is an integer type, cast it to a pointer first. Example: `(*(char *)((int64_t)j + (int64_t)Buffer))` becomes `((char *)Buffer)[j]`.
 
-            3. **GLOBAL POINTERS**: If a numeric constant (e.g., `0x140008164`) is used as a pointer, cast it to the appropriate pointer type (e.g., `(char *)0x140008164`). Do **not** treat it as a string literal or byte string.
+        3. **GLOBAL POINTERS**: If a numeric constant (e.g., `0x140008164`) is used as a pointer, cast it to the appropriate pointer type (e.g., `(char *)0x140008164`). Do **not** treat it as a string literal or byte string.
 
-            4. **GLOBAL VARIABLES**: If a variable name looks like a global (e.g., `DAT_`, `s_`, or a known symbol from `data_globals.h`), keep its name exactly. Do **not** replace it with a hardcoded string or number. Assume it is defined in `data_globals.h` and `data_globals.c`.
+        4. **GLOBAL VARIABLES**: If a variable name looks like a global (e.g., `DAT_`, `s_`, or a known symbol from `data_globals.h`), keep its name exactly. Do **not** replace it with a hardcoded string or number. Assume it is defined in `data_globals.h` and `data_globals.c`.
 
-            5. **STRING LITERALS**: Preserve every string literal exactly as it appears in the input. Do **not** replace a local string literal with a global variable. If a string is a global (e.g., `s_some_string`), keep the variable name.
+        5. **STRING LITERALS**: Preserve every string literal exactly as it appears in the input. Do **not** replace a local string literal with a global variable. If a string is a global (e.g., `s_some_string`), keep the variable name.
 
-            6. **CONST CORRECTNESS**: When a string literal is assigned to a pointer, use `const char *`. Example: `const char *msg = "Hello";`.
+        6. **CONST CORRECTNESS**: When a string literal is assigned to a pointer, use `const char *`. Example: `const char *msg = "Hello";`.
 
-            7. **FUNCTION POINTERS**: If a global variable is called as a function (e.g., `(*DAT_140001000)(...)`), cast it to the correct function pointer type before calling. Use the known callee prototypes provided below if available.
+        7. **FUNCTION POINTERS**: If a global variable is called as a function (e.g., `(*DAT_140001000)(...)`), cast it to the correct function pointer type before calling. Example: `((void (*)(int))DAT_140001000)(5);`. Use the known callee prototypes provided below if available.
 
-            8. **API CALLS**: Ensure that all arguments to library/API functions are of the correct type. Cast pointers as needed to match the function signature. If a known callee prototype is provided, adhere to it strictly.
-
+        8. **API CALLS**: Ensure that all arguments to library/API functions are of the correct type. Cast pointers as needed to match the function signature. If a known callee prototype is provided, adhere to it strictly.
             {context_block}
+        9. **ONE FUNCTION ONLY**: Output only the cleaned version of the provided function. Do **not** include any other function, header, or `#include`. Do not add conversational text or explanations.
 
-            9. **ONE FUNCTION ONLY**: Output only the cleaned version of the provided function. Do **not** include any other function, header, or `#include`. Do not add comments or explanations.
+        ### EXAMPLE
 
-            ### EXAMPLE
+        **INPUT (Messy Pointer Casts & Integer APIs)**:
+        ```c
+        void process_file(uintptr_t filepath, uintptr_t buffer)
+        {{
+            int i = 0;
+            FILE *fp = fopen(filepath, "rb");
+            (*(char *)((int64_t)i + (int64_t)buffer)) = 'A';
+        }}
+        ```
 
-            **INPUT (Messy Pointer Casts & Integer APIs)**:
-            ```c
-            void process_file(uintptr_t filepath, uintptr_t buffer)
-            {{
-                int i = 0;
-                FILE *fp = fopen(filepath, "rb");
-                (*(char *)((int64_t)i + (int64_t)buffer)) = 'A';
-            }}
-            **OUTPUT (Clean Pointer Recoveries & Array Indexing)**:
+        **OUTPUT (Clean Pointer Recoveries & Array Indexing)**:
+        ```c
+        void process_file(uintptr_t filepath, uintptr_t buffer)
+        {{
+            int i = 0;
+            FILE *fp = fopen((const char *)filepath, "rb");
+            ((char *)buffer)[i] = 'A';
+        }}
+        ```
 
-            void process_file(uintptr_t filepath, uintptr_t buffer)
-            {{
-                int i = 0;
-                FILE *fp = fopen((const char *)filepath, "rb");
-                ((char *)buffer)[i] = 'A';
-            }}
-            ```
-            ### OUTPUT FORMAT
-            Return ONLY valid C code wrapped in ```c backticks. No explanations.
+        ### OUTPUT FORMAT
+        Return ONLY valid C code wrapped in ```c backticks. No explanations.
 
-            ### INPUT CODE
-            ___C_CODE_PLACEHOLDER___
-            """
-        pass_2_prompt_cpp = f"""You are an expert C++ programmer. Fix memory references, pointer casts, and API calls in the following cleaned Ghidra pseudo-code.
-
-            ### STRICT RULES
-
-            1. **POINTER RECOVERY**: If a parameter or local variable is typed as an integer (`uintptr_t`, `uint32_t`, etc.) but is used as a pointer, cast it to the appropriate pointer type using `static_cast` or `reinterpret_cast`. Example: `reinterpret_cast<const char *>(filepath)`.
-
-            2. **ARRAY INDEXING**: Resolve complex pointer arithmetic like `(*(char *)((int64_t)j + (int64_t)Buffer))` into clean array indexing: `Buffer[j]`.
-
-            3. **GLOBAL POINTERS**: If a numeric constant (e.g., `0x140008164`) is used as a pointer, cast it to the appropriate pointer type (e.g., `reinterpret_cast<char *>(0x140008164)`). Do **not** treat it as a string literal or byte string.
-
-            4. **GLOBAL VARIABLES**: If a variable name looks like a global (e.g., `DAT_`, `s_`, or a known symbol from `data_globals.h`), keep its name exactly. Do **not** replace it with a hardcoded string or number. Assume it is defined in `data_globals.h` and `data_globals.c`.
-
-            5. **STRING LITERALS**: Preserve every string literal exactly as it appears in the input. Do **not** replace a local string literal with a global variable. If a string is a global (e.g., `s_some_string`), keep the variable name.
-
-            6. **CONST CORRECTNESS**: When a string literal is assigned to a pointer, use `const char *`. Example: `const char *msg = "Hello";`.
-
-            7. **FUNCTION POINTERS**: If a global variable is called as a function (e.g., `(*DAT_140001000)(...)`), cast it to the correct function pointer type before calling. Use the known callee prototypes provided below if available.
-
-            8. **API CALLS**: Ensure that all arguments to library/API functions are of the correct type. Use `static_cast` or `reinterpret_cast` as necessary to match the function signature. If a known callee prototype is provided, adhere to it strictly.
-
-                {context_block}
-
-            9. **ONE FUNCTION ONLY**: Output only the cleaned version of the provided function. Do **not** include any other function, header, or `#include`. Do not add comments or explanations.
-
-            ### EXAMPLE
-
-            **INPUT (Messy Pointer Casts & Integer APIs)**:
-            ```cpp
-            void process_file(uintptr_t filepath, uintptr_t buffer)
-            {{
-                int i = 0;
-                FILE *fp = fopen(filepath, "rb");
-                (*(char *)((int64_t)i + (int64_t)buffer)) = 'A';
-            }}
-
-            **OUTPUT (Clean Pointer Recoveries & Array Indexing)**:
-            void process_file(uintptr_t filepath, uintptr_t buffer)
-            {{
-                int i = 0;
-                FILE *fp = fopen(reinterpret_cast<const char *>(filepath), "rb");
-                reinterpret_cast<char *>(buffer)[i] = 'A';
-            }}
-
-            ### OUTPUT FORMAT
-            Return ONLY valid C++ code wrapped in ```cpp backticks. No explanations.
-            
-            ### INPUT CODE
-            ___C_CODE_PLACEHOLDER___
-            """
-        if is_cpp:
-            pass_2_prompt = pass_2_prompt_cpp
-        else:
-            pass_2_prompt = pass_2_prompt_c
-        code_v2 = self._run_llm_pass(pass_2_prompt, code_v1, "Pass_2", base_name,workspace_dir)
+        ### INPUT CODE
+        ___C_CODE_PLACEHOLDER___
+        """
+        code_v2 = self._run_llm_pass(pass_2_prompt_c, code_v1, "Pass_2", base_name, workspace_dir)
 
         # ---------------------------------------------------------
         # PASS 3: Control Flow, Classes & Final Header
         # ---------------------------------------------------------
-        if is_cpp:
-            pass_3_prompt_cpp = f"""You are an expert C++ reverse engineer. You will receive Ghidra pseudo-code. Convert it into clean, standard C++ that compiles with MSVC or GCC.
-
-            ### HARD REQUIREMENTS
-
-            1. COMPILABLE OUTPUT
-            Your code must be valid C++17. It will be compiled immediately.
-            Any line that is not standard C++ is a failure.
-
-            2. NO GHIDRA / COMPILER ARTIFACTS
-            The following MUST NOT appear anywhere in your output:
-            - __autoclassinit2
-            - _vbase_destructor_
-            - CONCAT44 / CONCAT31 / CONCATxx
-            - local_X._0_1_, local_X._1_3_, etc.
-            - ExceptionList
-            - __security_cookie / __security_check_cookie
-            - __RTC_CheckEsp / __RTC_CheckStackVars
-            - LAB_ labels and goto
-            - Loops that fill stack memory with 0xcccccccc
-
-            3. C++ OBJECT RECONSTRUCTION
-            Ghidra often represents C++ objects as huge stack arrays and passes `this` explicitly.
-            You must convert them back to normal C++ objects.
-
-            If you see:
-                basic_ifstream<char, std::char_traits<char>> local_d0[188];
-                std::basic_ifstream<...>::__autoclassinit2(local_d0, 0xb8);
-                std::basic_ifstream<...>::basic_ifstream(local_d0, param_1, flags);
-
-            Replace it with:
-                std::ifstream local_d0(param_1, flags);
-
-            If you see:
-                std::basic_ifstream<...>::close(local_d0);
-
-            Replace it with:
-                local_d0.close();
-
-            4. INCLUDE HEADERS CORRECTLY
-            The first line must be:
-                #include "data_globals.h"
-            Then add standard headers as needed (e.g., <fstream>, <iostream>, <cstring>, <cstdint>).
-
-            5. GLOBAL VARIABLES
-            All global variables, arrays, and strings are declared in data_globals.h. Do NOT redeclare them. Use them directly by name.
-
-            6. PRESERVE BEHAVIOR
-            - If the original file operation used binary mode, add std::ios::binary.
-            - Keep explicit read/write sizes correct. Do NOT use decompiler constants like 0x416ba7 as sizes.
-
-            7. STRICT SCOPE / NO EXTRA FUNCTIONS
-            You are processing ONE single function. Do NOT include, repeat, define, or reference any other functions not explicitly present in the INPUT CODE.
-
-            ### EXAMPLE TRANSFORMATION
-
-            // INPUT (Decompiled C++ with explicit this pointers):
-                std::basic_ifstream<char,std::char_traits<char>> local_d0[188];
-                std::basic_ifstream<...>::__autoclassinit2(local_d0, 0xb8);
-                std::basic_ifstream<...>::basic_ifstream(local_d0, param_1, 0x21, 0x40);
-                std::basic_istream<...>::seekg((basic_istream<...>*)local_d0, 0, 2);
-                std::basic_istream<...>::read((basic_istream<...>*)local_d0, Buffer, size);
-                std::basic_ifstream<...>::close(local_d0);
-
-            // OUTPUT (Idiomatic C++17):
-                std::ifstream local_d0(param_1, std::ios::binary);
-                local_d0.seekg(0, std::ios::end);
-                size_t size = static_cast<size_t>(local_d0.tellg());
-                local_d0.seekg(0, std::ios::beg);
-                char *Buffer = (char*)malloc(size);
-                local_d0.read(Buffer, size);
-                local_d0.close();
-
-            ### OUTPUT FORMAT
-            Return ONLY valid C++ code wrapped in ```cpp backticks. No explanations.
-
-            ### INPUT CODE:
-            ___C_CODE_PLACEHOLDER___
-            """
-        else:
-            pass_3_prompt_c = f"""You are an expert C reverse engineer. You will receive Ghidra pseudo-code. Convert it into clean, standard C (C99/C11) that compiles with MSVC or GCC.
+        pass_3_prompt_c = f"""You are an expert C reverse engineer. You will receive Ghidra pseudo-code. Convert it into clean, standard C (C99/C11) that compiles with MSVC or GCC.
 
                 ### HARD REQUIREMENTS
                 1. **COMPILABLE OUTPUT**
@@ -393,7 +201,7 @@ class CCodeEnhancer(BaseLLMAgent):
                 - `CONCAT44` / `CONCAT31` / `CONCATxx`
                 - `local_X._0_1_`, `local_X._1_3_`, `local_X._2_1_`, etc.
                 - `ExceptionList`
-                - `__security_cookie` / `__security_check_cookie`
+                - `__security_cookie` / `__security_check_cookie`, '___security_cookie'
                 - `__RTC_CheckEsp` / `__RTC_CheckStackVars`
                 - `LAB_` labels and `goto` statements (resolve into standard `while`/`for` loops or `if`/`else` blocks)
                 - Loops that fill stack memory with `0xcccccccc` (remove them entirely)
@@ -476,6 +284,7 @@ class CCodeEnhancer(BaseLLMAgent):
                     }}
                     return obj;
                 }}
+                ```
 
                 ### OUTPUT FORMAT
                 Return ONLY valid C code wrapped in ```c backticks. No explanations.
@@ -483,12 +292,7 @@ class CCodeEnhancer(BaseLLMAgent):
                 ### INPUT CODE
                 ___C_CODE_PLACEHOLDER___
                 """
-                            
-        if is_cpp:
-            pass_3_prompt = pass_3_prompt_cpp
-        else:
-            pass_3_prompt = pass_3_prompt_c
-        final_code = self._run_llm_pass(pass_3_prompt, code_v2, "Pass_3", base_name,workspace_dir)
+        final_code = self._run_llm_pass(pass_3_prompt_c, code_v2, "Pass_3", base_name,workspace_dir)
         if not final_code:
             final_code = code_v2
         print("  -> Beautification complete.")
@@ -509,14 +313,14 @@ class CCodeEnhancer(BaseLLMAgent):
         return None
 
     def find_code_files(self, directory):
-        """Recursively find all .c and .cpp files in the specified directory."""
+        """Recursively find all .c and files in the specified directory."""
         code_files = []
         if not os.path.exists(directory):
             return code_files
             
         for root, _, files in os.walk(directory):
             for file in files:
-                if file.endswith((".c", ".cpp")):
+                if file.endswith((".c")):
                     code_files.append(os.path.join(root, file))
         
         code_files.sort()
@@ -546,14 +350,27 @@ class CCodeEnhancer(BaseLLMAgent):
         
         # Fetch known prototypes for functions called by this file
         callee_prototypes_str = ""
-        if call_graph and base_name in call_graph:
+        if call_graph:
             db = SymbolDB(workspace_dir=workspace_dir)
             with db._get_conn() as conn:
                 cursor = conn.cursor()
                 prototypes = []
-                for callee in call_graph[base_name]:
-                    # call_graph format is "funcName_Address", we need just "funcName"
-                    clean_callee = callee.split('_')[0] 
+
+                # Find callees matching base_name using normalized caller lookup
+                callees_for_base = []
+                for raw_caller, callees in call_graph.items():
+                    clean_caller = raw_caller.replace('@', '_')
+                    if re.search(r'_[0-9a-fA-F]{6,}$', clean_caller):
+                        clean_caller = clean_caller.rsplit('_', 1)[0]
+                    if clean_caller == base_name:
+                        callees_for_base = callees
+                        break
+
+                for callee in callees_for_base:
+                    clean_callee = callee.replace('@', '_')
+                    if re.search(r'_[0-9a-fA-F]{6,}$', clean_callee):
+                        clean_callee = clean_callee.rsplit('_', 1)[0]
+                        
                     cursor.execute("SELECT return_type, name, parameters FROM functions WHERE name = ?", (clean_callee,))
                     row = cursor.fetchone()
                     if row:
@@ -561,13 +378,12 @@ class CCodeEnhancer(BaseLLMAgent):
                 callee_prototypes_str = "\n".join(prototypes)
 
 
-        is_cpp = file_path.endswith(".cpp")
         cleaned_code = self.pre_process_ghidra_types(original_code)
-        result = self.beautify_code(cleaned_code, callee_prototypes_str, is_cpp=is_cpp, base_name=base_name, workspace_dir=workspace_dir)          
+        result = self.beautify_code(cleaned_code, callee_prototypes_str, base_name=base_name, workspace_dir=workspace_dir)          
         prototype = self.extract_prototype(result)
         self.append_prototype_to_header(prototype, header_path=header_path, workspace_dir=workspace_dir)
         
-        ext = ".cpp" if is_cpp else ".c"
+        ext = ".c"
         beautified_path = os.path.join(output_dir, f"{base_name}{ext}")
         with open(beautified_path, 'w', encoding='utf-8') as f:
             f.write(result)
@@ -577,8 +393,8 @@ class CCodeEnhancer(BaseLLMAgent):
     
     def process_directory(self, input_dir, workspace_dir):
         """Gathers all .c files, runs batch LLM triage, and beautifies in bottom-up order."""
-        import graphlib # Ensure this is imported at the top of llm_processor.py
-        
+        import graphlib
+
         found_files = self.find_code_files(input_dir)
         if not found_files:
             print(f"No .c files found in {input_dir}")
@@ -587,24 +403,38 @@ class CCodeEnhancer(BaseLLMAgent):
         file_map = {os.path.splitext(os.path.basename(f))[0]: f for f in found_files}
         func_names = list(file_map.keys())
 
-        # Load call graph generated by extract_functions.py
         graph_path = os.path.join(input_dir, "call_graph.json")
         call_graph = {}
         if os.path.exists(graph_path):
             with open(graph_path, "r", encoding="utf-8") as f:
                 call_graph = json.load(f)
-        # Batch Triage
-        #triage_results = self.triage_function_names(func_names)
+
         db = SymbolDB(workspace_dir=workspace_dir)
         results = []
-        # Create a Directed Graph for Topological Sort
+
+        # Helper function to normalize Ghidra/assembly symbol names
+        def normalize_func_name(name):
+            clean = name.replace('@', '_')
+            if re.search(r'_[0-9a-fA-F]{6,}$', clean):
+                clean = clean.rsplit('_', 1)[0]
+            return clean
+
+        # Create Directed Graph for Topological Sort
         ts = graphlib.TopologicalSorter()
-        for caller, callees in call_graph.items():
+
+        for raw_caller, callees in call_graph.items():
+            caller = normalize_func_name(raw_caller)
             if caller in file_map:
-                # Strip address hashes from callee names to match file_map keys
-                clean_callees = {c.split('_')[0] for c in callees if c.split('_')[0] in file_map}
+                clean_callees = set()
+                for c in callees:
+                    clean_c = normalize_func_name(c)
+                    # Include only if present in file_map and NOT a self-reference
+                    if clean_c in file_map and clean_c != caller:
+                        clean_callees.add(clean_c)
+                
                 ts.add(caller, *clean_callees)
-        # Add any disconnected nodes (files without outgoing/incoming tracked calls)
+
+        # Add any disconnected files
         for f_name in func_names:
             if f_name not in call_graph:
                 ts.add(f_name)
@@ -621,22 +451,13 @@ class CCodeEnhancer(BaseLLMAgent):
             if func_name not in file_map:
                 continue    
             file_path = file_map[func_name]
-            #decision = triage_results.get(func_name, "PROCESS").upper()
-            #if decision == "IGNORE":
-            #    print(f"Triage: Skipping CRT/Boilerplate function '{func_name}'")
-             #   db.remove_function(func_name)
-              #  results.append({
-               #     'original': file_path,
-                #    'status': 'ignored_library_function'
-               # })
-               # continue
-            # Beautify passing the call graph for context injection
             res = self.process_function_file(file_path, workspace_dir, call_graph=call_graph)
             results.append(res)
+            
         return results
 
 
-if __name__ == "__main__":
+if __name__ == "__main__": # -> it is used inside the bash script
     parser = argparse.ArgumentParser(description="Beautify C function files using Ollama with LLM Triage.")
     parser.add_argument("input_path", help="Path to a single .c file OR a directory containing .c files")
     parser.add_argument("--workspace", default=".", help="Workspace directory for SymbolDB and headers")
