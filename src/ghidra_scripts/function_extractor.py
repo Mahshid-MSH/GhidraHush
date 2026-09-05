@@ -20,8 +20,43 @@ from ghidra.program.model.symbol import SourceType
 # Keywords that override all filters. If a function name contains these, it will be extracted.
 TARGET_EXCEPTIONS = ["winmain", "entry"]
 
-# Prefixes that should cause a function to be ignored if they appear at the start of the name
-IGNORED_PREFIXES = ("unwind","~","___scrt","__","mingw","Ordinal")
+IGNORED_PREFIXES = (
+
+    "unwind", "~", "___scrt", "__", "mingw", "Ordinal",
+    "strcmp", "strcpy", "strlen", "strstr", "strncmp",
+    "WinMainCRTStartup", "memset", "wcsnlen", "mbsrtowcs", "wcsrtombs",
+
+    # --- Standard C Library: String Operations ---
+    "strcat", "strncat", "strncpy", "strchr", "strrchr", "strtok", 
+    "strcspn", "strspn", "strpbrk", "strspn", "strcasecmp", "strncasecmp",
+    "wcscpy", "wcsncpy", "wcscat", "wcsncat", "wcscmp", "wcsncmp", 
+    "wcslen", "wcsstr", "wcschr", "wcsrchr", "wcscasecmp", "wcsncasecmp",
+
+    # --- Standard C Library: Memory Operations ---
+    "memcpy", "memmove", "memcmp", "memchr", "bzero", "bcopy", "bcmp",
+
+    # --- Standard C Library: Dynamic Memory & Conversions ---
+    "malloc", "calloc", "realloc", "free", 
+    "atoi", "atol", "atoll", "atof", "strtol", "strtoul", "strtod","atexit",
+
+    # --- Standard C Library: I/O & Formatting ---
+    "printf", "fprintf", "sprintf", "snprintf", "vprintf", "vfprintf", "abort","atexit",
+    "vsprintf", "vsnprintf", "scanf", "fscanf", "sscanf", "atoi","calloc","dtoa_lock",
+    "fopen", "fclose", "fread", "fwrite", "fseek", "ftell", "dtoa_lock_cleanup",
+    "puts", "gets", "fgets", "fputs", "putchar", "getchar", "FindPESection","fprintf",
+    # --- MSVC / Universal CRT Startup & Internals ---
+    "mainCRTStartup", "wmainCRTStartup", "wWinMainCRTStartup", "DllMainCRTStartup","strchr","signal",
+    "_initterm", "_initterm_e", "_cexit", "_exit", "exit", "abort","localconv","mbrlen","memset",
+    "__security_init_cookie", "__security_check_cookie","init_codepage_func",
+    "_seh_filter_exe", "_seh_filter_dll", 
+    "_configure_wide_argv", "_configure_narrow_argv",
+    "_initialize_narrow_environment", "_initialize_wide_environment",
+    "__acrt_iob_func", "__stdio_common_vfprintf", "__stdio_common_vsprintf",
+    "_amsg_exit", "_get_initial_narrow_environment", "_get_initial_wide_environment",
+
+    # --- Compiler Linker Artifacts & Mangling Prefixes ---
+    "_imp__", "__imp_", "??", "@"
+)
 
 def extract_functions(file_path, workspace_dir):
     output_dir = os.path.join(workspace_dir, "extracted_functions")
@@ -39,7 +74,7 @@ def extract_functions(file_path, workspace_dir):
         with pyghidra.open_project(tmpdir, "GhidraHush_Tmp", create=True) as project:
             loader = pyghidra.program_loader().project(project).source(file_path)
             with loader.load() as load_results:
-                load_results.save(TaskMonitor.DUMMY)
+                load_results.save(TaskMonitor.DUMMY) # -> This one is done to make sure that monitoring wont cancel if it is taking too long
 
             program_path = f"/{base_name}"
             with pyghidra.program_context(project, program_path) as program:
@@ -51,7 +86,6 @@ def extract_functions(file_path, workspace_dir):
                     options.setBoolean("Function ID", True)
                     options.setBoolean("Demangler MSVC", True) # For Windows binaries
                     options.setBoolean("Demangler GNU", True)  # For GCC/MinGW binaries
-                    options.setBoolean("Windows x86 PE RTTI Analyzer", True) # Run-Time Type Information (RTTI) helps Ghidra reconstruct C++ class
                     options.setBoolean("Windows PE x86 x64 Exception Handling", True) # for exception handling
                     options.setBoolean("ASCII Strings", True)
                     if options.contains("Decompiler Parameter ID.Timeout (secs)"):
@@ -70,7 +104,61 @@ def extract_functions(file_path, workspace_dir):
                 print(f"Analyzing {file_path}...")
                 pyghidra.analyze(program)
 
-                # --- Load All Custom GDT Archives Automatically ---
+                # FIX COMPILER HELPER FUNCTIONS ---   -> This stage should take place right after the analysis is done. 
+
+                # ----------------- Explanation about what we are trying to do:(just in case you are curious :) ) -------------------------------------
+
+                #After Ghidra finishes analyzing the binary, this code tries to clean up certain compiler-generated helper functions so that the decompiled code becomes more correct.
+
+                # When Ghidra sees these functions in a compiled binary, it may interpret them as ordinary functions.
+
+                # 1. __chkstk (stack probing/allocation) -> The operating system doesn't necessarily want a program to suddenly jump the stack pointer down by 100 KB. 
+                # So the compiler may generate code that touches the stack gradually.
+
+                # 2.__alloca_probe (dynamic stack allocation) -> this is for when the size isn't necessarily known at compile time. So the compiler needs special machinery to adjust the stack safely.
+                # 3.__security_check_cookie (buffer overflow protection) -> This MF is responsible for the canary stuff. The lord of the nightmares.
+                print("Applying Call Fixups and patching MinGW stack probes...")
+                tx_helpers = program.startTransaction("Fix Compiler Helpers")
+                try:
+                    fm = program.getFunctionManager()
+                    mem = program.getMemory() # This lets you read/write bytes in the program's memory representation
+                    listing = program.getListing() # This gives you access to instructions, code units, data, bluh bluh
+                    ref_mgr = program.getReferenceManager() # This helps you find references to things
+
+                    for func in fm.getFunctions(True):
+                        func_name = func.getName().lower()
+                        
+                        # 1. MinGW Stack Probes: NOP out call sites so EAX (allocation size) is preserved
+                        if "chkstk_ms" in func_name:
+                            func.setInline(False)
+                            func.setCallFixup(None)
+                            
+                            entry_point = func.getEntryPoint()
+                            for ref in ref_mgr.getReferencesTo(entry_point):
+                                if ref.getReferenceType().isCall():
+                                    call_addr = ref.getFromAddress()
+                                    inst = listing.getInstructionAt(call_addr)
+                                    if inst:
+                                        length = inst.getLength() # find how many bytes the CALL occupies
+                                        listing.clearCodeUnits(call_addr, call_addr.add(length - 1), False) # What is this doing? It wants to remove ghidra's current instruction/code-unit interpretation for these bytes
+                                        mem.setBytes(call_addr, b'\x90' * length)  # the hexadecimal opcode for the NOP
+                                        # By overwriting the 5-byte CALL instruction with 5 NOP instructions, we are "patching out" the function call. 
+                                        # Why do we have to fill it with NOP? MinGW calling convention is in a way that helper may receive information in a register such as EAX.
+                                        # So, If you remove the helper call, you avoid the helper modifying registers in a way that confuses the reverse-engineered code.
+                        # MSVC Stack Allocators: Apply MSVC fixup
+                        elif "chkstk" in func_name or "alloca_probe" in func_name:
+                            func.setInline(False)
+                            func.setCallFixup("__chkstk")
+                        
+                        # Security Cookie Checks: Force inline
+                        elif "security_check_cookie" in func_name:
+                            func.setInline(True)
+                            
+                finally:
+                    program.endTransaction(tx_helpers, True)
+                # --------------------------------------------------
+
+                # Load All Custom GDT Archives Automatically ---
                 gdt_dir = os.path.abspath("gdt_archives")
                 program_dtmgr = program.getDataTypeManager()
                 gdt_files = glob.glob(os.path.join(gdt_dir, "*.gdt"))
@@ -78,7 +166,7 @@ def extract_functions(file_path, workspace_dir):
                 if gdt_files:
                     print(f"Found {len(gdt_files)} custom GDT archive(s). Loading into program context...")
                     
-                    # Start a transaction before modifying the program's data types
+                    # Start a transaction before modifying the program's data types -> I did this because otherwise all the modifications would be lost
                     tx_gdt = program.startTransaction("Load GDT Archives")
                     try:
                         for gdt_path in gdt_files:
@@ -89,12 +177,10 @@ def extract_functions(file_path, workspace_dir):
                                 program_dtmgr.addDataType(dt, None)
                             gdt_mgr.close()
                     finally:
-                        # Commit the changes
                         program.endTransaction(tx_gdt, True)
                 else:
                     print(f"No custom GDT archives found in {gdt_dir}. Proceeding with default types.")
-                # --------------------------------------------------
-
+                #-------------------------------------------------------------------------------------- Decompilation starts from here --------------------------------------------------
                 # Decompiler setup
                 decomp_options = DecompileOptions()
                 decomp_options.setMaxPayloadMBytes(1024)   
@@ -102,7 +188,7 @@ def extract_functions(file_path, workspace_dir):
                 decompiler.setOptions(decomp_options)
                 decompiler.openProgram(program)
 
-                # --- RUN GETPROCADDRESS TYPE RESOLVER PASS ---
+                # RUN GETPROCADDRESS TYPE RESOLVER PASS --- => Some malwares use getProcAddr instead of directly calling
                 print("Running dynamic API function pointer resolver...")
                 target_funcs = resolve_getprocaddress_types(program, decompiler)
 
@@ -114,10 +200,21 @@ def extract_functions(file_path, workspace_dir):
                 all_functions = list(function_manager.getFunctions(True))
                 print(f"Total functions in binary: {len(all_functions)}. Applying signature and name filters...")
 
+                # Get the Memory Manager for the current program ---
+                memory = program.getMemory()
+
                 extracted_data = []
                 binary_has_cpp = False
 
                 for function in all_functions:
+                    # Filter out functions in non-executable memory blocks ---
+                    entry_point = function.getEntryPoint()
+                    memory_block = memory.getBlock(entry_point)
+                    
+                    # If the memory block doesn't exist, or is NOT marked as executable (e.g. .pdata), skip it
+                    if memory_block is None or not memory_block.isExecute():
+                        continue
+
                     clean_name = function.getName()
                     lower_name = clean_name.lower()
 
@@ -126,7 +223,7 @@ def extract_functions(file_path, workspace_dir):
                     if not is_exception:
                         if lower_name.startswith(IGNORED_PREFIXES):
                             continue
-                    # Skip standard Thunks or Externals immediately
+                    # FILTER 2: Skip standard Thunks or Externals immediately
                     if not is_exception and (function.isExternal() or function.isThunk()):
                         continue
                     # Decompile the function
@@ -139,27 +236,32 @@ def extract_functions(file_path, workspace_dir):
                     if c_code == "Decompilation failed!":
                         continue
                     if not is_exception:
-                        # FILTER 2: Basic Library Strings 
-                        if "/* Library Function" in c_code:
+                        # FILTER 3: Basic Library Strings 
+                        if "/* Library Function" in c_code: # -> ghidra will put comment on functions it assumes are library functions
                             continue         
-                        # FILTER 3: Thin wrappers/thunks (e.g. /* fwrite */) 
-                        if f"/* {clean_name} */" in c_code:
-                            continue
-                        # FILTER 4: The Header & Prototype Check 
-                        header_block = c_code.split('{', 1)[0]
-                        if "std::" in header_block or "__thiscall" in header_block:
-                            continue
+
+                    # --- C++ DETECTION PASS ---
+                    if not binary_has_cpp:
+                        full_name = function.getName(True) # Retrieves full namespace path (e.g., Class::Method)
+                        if "::" in full_name or clean_name.startswith("~"):
+                            binary_has_cpp = True
+                        elif re.search(r'\b(__thiscall|operator new|operator delete)\b', c_code):
+                            binary_has_cpp = True
+
                     # Populate the call graph
                     call_graph[clean_name] = [
                         f"{c.getName()}_{c.getEntryPoint().toString()}"
                         for c in function.getCalledFunctions(TaskMonitor.DUMMY)
                     ]
-                    # Detect C++ structures
-                    if "std::" in c_code:
-                        binary_has_cpp = True
 
                     extracted_data.append((clean_name, c_code))
+
+                # Dynamic extension selection based on C++ detection
                 file_ext = ".cpp" if binary_has_cpp else ".c"
+                if binary_has_cpp:
+                    print("C++ indicators detected in decompiled functions. Exporting all files as .cpp...")
+                else:
+                    print("No C++ artifacts detected. Exporting all files as .c...")
 
                 for clean_name, c_code in extracted_data:
                     safe_name = "".join(
