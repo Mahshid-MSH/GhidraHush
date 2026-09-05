@@ -194,7 +194,7 @@ After Stage 1 completes, navigate to `workspace/run_X/extracted_functions/`. You
 
 ## Workflow
 
-![GhidraHush Logo](assets/workflow_new.png)
+![GhidraHush Logo](assets/Workflow_new.png)
 
 
 ## Pipeline Stages Detail
