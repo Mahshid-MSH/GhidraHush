@@ -3,6 +3,7 @@ import pyghidra
 import re
 import warnings
 import struct
+import jpype
 from database.symbol_db import SymbolDB
 from ghidra.program.model.data import Array, Pointer, Structure, Union, Enum, TypeDef, ArrayDataType, ByteDataType
 from ghidra.program.model.symbol import SourceType
@@ -28,6 +29,75 @@ def sanitize_c_name(name):
         name = '_' + name
     return name
 
+NOISE_TYPE_EXACT_NAMES = ("LIST_ENTRY", "RTL_CRITICAL_SECTION_DEBUG")
+
+def is_noise_type_name(raw_name):
+    """
+    True for well-known Windows/PE internal type names that add bulk to the
+    header without adding malware-analysis value (PE structs, TEB/PEB debug
+    plumbing, etc). Matched on the *unsanitized* Ghidra name, stripping
+    leading underscores first, since WinAPI struct tags are conventionally
+    underscore-prefixed (e.g. '_IMAGE_SECTION_HEADER', '_LIST_ENTRY') -- a
+    plain `.startswith("IMAGE_")` check misses those entirely.
+
+    Note this deliberately does NOT blacklist RTL_CRITICAL_SECTION /
+    CRITICAL_SECTION themselves -- only their internal DebugInfo plumbing --
+    since CRITICAL_SECTION commonly shows up as a real, meaningful global.
+    """
+    if not raw_name:
+        return False
+    bare = raw_name.lstrip('_')
+    if bare.startswith("IMAGE_"):
+        return True
+    if bare in NOISE_TYPE_EXACT_NAMES:
+        return True
+    return False
+
+def is_likely_real_text(data):
+    """Sanity-check a Ghidra string-ish type actually decoded as real text
+    before trusting getValue() -- U+FFFD means Ghidra's decoder had to
+    invent characters, i.e. this was never real text."""
+    dt_name = data.getDataType().getName().lower()
+    if not ('string' in dt_name or 'unicode' in dt_name):
+        return False  # plain char[]/char array -- never trust as text
+    raw = data.getValue()
+    if raw is None:
+        return False
+    s = str(raw)
+    if '\ufffd' in s:
+        return False
+    # decoded text much shorter than the declared buffer -> binary with
+    # embedded NULs, not a real string
+    decl_len = data.getLength()
+    if decl_len > 4 and len(s) < decl_len * 0.5:
+        return False
+    return True
+
+def read_memory_bytes(addr, size, program):
+    """
+    Robustly reads `size` raw bytes from the program's memory image at
+    `addr`, returning a Python `bytes` object, or None if they genuinely
+    can't be read.
+
+    Memory.getBytes(Address, byte[]) is a Java method that wants a real
+    Java byte[]. Handing it a plain Python bytearray through pyghidra/JPype
+    is NOT guaranteed to marshal correctly, and both call sites that used
+    to do this wrapped the call in a bare `except: pass` -- so any
+    marshaling failure was silently swallowed and fell straight through to
+    a hard-coded "{ 0 }", which is almost certainly why previously-zeroed
+    buffers stayed zero even after being sized correctly. Building an
+    explicit JPype byte[] via jpype.JArray(jpype.JByte) is the reliable way
+    to call this API, and printing on failure means a real problem won't
+    silently masquerade as "this memory is just zero".
+    """
+    try:
+        jbuf = jpype.JArray(jpype.JByte)(size)
+        program.getMemory().getBytes(addr, jbuf)
+        return bytes(b & 0xFF for b in jbuf)
+    except Exception as e:
+        print(f"  [warn] failed to read {size} byte(s) at {addr}: {e}")
+        return None
+
 def is_string_data(data):
     if not data or not data.isDefined():
         return False
@@ -49,7 +119,21 @@ def parse_ghidra_type_and_dim(dt):
         underlying = dt.getDataType()
         if underlying is None or underlying.getName().lower() == "default":
             return "void" + ptr_str, dim_str
+        if is_noise_type_name(underlying.getName()):
+            # e.g. PIMAGE_SECTION_HEADER, PRTL_CRITICAL_SECTION_DEBUG -- keep
+            # the pointer, drop the dependency on the noisy pointee type.
+            return "void" + ptr_str, dim_str
         dt = underlying
+
+    if isinstance(dt, (Structure, Union, Enum, TypeDef)) and is_noise_type_name(dt.getName()):
+        # Embedded by value (not by pointer): preserve the exact byte size
+        # so struct layout/offsets downstream stay correct, but don't pull
+        # in (or generate a typedef for) the noisy type itself.
+        try:
+            size = max(dt.getLength(), 1)
+        except Exception:
+            size = 1
+        return "uint8_t", dim_str + f"[{size}]"
 
     if isinstance(dt, (Structure, Union, Enum, TypeDef)):
         c_type = sanitize_c_name(dt.getName())
@@ -80,8 +164,8 @@ def is_unneeded_data(data, symbol, program):
         dt = data.getDataType()
         dt_name = dt.getName()
             
-        # Skip PE Structs by Data Type Name
-        if dt_name.startswith("IMAGE_"):
+        # Skip PE Structs by Data Type Name (handles '_IMAGE_...'-style tags too)
+        if is_noise_type_name(dt_name):
             return True
 
     if symbol:
@@ -114,6 +198,13 @@ def extract_and_store_type(dt, db, seen_types):
     while isinstance(dt, (Pointer, Array)):
         dt = dt.getDataType()
         if dt is None: return
+
+    if is_noise_type_name(dt.getName()):
+        # Don't register a typedef for it, and don't recurse into its
+        # members either -- parse_ghidra_type_and_dim() already collapses
+        # any field of this type to an opaque, byte-accurate placeholder,
+        # so there's nothing here that needs a name in the output header.
+        return
 
     name = sanitize_c_name(dt.getName())
     if name in seen_types or name in C_KEYWORDS or name.startswith(("uint", "int", "char", "float", "double", "void", "undefined", "byte", "word", "dword", "qword")):
@@ -241,11 +332,9 @@ def get_data_value_string(data, program):
         else:
             length = data.getLength()
             if length > 0:
-                buf = bytearray(length)
-                try:
-                    program.getMemory().getBytes(data.getAddress(), buf)
+                buf = read_memory_bytes(data.getAddress(), length, program)
+                if buf is not None:
                     return "{" + ", ".join([f"0x{b:02x}" for b in buf]) + "}"
-                except: pass
             return "{ 0 }"
             
     elif isinstance(dt, Union):
@@ -335,6 +424,77 @@ def generate_global_files(path_to_binary, workspace_dir="."):
         seen_types = set()
         processed_addrs = set()
 
+        def infer_undefined_extent(addr, max_size=4096):
+            """
+            Best-effort size guess for a symbol Ghidra never defined as real
+            data -- i.e. `data.isDefined()` is False and all we have is the
+            default 1-byte 'undefined' placeholder (or no code unit at all).
+            Walks forward until it hits the next symbol, the next incoming
+            reference, the next chunk of data Ghidra *has* defined, or the
+            end of the memory block, and treats that gap as the variable's
+            likely extent.
+
+            This is a heuristic, not a guarantee -- it will over- or
+            under-shoot for tightly packed globals with no distinguishing
+            xrefs between them. Anything the exporter sizes via this path
+            (rather than from a real Ghidra-defined type) is worth a manual
+            look before you trust the layout. It exists to replace the old
+            behavior of silently asserting every such symbol was a single
+            uint8_t, which was flatly wrong for buffers/arrays like
+            serverports[]/inputL[] in the original source.
+            """
+            mem_block = program.getMemory().getBlock(addr)
+            if mem_block is None:
+                return 1
+
+            block_end = mem_block.getEnd()
+            scan_addr = addr.add(1)
+            size = 1
+
+            while scan_addr.compareTo(block_end) <= 0 and size < max_size:
+                if symbol_table.getPrimarySymbol(scan_addr) is not None:
+                    break
+                if ref_mgr.hasReferencesTo(scan_addr):
+                    break
+                scan_data = listing.getDataAt(scan_addr)
+                if scan_data is not None and scan_data.isDefined():
+                    break
+                try:
+                    scan_addr = scan_addr.add(1)
+                except Exception:
+                    break
+                size += 1
+
+            return size
+
+        def read_raw_bytes_value_string(addr, size):
+            """
+            The old fallback here just asserted "{ 0 }" for anything Ghidra
+            never wrapped in a typed Data object -- which is wrong whenever
+            the symbol lives in an *initialized* section (.data/.rdata):
+            those bytes are physically present in the file, Ghidra just
+            never got around to typing them. inputL[]/serverports[] are
+            exactly this case -- compiled-in literal arrays that Ghidra left
+            untyped, so their real values were being silently zeroed out.
+
+            We can't recover the original *element type* (Ghidra never told
+            us it was int[] vs char[] vs a struct array), so this still
+            emits a plain byte array -- but the actual bytes, and therefore
+            the real data, are preserved instead of discarded. If you need
+            proper element-level typing (e.g. int32_t[96] instead of
+            uint8_t[384]), retype the symbol in Ghidra and re-run.
+
+            .bss stays "{ 0 }" on purpose: it's genuinely zero-filled at
+            load time, there's nothing real to read.
+            """
+            mem_block = program.getMemory().getBlock(addr)
+            if mem_block is None or not mem_block.isInitialized():
+                return "{ 0 }"
+            buf = read_memory_bytes(addr, size, program)
+            if buf is not None and any(buf):
+                return "{" + ", ".join(f"0x{b:02x}" for b in buf) + "}"
+            return "{ 0 }"
+
         def process_global(addr, data, sym):
             if addr in processed_addrs:
                 return
@@ -345,7 +505,12 @@ def generate_global_files(path_to_binary, workspace_dir="."):
                 return
             
             block_name = mem_block.getName().lower()
-            if any(sec in block_name for sec in ['.debug', '.pdata', '.xdata', '.eh_frame', '.reloc', '.rsrc', 'headers']):
+            if any(sec in block_name for sec in ['.debug', '.pdata', '.xdata', '.eh_frame', '.reloc', '.rsrc',
+                                                   'headers', '.idata', '.didata']):
+                # .idata/.didata hold the PE import directory table, IAT/ILT
+                # thunks, and hint/name entries (e.g. the _idata_5_*,
+                # _idata_7* symbols and the DWORD_004220xx import-descriptor
+                # fields) -- linker/loader metadata, not application globals.
                 return
             
             if fn_mgr.getFunctionContaining(addr) is not None:
@@ -379,7 +544,7 @@ def generate_global_files(path_to_binary, workspace_dir="."):
             processed_addrs.add(addr)
 
             if data and data.isDefined():
-                if is_string_data(data):
+                if is_string_data(data) and is_likely_real_text(data):
                     raw_str = str(data.getValue() or "")
                     val = escape_c_string(raw_str)
                     db.add_or_update_global(name, gtype="const char", value_or_expr=val, is_string=True)
@@ -389,9 +554,15 @@ def generate_global_files(path_to_binary, workspace_dir="."):
                     c_type, dim = parse_ghidra_type_and_dim(dt)
                     val_str = get_data_value_string(data, program)
                     db.add_or_update_global(name, gtype=f"{c_type}{dim}", value_or_expr=val_str, is_string=False)
-            else:
-                # Handle standard undefined global buffers or .bss variables
-                db.add_or_update_global(name, gtype="uint8_t", value_or_expr="{ 0 }", is_string=False)
+
+                inferred_size = infer_undefined_extent(addr)
+                if inferred_size > 1:
+                    val_str = read_raw_bytes_value_string(addr, inferred_size)
+                    db.add_or_update_global(name, gtype=f"uint8_t[{inferred_size}]",
+                                             value_or_expr=val_str, is_string=False)
+                else:
+                    val_str = read_raw_bytes_value_string(addr, 1)
+                    db.add_or_update_global(name, gtype="uint8_t", value_or_expr=val_str, is_string=False)
 
         # Pass 1: Extract collated large arrays & defined globals
         data_iter = listing.getDefinedData(True)
