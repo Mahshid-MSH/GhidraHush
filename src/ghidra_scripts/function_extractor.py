@@ -17,6 +17,16 @@ from ghidra.program.model.data import FileDataTypeManager
 from ghidra.program.model.pcode import HighFunctionDBUtil
 from ghidra.program.model.symbol import SourceType
 
+def make_function_id(function):
+    """
+    Stable, collision-free identifier for a Ghidra Function.
+    """
+    qualified_name = function.getName(True)  # e.g. "MyClass::Update", or "FUN_00401830" if unqualified
+    safe_name = re.sub(r'[^A-Za-z0-9_~]', '_', qualified_name)
+    addr_str = str(function.getEntryPoint())
+    return f"{safe_name}_{addr_str}"
+
+
 # Keywords that override all filters. If a function name contains these, it will be extracted.
 TARGET_EXCEPTIONS = ["winmain", "entry"]
 
@@ -241,20 +251,31 @@ def extract_functions(file_path, workspace_dir):
                             continue         
 
                     # --- C++ DETECTION PASS ---
+                    full_name = function.getName(True)  # Retrieves full namespace path (e.g., Class::Method)
                     if not binary_has_cpp:
-                        full_name = function.getName(True) # Retrieves full namespace path (e.g., Class::Method)
                         if "::" in full_name or clean_name.startswith("~"):
                             binary_has_cpp = True
                         elif re.search(r'\b(__thiscall|operator new|operator delete)\b', c_code):
                             binary_has_cpp = True
 
-                    # Populate the call graph
-                    call_graph[clean_name] = [
-                        f"{c.getName()}_{c.getEntryPoint().toString()}"
-                        for c in function.getCalledFunctions(TaskMonitor.DUMMY)
-                    ]
+                    # Identity used for the call graph key, the DB join key,
+                    # and the output file name (see make_function_id docstring
+                    # for why the bare name isn't safe to use for any of these).
+                    func_id = make_function_id(function)
 
-                    extracted_data.append((clean_name, c_code))
+                    # Populate the call graph. Callee ids are computed with the
+                    # exact same function, so they match up with the callee's
+                    # own func_id regardless of which order functions are
+                    # visited in.
+                    call_graph[func_id] = {
+                        "name": full_name,
+                        "callees": [
+                            make_function_id(c)
+                            for c in function.getCalledFunctions(TaskMonitor.DUMMY)
+                        ],
+                    }
+
+                    extracted_data.append((func_id, full_name, c_code))
 
                 # Dynamic extension selection based on C++ detection
                 file_ext = ".cpp" if binary_has_cpp else ".c"
@@ -263,15 +284,11 @@ def extract_functions(file_path, workspace_dir):
                 else:
                     print("No C++ artifacts detected. Exporting all files as .c...")
 
-                for clean_name, c_code in extracted_data:
-                    safe_name = "".join(
-                        [c if c.isalnum() or c in "_:~" else "_" for c in clean_name]
-                    )
-
-                    c_file_path = os.path.join(file_output_dir, f"{safe_name}{file_ext}")
+                for func_id, full_name, c_code in extracted_data:
+                    c_file_path = os.path.join(file_output_dir, f"{func_id}{file_ext}")
                     with open(c_file_path, "w", encoding="utf-8") as f:
                         f.write(c_code)
-                    print(f" Extracted: {safe_name}{file_ext}")
+                    print(f" Extracted: {func_id}{file_ext}  (symbol: {full_name})")
 
     graph_path = os.path.join(file_output_dir, "call_graph.json")
     with open(graph_path, "w", encoding="utf-8") as f:
