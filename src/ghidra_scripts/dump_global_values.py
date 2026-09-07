@@ -5,7 +5,7 @@ import warnings
 import struct
 import jpype
 from database.symbol_db import SymbolDB
-from ghidra.program.model.data import Array, Pointer, Structure, Union, Enum, TypeDef, ArrayDataType, ByteDataType
+from ghidra.program.model.data import Array, Pointer, Structure, Union, Enum, TypeDef, ArrayDataType, ByteDataType, FunctionDefinition
 from ghidra.program.model.symbol import SourceType
 from ghidra.program.model.data import StringDataType, UnicodeDataType
 
@@ -104,7 +104,47 @@ def is_string_data(data):
     dt_name = data.getDataType().getName().lower()
     return 'string' in dt_name or 'char' in dt_name or 'unicode' in dt_name
 
-def parse_ghidra_type_and_dim(dt):
+def ensure_function_pointer_typedef(func_def, db, seen_types):
+    """
+    Registers a standalone, correctly-shaped typedef for a Ghidra
+    FunctionDefinition -- the type Ghidra gives function-pointer pointees,
+    auto-named after their own return/argument types (e.g. '_func_void',
+    '_func_void_PVOID_DWORD_PVOID'):
+
+        typedef RET (*NAME)(ARG1, ARG2, ...);
+
+    Previously this auto-generated name was treated like any other
+    struct/typedef tag and simply pointed at (`_func_void*`), but nothing
+    ever *defined* `_func_void` anywhere in the header -- guaranteed
+    "unknown type name" errors for every function pointer in the binary.
+    Defining the name itself as the function-pointer type (rather than as
+    a phantom pointee you then slap a `*` onto) is both what makes it
+    compile and what keeps single- vs double-indirection correct.
+
+    Returns the sanitized name to use as the base type wherever this
+    pointer type shows up. That name already denotes "pointer to
+    function" -- callers must NOT append another '*' for the pointer
+    level that led here.
+    """
+    name = sanitize_c_name(func_def.getName())
+    if name in seen_types:
+        return name
+    seen_types.add(name)
+
+    ret_type, ret_dim = parse_ghidra_type_and_dim(func_def.getReturnType(), db, seen_types)
+    params = []
+    for arg in func_def.getArguments():
+        p_type, p_dim = parse_ghidra_type_and_dim(arg.getDataType(), db, seen_types)
+        params.append(f"{p_type}{p_dim}")
+    if func_def.hasVarArgs():
+        params.append("...")
+    param_list = ", ".join(params) if params else "void"
+
+    db.add_custom_type(name, f"typedef {ret_type}{ret_dim} (*{name})({param_list});\n")
+    return name
+
+
+def parse_ghidra_type_and_dim(dt, db, seen_types):
     """Splits Ghidra types into base C type and array dimension suffix, supporting complex types."""
     if dt is None: return "uint8_t", ""
     
@@ -119,6 +159,12 @@ def parse_ghidra_type_and_dim(dt):
         underlying = dt.getDataType()
         if underlying is None or underlying.getName().lower() == "default":
             return "void" + ptr_str, dim_str
+        if isinstance(underlying, FunctionDefinition):
+            # The typedef this returns already denotes "pointer to
+            # function" -- drop the '*' this loop iteration just added so
+            # we don't end up with a pointer-to-function-pointer instead.
+            func_name = ensure_function_pointer_typedef(underlying, db, seen_types)
+            return func_name + ptr_str[:-1], dim_str
         if is_noise_type_name(underlying.getName()):
             # e.g. PIMAGE_SECTION_HEADER, PRTL_CRITICAL_SECTION_DEBUG -- keep
             # the pointer, drop the dependency on the noisy pointee type.
@@ -183,7 +229,7 @@ def is_unneeded_data(data, symbol, program):
             "_rdata",             # Section base labels
             "_CSWTCH_",           # Auto-generated Switch jump tables
             "_func_",             # Auto-generated function pointers
-            "fpi", "p", "pmem_"   # Math/Runtime internals
+            "fpi", "p_", "pmem_"   # Math/Runtime internals
         )
         
         if name.startswith(ignore_prefixes):
@@ -198,6 +244,16 @@ def extract_and_store_type(dt, db, seen_types):
     while isinstance(dt, (Pointer, Array)):
         dt = dt.getDataType()
         if dt is None: return
+
+    if isinstance(dt, FunctionDefinition):
+        # Function-pointer pointee (Ghidra's auto-named '_func_...' types).
+        # ensure_function_pointer_typedef() is the single place that both
+        # registers the correct typedef AND owns seen_types bookkeeping for
+        # these names -- don't duplicate that logic here, or this path and
+        # parse_ghidra_type_and_dim()'s pointer walk can race to mark a name
+        # "seen" before either one has actually written a definition for it.
+        ensure_function_pointer_typedef(dt, db, seen_types)
+        return
 
     if is_noise_type_name(dt.getName()):
         # Don't register a typedef for it, and don't recurse into its
@@ -223,7 +279,7 @@ def extract_and_store_type(dt, db, seen_types):
         for i in range(dt.getNumComponents()):
             comp = dt.getComponent(i)
             if not comp: continue
-            c_type, dim = parse_ghidra_type_and_dim(comp.getDataType())
+            c_type, dim = parse_ghidra_type_and_dim(comp.getDataType(), db, seen_types)
             field_name = sanitize_c_name(comp.getFieldName() or f"field_{i}")
             lines.append(f"    {c_type} {field_name}{dim};")
         lines.append(f"}} {name};\n")
@@ -239,7 +295,7 @@ def extract_and_store_type(dt, db, seen_types):
         
     elif isinstance(dt, TypeDef):
         extract_and_store_type(dt.getBaseDataType(), db, seen_types)
-        base_type, dim = parse_ghidra_type_and_dim(dt.getBaseDataType())
+        base_type, dim = parse_ghidra_type_and_dim(dt.getBaseDataType(), db, seen_types)
         db.add_custom_type(name, f"typedef {base_type} {name}{dim};\n")
 
 def auto_collate_large_arrays(program, min_size=1024):
@@ -387,9 +443,78 @@ def escape_c_string(val):
         else: escaped.append(f'\\x{code & 0xff:02x}')
     return "".join(escaped)
 
+def load_curated_function_entry_points(workspace_dir, path_to_binary):
+    """
+    Builds the set of entry-point address strings for functions the user
+    has already curated into extracted_functions/<binary_name>/ -- i.e.
+    whatever's left after running function_extractor.py and deleting the
+    ones that weren't useful/user-defined.
+
+    Returns None if that directory doesn't exist or is empty, so callers
+    can fall back to the old "referenced from any function in the binary"
+    behavior instead of silently extracting zero globals for someone who
+    hasn't run function_extractor.py yet.
+
+    File names are func_ids from function_extractor.py's make_function_id():
+        f"{sanitized_qualified_name}_{entry_point_address}" + ".c"/".cpp"
+    The entry point address is always the last underscore-separated,
+    all-hex-digit token before the extension (Ghidra's Address.toString()
+    for a plain default-space address is just hex digits, no separators),
+    so it comes back out with a plain regex -- no need to reparse it
+    through Ghidra's address factory.
+    """
+    base_name = os.path.basename(path_to_binary)
+    func_dir = os.path.join(workspace_dir, "extracted_functions", base_name)
+    if not os.path.isdir(func_dir):
+        return None
+
+    addr_strings = set()
+    for fname in os.listdir(func_dir):
+        stem, ext = os.path.splitext(fname)
+        if ext.lower() not in (".c", ".cpp"):
+            continue  # skips call_graph.json and anything else stray
+        m = re.match(r'^.*_([0-9A-Fa-f]+)$', stem)
+        if m:
+            addr_strings.add(m.group(1))
+
+    return addr_strings or None
+
+
 def generate_global_files(path_to_binary, workspace_dir="."):
-    db = SymbolDB(workspace_dir=workspace_dir)    
-    
+    db = SymbolDB(workspace_dir=workspace_dir)
+
+    # Start each analysis run from a clean slate for globals/custom types.
+    # Without this, `globals`/`custom_types` only ever grow: every symbol
+    # any *past* (possibly looser) version of the filters below ever let
+    # through stays in symbols.db forever and gets re-emitted by
+    # export_header() on every subsequent run -- which is why deleting a
+    # row from data_globals.h by hand never sticks: the .h is just a view
+    # over the .db, and the .db was never cleared. `excluded_globals` /
+    # `excluded_custom_types` (see manage_symbols.py) and `functions` are
+    # deliberately left untouched here: the former is your permanent
+    # denylist, the latter accumulates across incremental per-function
+    # enhancement runs done later by c_code_enhancer.py.
+    db.reset_globals()
+    db.reset_custom_types()
+
+    # If the user has already run function_extractor.py and pruned
+    # extracted_functions/ down to just the functions they care about,
+    # scope global extraction to references from THOSE functions only.
+    # This is strictly better than the prefix/name-based noise filters
+    # above: instead of trying to guess "is this compiler/runtime
+    # plumbing" after the fact, it just never looks at globals that are
+    # only touched by code the user already judged uninteresting (CRT
+    # startup, mingw thread-safe init, exception glue, etc. -- none of
+    # that lives in extracted_functions/ once it's been cleaned up).
+    curated_addrs = load_curated_function_entry_points(workspace_dir, path_to_binary)
+    if curated_addrs is not None:
+        print(f"Found {len(curated_addrs)} curated function(s) in extracted_functions/ -- "
+              f"scoping global extraction to references from those functions only.")
+    else:
+        print("No curated extracted_functions/ folder found for this binary -- falling back to "
+              "'referenced from any function in the binary'. Run function_extractor.py and prune "
+              "it down to the functions you care about, then re-run this script for tighter results.")
+
     TEB_PEB_IGNORE_LIST = [
         "ExceptionList", "LastError", "Tls", "Gdi", "Reserved", "StackBase", 
         "StackLimit", "ProcessEnvironmentBlock", "EnvironmentPointer", 
@@ -524,9 +649,17 @@ def generate_global_files(path_to_binary, workspace_dir="."):
             is_used_in_function = False
             for ref in refs:
                 from_addr = ref.getFromAddress()
-                if fn_mgr.getFunctionContaining(from_addr) is not None:
-                    is_used_in_function = True
-                    break
+                containing_func = fn_mgr.getFunctionContaining(from_addr)
+                if containing_func is None:
+                    continue
+                if curated_addrs is not None and containing_func.getEntryPoint().toString() not in curated_addrs:
+                    # Referenced from a real function, but not one the user
+                    # kept in extracted_functions/ -- almost certainly CRT
+                    # startup, mingw plumbing, exception-handling glue,
+                    # etc. Don't let it count as "used".
+                    continue
+                is_used_in_function = True
+                break
             
             if not is_used_in_function and not is_user_sym:
                 return
@@ -538,6 +671,12 @@ def generate_global_files(path_to_binary, workspace_dir="."):
                 return
             
             name = sanitize_c_name(raw_name)
+            if db.is_global_excluded(name):
+                # Permanently blacklisted via manage_symbols.py. Ghidra will
+                # keep finding this symbol every run because it genuinely is
+                # referenced from code, but the user has already judged it
+                # noise -- honor that instead of silently re-adding it.
+                return
             if name in seen_names:
                 name = f"{name}_{addr.toString()}"
             seen_names.add(name)
@@ -551,7 +690,7 @@ def generate_global_files(path_to_binary, workspace_dir="."):
                 else:
                     dt = data.getDataType()
                     extract_and_store_type(dt, db, seen_types)
-                    c_type, dim = parse_ghidra_type_and_dim(dt)
+                    c_type, dim = parse_ghidra_type_and_dim(dt, db, seen_types)
                     val_str = get_data_value_string(data, program)
                     db.add_or_update_global(name, gtype=f"{c_type}{dim}", value_or_expr=val_str, is_string=False)
 

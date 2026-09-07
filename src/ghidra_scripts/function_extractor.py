@@ -17,14 +17,42 @@ from ghidra.program.model.data import FileDataTypeManager
 from ghidra.program.model.pcode import HighFunctionDBUtil
 from ghidra.program.model.symbol import SourceType
 
+import hashlib
+
 def make_function_id(function):
     """
-    Stable, collision-free identifier for a Ghidra Function.
+    Stable, collision-free identifier for a Ghidra Function with length protection.
     """
-    qualified_name = function.getName(True)  # e.g. "MyClass::Update", or "FUN_00401830" if unqualified
+    qualified_name = function.getName(True)
     safe_name = re.sub(r'[^A-Za-z0-9_~]', '_', qualified_name)
     addr_str = str(function.getEntryPoint())
+    
+    # Truncate extremely long mangled names and append an MD5 hash to prevent filename limits
+    if len(safe_name) > 120:
+        name_hash = hashlib.md5(qualified_name.encode('utf-8')).hexdigest()[:8]
+        safe_name = safe_name[:120] + f"_{name_hash}"
+        
     return f"{safe_name}_{addr_str}"
+
+
+def resolve_thunk(function):
+    """Ghidra's getCalledFunctions() can return a thunk (jump-stub) Function
+    object for a callee instead of the real implementation it jumps to --
+    same name, but its own separate (stub) entry point address. Thunks are
+    filtered out of the extracted/decompiled set entirely (see FILTER 2 in
+    extract_functions), so a thunk's own address is never a top-level key
+    in call_graph.json or a filename on disk. If make_function_id() is run
+    on the thunk itself, the resulting callee id can't match anything --
+    silently dropping that dependency edge for any downstream consumer
+    (e.g. a topological sort) that filters callees against known ids.
+    Resolving through the thunk chain here means every callee id lines up
+    with the callee's own top-level entry, exactly like a direct call.
+    """
+    if function is not None and function.isThunk():
+        target = function.getThunkedFunction(True)  # True: follow multi-hop thunk chains
+        if target is not None:
+            return target
+    return function
 
 
 # Keywords that override all filters. If a function name contains these, it will be extracted.
@@ -266,11 +294,15 @@ def extract_functions(file_path, workspace_dir):
                     # Populate the call graph. Callee ids are computed with the
                     # exact same function, so they match up with the callee's
                     # own func_id regardless of which order functions are
-                    # visited in.
+                    # visited in. Each callee is resolved through resolve_thunk()
+                    # first: getCalledFunctions() can return a thunk stub rather
+                    # than the real target, and computing the id straight off the
+                    # stub would produce an id that never matches the callee's
+                    # actual top-level entry (see resolve_thunk docstring).
                     call_graph[func_id] = {
                         "name": full_name,
                         "callees": [
-                            make_function_id(c)
+                            make_function_id(resolve_thunk(c))
                             for c in function.getCalledFunctions(TaskMonitor.DUMMY)
                         ],
                     }

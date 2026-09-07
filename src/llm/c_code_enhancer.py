@@ -2,6 +2,9 @@ import os
 import json
 import sys
 import re
+import shutil
+import subprocess
+import tempfile
 import argparse
 import graphlib
 from database.symbol_db import SymbolDB
@@ -18,6 +21,28 @@ class CCodeEnhancer(BaseLLMAgent):
 
     def __init__(self, model_name=None, base_url=None):
         super().__init__(model_name, base_url)
+
+    @staticmethod
+    def _build_name_to_id_map(call_graph):
+        """Maps each function's name (as recorded on its own top-level entry)
+        to that entry's real func_id."""
+        name_to_id = {}
+        for node_id, entry in call_graph.items():
+            name = entry.get("name") if isinstance(entry, dict) else None
+            if name is None:
+                name = node_id.rsplit('_', 1)[0]
+            name_to_id.setdefault(name, node_id)
+        return name_to_id
+
+    @staticmethod
+    def _resolve_callee_id(raw_id, call_graph, name_to_id):
+        """Normalizes a callee id from call_graph.json to the id that
+        callee's own top-level entry actually uses."""
+        raw_id = raw_id.strip()
+        if raw_id in call_graph:
+            return raw_id
+        base_name = raw_id.rsplit('_', 1)[0]
+        return name_to_id.get(base_name, raw_id)
 
     def pre_process_ghidra_types(self, c_code):
         """Standardize Ghidra types via Python before the LLM sees them."""
@@ -39,8 +64,8 @@ class CCodeEnhancer(BaseLLMAgent):
             r'\bword\b': 'uint16_t',
             r'\bbyte\b': 'uint8_t',
             r'\buint\b': 'uint32_t',
-            r'__CheckForDebuggerJustMyCode\(&[A-Za-z0-9_]+\);': '',
             r'_RTC_CheckStackVars\(.*?\);': '',
+            r'__CheckForDebuggerJustMyCode\(.*?\);': '',
             r'__RTC_CheckEsp\(\);': '',
             r'__security_check_cookie\(.*?\);': ''    
         }
@@ -62,7 +87,7 @@ class CCodeEnhancer(BaseLLMAgent):
             options={'temperature': 0}
         )
 
-    def beautify_code(self, code, callee_prototypes="", is_cpp=False, base_name="unknown", workspace_dir="."):
+    def beautify_code(self, code, callee_prototypes="", is_cpp=False, base_name="unknown", workspace_dir=".", db=None):
         lang_name = "C++" if is_cpp else "C"
         print(f"Beautifying {lang_name} code via Multi-Pass Pipeline...")
 
@@ -93,7 +118,7 @@ class CCodeEnhancer(BaseLLMAgent):
 
         6. **PRESERVE LOGIC & SIDE EFFECTS**: Do **not** remove any function call, assignment, loop, condition, or memory operation. Only remove dead variables that are assigned but never used, and only if the assignment has no side effect.
 
-        7. **GLOBAL VARIABLES**: If a variable name looks like a global (e.g., `DAT_`, `s_`, or a known symbol from `data_globals.h`), keep its name **exactly**. Do not rename it, do not redeclare it locally, and do not try to resolve its value. Assume it is declared in `data_globals.h`.
+        7. **GLOBAL VARIABLES & EXTERNAL SYMBOLS**: If a variable name looks like a global (e.g., `DAT_`, `s_`) or a known symbol, keep its name **exactly**. Do **not** define or re-declare structs, unions, enums, or external function prototypes locally. Assume all types and external prototypes are already provided by `data_globals.h`.
 
         8. **STRING LITERALS**: Preserve every string literal exactly as it appears. Do not replace it with a global or variable. If a string is inside a local array or passed directly to a function, keep it verbatim.
 
@@ -122,7 +147,7 @@ class CCodeEnhancer(BaseLLMAgent):
 
         6. **PRESERVE LOGIC & SIDE EFFECTS**: Retain all operations with side effects.
 
-        7. **GLOBAL VARIABLES**: Retain global names (`DAT_`, `s_`).
+        7. **GLOBAL VARIABLES & TYPES**: Retain global names (`DAT_`, `s_`). Do **not** define custom structs, classes, enums, or auxiliary prototypes.
 
         8. **STRING LITERALS**: Preserve string literals verbatim.
 
@@ -151,7 +176,7 @@ class CCodeEnhancer(BaseLLMAgent):
         5. **STRING LITERALS**: Preserve string literals.
         6. **CONST CORRECTNESS**: Use `const char *` for string literal assignments.
         7. **FUNCTION POINTERS**: Cast global function pointers appropriately before calling.
-        8. **API CALLS**: Cast function parameters to match known signatures.
+        8. **API CALLS**: Cast function parameters to match known signatures. Do **not** define structs, unions, enums, or function prototypes.
 
         {context_block}
 
@@ -161,7 +186,7 @@ class CCodeEnhancer(BaseLLMAgent):
         ___C_CODE_PLACEHOLDER___
         """
 
-        pass_2_prompt_cpp = f"""You are an expert C++ programmer. Fix memory references, pointer casts, and API calls using C++ casts (`static_cast`, `reinterpret_cast`).
+        pass_2_prompt_cpp = f"""You are an expert C++ programmer. Fix memory references, pointer casts, and API calls using C++ casts (`static_cast`, `reinterpret_cast`). Do not define external structs or prototypes.
 
         {context_block}
 
@@ -175,10 +200,16 @@ class CCodeEnhancer(BaseLLMAgent):
         pass_3_prompt_c = f"""You are an expert C reverse engineer. Convert Ghidra pseudo-code into clean standard C (C99/C11).
 
         ### HARD REQUIREMENTS
-        1. **COMPILABLE OUTPUT**: Valid C code. Header `#include "data_globals.h"` must be first.
-        2. **NO GHIDRA ARTIFACTS**: Remove `CONCATxx`, `local_X._0_1_`, `LAB_` labels, and `goto` constructs.
-        3. **CLEAN POINTER ARITHMETIC**: Use proper array/struct indexing.
-        4. **ONE FUNCTION ONLY**: Output only the target function inside ```c backticks.
+        1. **COMPILABLE OUTPUT**: Valid C code. `#include "data_globals.h"` must be the first line. If this function calls any standard library function (`memcpy`, `malloc`, `strlen`, `printf`, etc.), add the matching standard header (`<string.h>`, `<stdlib.h>`, `<stdio.h>`, ...) directly after it -- do not rely on `data_globals.h` to provide these.
+        2. **NO STRUCT OR PROTOTYPE DEFINITIONS**: **NEVER** define structs, unions, enums, or additional function prototypes. Assume all custom types, global variables, and external function prototypes are already fully declared in `data_globals.h`. Only work on the single target function provided.
+        3. **TRANSLATE GHIDRA ARTIFACTS, DON'T JUST DELETE THEM**: These constructs encode real bit-level or control-flow semantics. Rewrite them to the equivalent plain C, then remove the artifact -- never delete them outright, since that silently changes behavior:
+           - `CONCAT44(hi, lo)` -> `(((uint64_t)(hi) << 32) | (uint32_t)(lo))`, and the same pattern scaled to whatever bit widths the specific `CONCATxy` uses.
+           - `SUBx y(val, n)` (take `y` bytes starting at byte offset `n`) -> `(uint<y*8>_t)((val) >> (n * 8))`.
+           - `local_X._0_1_`-style sub-piece accesses -> a shift+mask (or explicit byte access) on `local_X` that reads/writes that exact same byte, not an approximation.
+           - `goto`/`LAB_xxx`: restructure into `if`/`else`/`while`/`for`/`break`/`continue` ONLY when you are certain the resulting control flow is equivalent. If the jump structure is irreducible or ambiguous (e.g. jumps into the middle of a loop, multi-level jumps), keep a plain, clearly-named `goto` rather than guessing -- code that compiles but silently does the wrong thing is worse than an ugly `goto`.
+           - Also remove any remaining `__autoclassinit2`-style compiler scaffolding once its effect (if any) has been preserved.
+        4. **CLEAN POINTER ARITHMETIC**: Use proper array/struct indexing.
+        5. **ONE FUNCTION ONLY**: Output only the target function (plus any headers from rule 1) inside ```c backticks.
 
         ### INPUT CODE
         ___C_CODE_PLACEHOLDER___
@@ -187,10 +218,11 @@ class CCodeEnhancer(BaseLLMAgent):
         pass_3_prompt_cpp = f"""You are an expert C++ reverse engineer. Convert Ghidra pseudo-code into clean C++17.
 
         ### HARD REQUIREMENTS
-        1. **COMPILABLE C++17**: Include `#include "data_globals.h"`.
-        2. **NO GHIDRA ARTIFACTS**: Eliminate `__autoclassinit2`, `CONCATxx`, `LAB_` labels.
-        3. **C++ OBJECT RECONSTRUCTION**: Convert raw `this` pointer calls back to standard C++ objects (e.g., `std::ifstream`).
-        4. **ONE FUNCTION ONLY**: Output only the target function inside ```cpp backticks.
+        1. **COMPILABLE C++17**: `#include "data_globals.h"` must be the first line. If this function calls any standard/STL facility (`memcpy`, `std::string`, `std::vector`, etc.), add the matching header (`<cstring>`, `<string>`, `<vector>`, ...) directly after it -- do not rely on `data_globals.h` to provide these.
+        2. **NO STRUCT OR PROTOTYPE DEFINITIONS**: **NEVER** define structs, classes, enums, unions, or extra function prototypes. Assume all types and external signatures are declared in `data_globals.h`. Work exclusively on the provided function body.
+        3. **TRANSLATE GHIDRA ARTIFACTS, DON'T JUST DELETE THEM**: `CONCATxy`/`SUBxy`/sub-piece accesses encode real bit-level operations -- rewrite them as the equivalent shift/mask/cast expression (e.g. `CONCAT44(hi, lo)` -> `(((uint64_t)(hi) << 32) | (uint32_t)(lo))`), then remove the artifact. For `goto`/`LAB_xxx`, restructure into normal control flow only when you're certain it's equivalent; otherwise keep a plain `goto` rather than guess, since silently-wrong control flow is worse than an ugly one. Remove `__autoclassinit2`-style scaffolding once its effect is preserved.
+        4. **C++ OBJECT RECONSTRUCTION -- ONLY WITH STRONG EVIDENCE**: You may convert raw `this`-pointer / vtable-style code into a standard C++ object (e.g. `std::ifstream`) only when the evidence is unambiguous (a recognizable mangled/demangled STL symbol, a matching vtable layout, or an unmistakable call pattern like the exact sequence of an `fstream` open/read/close). Do not guess a specific STL type from vague similarity (e.g. "it has a buffer and a size" is not enough to justify `std::vector`). When you are not certain, leave the original pointer/struct-offset access as-is rather than inventing an object model -- a wrong reconstruction is more misleading to an investigator than raw pointer arithmetic, because it looks authoritative.
+        5. **ONE FUNCTION ONLY**: Output only the target function (plus any headers from rule 1) inside ```cpp backticks.
 
         ### INPUT CODE
         ___C_CODE_PLACEHOLDER___
@@ -203,17 +235,79 @@ class CCodeEnhancer(BaseLLMAgent):
             final_code = code_v2
 
         print("  -> Beautification complete.")
-        return final_code
+
+        return {
+            "code": final_code,
+        }
+
+    _PROTO_NAME_RE = re.compile(r'([A-Za-z_~][A-Za-z0-9_:~]*)\s*\(')
+    _PROTO_CTRL_KEYWORDS = {'if', 'for', 'while', 'switch', 'return', 'catch', 'sizeof'}
+
+    @staticmethod
+    def _find_matching_paren(text, open_idx):
+        depth = 0
+        i = open_idx
+        in_string = None
+        while i < len(text):
+            ch = text[i]
+            if in_string:
+                if ch == '\\':
+                    i += 1
+                elif ch == in_string:
+                    in_string = None
+            elif ch in ('"', "'"):
+                in_string = ch
+            elif ch == '(':
+                depth += 1
+            elif ch == ')':
+                depth -= 1
+                if depth == 0:
+                    return i
+            i += 1
+        return None
+
+    @staticmethod
+    def _is_ctor_or_dtor(func_name):
+        parts = func_name.split('::')
+        if len(parts) < 2:
+            return func_name.startswith('~')
+        last, prev = parts[-1], parts[-2]
+        return last == prev or last == '~' + prev
 
     def extract_prototype(self, text):
-        """Extracts the first C/C++ function prototype from the generated code."""
-        pattern = r'^([a-zA-Z0-9_ \t\*\&]+)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)\s*\{'
-        match = re.search(pattern, text, re.MULTILINE | re.DOTALL)
-        if match:
-            return_type = match.group(1).strip()
-            func_name = match.group(2).strip()
-            args = " ".join(match.group(3).split())
-            return f"{return_type} {func_name}({args});"
+        if not text:
+            return None
+        text = re.sub(r'^```[a-zA-Z0-9_+]*\s*\n?', '', text.strip())
+        text = re.sub(r'\n?```\s*$', '', text)
+
+        for m in self._PROTO_NAME_RE.finditer(text):
+            name_start, name_end = m.span(1)
+            paren_open = m.end() - 1
+            paren_close = self._find_matching_paren(text, paren_open)
+            if paren_close is None:
+                continue
+
+            func_name = text[name_start:name_end].strip()
+            if func_name in self._PROTO_CTRL_KEYWORDS:
+                continue
+
+            after = text[paren_close + 1:].lstrip()
+            after = re.sub(r'^(const|noexcept|override|final)\b\s*', '', after)
+            if not after.startswith('{'):
+                continue
+
+            args = " ".join(text[paren_open + 1:paren_close].split())
+            head = text[:name_start]
+            last_hash_end = -1
+            for pp in re.finditer(r'^#.*$', head, re.MULTILINE):
+                last_hash_end = pp.end()
+            boundary = max(head.rfind(';'), head.rfind('}'), last_hash_end)
+            return_type = head[boundary + 1:].strip()
+            if not return_type and not self._is_ctor_or_dtor(func_name):
+                continue
+
+            prefix = f"{return_type} " if return_type else ""
+            return f"{prefix}{func_name}({args});"
         return None
 
     def find_code_files(self, directory):
@@ -230,17 +324,18 @@ class CCodeEnhancer(BaseLLMAgent):
         code_files.sort()
         return code_files
 
-    def append_prototype_to_header(self, prototype, header_path="data_globals.h", db=None, workspace_dir="."):
+    def append_prototype_to_header(self, prototype, header_path="data_globals.h"):
+        """Directly append updates to the header file without interacting with the database."""
         if not prototype:
             return
-        local_db = db or SymbolDB(workspace_dir=workspace_dir)
-        if local_db.parse_and_upsert_prototype(prototype):
-            local_db.export_header(header_path)
-            print(f"Synced prototype to DB & Header: {prototype}")
-        else:
-            print(f"Failed to parse prototype for DB: {prototype}")
+        try:
+            with open(header_path, "a", encoding="utf-8") as f:
+                f.write(f"\n{prototype}\n")
+            print(f"Appended prototype to Header: {prototype}")
+        except Exception as e:
+            print(f"Failed to append prototype to header: {e}")
 
-    def process_function_file(self, file_path, workspace_dir, call_graph=None, db=None):
+    def process_function_file(self, file_path, workspace_dir, call_graph=None, db=None, name_to_id=None):
         output_dir = os.path.join(workspace_dir, 'processed_functions')
         os.makedirs(output_dir, exist_ok=True)
         header_path = os.path.join(workspace_dir, "data_globals.h")
@@ -250,69 +345,59 @@ class CCodeEnhancer(BaseLLMAgent):
             
         base_name = os.path.splitext(os.path.basename(file_path))[0]
         print(f"\nProcessing: {base_name}")
-        
+
         callee_prototypes_str = ""
         if call_graph and base_name in call_graph:
+            entry = call_graph[base_name]
+            callees = entry.get("callees", []) if isinstance(entry, dict) else entry
+            if name_to_id is None:
+                name_to_id = self._build_name_to_id_map(call_graph)
+
             prototypes = []
-            callees = call_graph[base_name]
-            
-            for callee in callees:
-                clean_callee = callee.strip()
+            for callee_id in callees:
+                clean_callee_id = self._resolve_callee_id(callee_id, call_graph, name_to_id)
                 proto = None
-                
-                # 1. Attempt to fetch prototype from SymbolDB first
                 if db:
                     try:
-                        with db._get_conn() as conn:
-                            cursor = conn.cursor()
-                            # Query the exact columns from symbol_db.py schema
-                            cursor.execute(
-                                "SELECT return_type, name, parameters FROM functions WHERE name = ?", 
-                                (clean_callee,)
-                            )
-                            row = cursor.fetchone()
-                            if row:
-                                # Reconstruct standard C prototype string
-                                proto = f"{row[0]} {row[1]}({row[2]});"
+                        row = db.get_function_by_func_id(clean_callee_id)
+                        if row:
+                            proto = f"{row[0]} {row[1]}({row[2]});"
                     except Exception as e:
-                        print(f"  [!] DB lookup failed for {clean_callee}: {e}")
-                
-                # 2. Fallback: Request from call graph if it's structured as a dictionary
-                if not proto and isinstance(callees, dict):
-                    proto_candidate = callees.get(callee)
-                    if isinstance(proto_candidate, str) and proto_candidate.strip():
-                        proto = proto_candidate.strip()
-                        
+                        print(f"  [!] DB lookup failed for {clean_callee_id}: {e}")
                 if proto:
                     prototypes.append(proto)
-                    
+
             callee_prototypes_str = "\n".join(prototypes)
 
         is_cpp = file_path.endswith(".cpp")
         cleaned_code = self.pre_process_ghidra_types(original_code)
         
-        # Run Multi-Pass LLM Pipeline
-        result = self.beautify_code(
+        enhancement = self.beautify_code(
             cleaned_code, 
             callee_prototypes_str, 
             is_cpp=is_cpp, 
             base_name=base_name, 
-            workspace_dir=workspace_dir
-        )          
-        
+            workspace_dir=workspace_dir,
+            db=db,
+        )
+        result = enhancement["code"]
+
         prototype = self.extract_prototype(result)
         
-        # Save prototype back to DB & header
-        self.append_prototype_to_header(prototype, header_path=header_path, db=db, workspace_dir=workspace_dir)
-        
+        # Save prototype back to header
+        self.append_prototype_to_header(prototype, header_path=header_path)
+
         ext = ".cpp" if is_cpp else ".c"
         beautified_path = os.path.join(output_dir, f"{base_name}{ext}")
         with open(beautified_path, 'w', encoding='utf-8') as f:
             f.write(result)
             
         print(f"Saved beautified file: {beautified_path}")
-        return {'original': file_path, 'beautified': beautified_path}
-    
+        return {
+            'original': file_path,
+            'beautified': beautified_path,
+        }
+
     def process_directory(self, input_dir, workspace_dir):
         """Gathers all code files and beautifies in bottom-up topological order."""
         found_files = self.find_code_files(input_dir)
@@ -332,11 +417,14 @@ class CCodeEnhancer(BaseLLMAgent):
         db = SymbolDB(workspace_dir=workspace_dir)
         results = []
 
+        name_to_id = self._build_name_to_id_map(call_graph)
+
         ts = graphlib.TopologicalSorter()
-        for caller, callees in call_graph.items():
+        for caller, entry in call_graph.items():
             if caller in file_map:
-                # FIXED: Preserve true callee function names
-                clean_callees = {c.strip() for c in callees if c.strip() in file_map}
+                callees = entry.get("callees", []) if isinstance(entry, dict) else entry
+                resolved_callees = {self._resolve_callee_id(c, call_graph, name_to_id) for c in callees}
+                clean_callees = {c for c in resolved_callees if c in file_map}
                 ts.add(caller, *clean_callees)
 
         for f_name in func_names:
@@ -353,7 +441,7 @@ class CCodeEnhancer(BaseLLMAgent):
             if func_name not in file_map:
                 continue    
             file_path = file_map[func_name]
-            res = self.process_function_file(file_path, workspace_dir, call_graph=call_graph, db=db)
+            res = self.process_function_file(file_path, workspace_dir, call_graph=call_graph, db=db, name_to_id=name_to_id)
             results.append(res)
 
         return results
@@ -366,7 +454,9 @@ if __name__ == "__main__":
     parser.add_argument("--model", default=os.environ.get('LLM_MODEL', 'deepseek-expert'), help="LLM model to use")
     
     args = parser.parse_args()
-    enhancer = CCodeEnhancer(model_name=args.model)
+    enhancer = CCodeEnhancer(
+        model_name=args.model
+    )
     
     print("-" * 50)
     
