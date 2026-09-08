@@ -31,6 +31,32 @@ def sanitize_c_name(name):
 
 NOISE_TYPE_EXACT_NAMES = ("LIST_ENTRY", "RTL_CRITICAL_SECTION_DEBUG")
 
+# Function-name prefixes that mark CRT/mingw-runtime/locale/exception-glue
+# plumbing rather than anything belonging to the sample's own logic.
+# is_unneeded_data() already filters globals by an equivalent symbol-name
+# prefix list, but Pass 3 (function signature type extraction, below) walks
+# Function objects directly and had no equivalent filter -- so in the
+# common case where the user hasn't curated extracted_functions/ yet, it
+# walked every CRT startup/locale/multibyte/SEH-glue function in the
+# binary and pulled in their entire transitive type graph (_TEB, _PEB,
+# _CONTEXT, __crt_locale_data, lconv, ...). This is deliberately narrower
+# than a type-name blacklist would be: types like _CONTEXT/_EXCEPTION_*
+# can be genuinely relevant to a sample's own anti-debug/anti-VM logic
+# (e.g. this binary's own IsDebuggerRunning/DetectVMWare/IsInSandbox), so
+# filtering by *function* origin instead of by *type name* avoids hiding
+# those when they're reached from code that actually matters.
+FUNC_NOISE_PREFIXES = (
+    "__", "_CRT", "_MINGW", "mingw_", "__gnu", "__mb", "__lc",
+    "_onexit", "_atexit", "_initterm", "_amsg_exit",
+    "_configthreadlocale", "_set_new", "_seh_", "_except_handler",
+    "_XcptFilter", "__report_gsfailure",
+)
+
+def is_noise_function_name(name):
+    if not name:
+        return False
+    return name.startswith(FUNC_NOISE_PREFIXES)
+
 def is_noise_type_name(raw_name):
     """
     True for well-known Windows/PE internal type names that add bulk to the
@@ -53,25 +79,70 @@ def is_noise_type_name(raw_name):
         return True
     return False
 
-def is_likely_real_text(data):
-    """Sanity-check a Ghidra string-ish type actually decoded as real text
-    before trusting getValue() -- U+FFFD means Ghidra's decoder had to
-    invent characters, i.e. this was never real text."""
+def is_likely_real_text(data, program=None):
+    """Sanity-check that a Ghidra string-ish type actually decoded as real
+    text before trusting it. Two cases, since Ghidra represents them
+    completely differently:
+
+      - Ghidra's own *dynamic* 'string'/'unicode' types: getValue() already
+        returns decoded text. Guard against U+FFFD (Ghidra's decoder had to
+        invent characters -> not real text) and against decoded length far
+        shorter than the declared buffer (binary with embedded NULs).
+
+      - A plain, statically-sized `char[N]` array (the common case for a
+        stripped/no-debug binary): getValue() does NOT return decoded text
+        for these -- it's an array of individual char components -- so we
+        decode the raw bytes ourselves (up to the first NUL, standard
+        C-string semantics) and check they're mostly printable.
+    """
     dt_name = data.getDataType().getName().lower()
-    if not ('string' in dt_name or 'unicode' in dt_name):
-        return False  # plain char[]/char array -- never trust as text
-    raw = data.getValue()
-    if raw is None:
-        return False
-    s = str(raw)
-    if '\ufffd' in s:
-        return False
-    # decoded text much shorter than the declared buffer -> binary with
-    # embedded NULs, not a real string
-    decl_len = data.getLength()
-    if decl_len > 4 and len(s) < decl_len * 0.5:
-        return False
-    return True
+
+    if 'string' in dt_name or 'unicode' in dt_name:
+        raw = data.getValue()
+        if raw is None:
+            return False
+        s = str(raw)
+        if '\ufffd' in s:
+            return False
+        decl_len = data.getLength()
+        if decl_len > 4 and len(s) < decl_len * 0.5:
+            return False
+        return True
+
+    if 'char' in dt_name and program is not None:
+        length = data.getLength()
+        if length <= 0:
+            return False
+        buf = read_memory_bytes(data.getAddress(), length, program)
+        if not buf:
+            return False
+        term = buf.find(b'\x00')
+        text_len = term if term >= 0 else len(buf)
+        if text_len == 0:
+            return False
+        if any(not (32 <= b <= 126 or b in (9, 10, 13)) for b in buf[:text_len]):
+            return False  # non-printable byte inside the text run -> not text
+        if length > 4 and text_len < length * 0.3:
+            return False  # mostly padding, not a meaningful string
+        return True
+
+    return False  # anything else -- never trust as text
+
+
+def extract_c_string_value(data, program):
+    """Companion to is_likely_real_text(): pull the actual text out using
+    whichever method matches how that True came back. For Ghidra's dynamic
+    'string'/'unicode' types this is just getValue(); for a plain char[]
+    array it's the same manual byte-decode used above, truncated at the
+    first NUL."""
+    dt_name = data.getDataType().getName().lower()
+    if 'string' in dt_name or 'unicode' in dt_name:
+        return str(data.getValue() or "")
+    length = data.getLength()
+    buf = read_memory_bytes(data.getAddress(), length, program) or b""
+    term = buf.find(b'\x00')
+    text_bytes = buf[:term] if term >= 0 else buf
+    return text_bytes.decode('latin-1')
 
 def read_memory_bytes(addr, size, program):
     """
@@ -79,23 +150,46 @@ def read_memory_bytes(addr, size, program):
     `addr`, returning a Python `bytes` object, or None if they genuinely
     can't be read.
 
-    Memory.getBytes(Address, byte[]) is a Java method that wants a real
-    Java byte[]. Handing it a plain Python bytearray through pyghidra/JPype
-    is NOT guaranteed to marshal correctly, and both call sites that used
-    to do this wrapped the call in a bare `except: pass` -- so any
-    marshaling failure was silently swallowed and fell straight through to
-    a hard-coded "{ 0 }", which is almost certainly why previously-zeroed
-    buffers stayed zero even after being sized correctly. Building an
-    explicit JPype byte[] via jpype.JArray(jpype.JByte) is the reliable way
-    to call this API, and printing on failure means a real problem won't
-    silently masquerade as "this memory is just zero".
+    Primary path: Memory.getBytes(Address, byte[]) via an explicit JPype
+    byte[] built with jpype.JArray(jpype.JByte). This is a single JNI call
+    and is what you want for the overwhelming majority of reads.
+
+    Fallback path: in one run this primary path threw "Class must be
+    array type" on essentially every call across an entire contiguous
+    region of .data (dozens of different addresses/sizes, not one bad
+    address) -- a JPype/overload-resolution problem with the bulk array
+    call itself, not a real memory-access failure. Because every caller
+    of this function treats a None return as "value is zero" (see
+    read_raw_bytes_value_string / get_data_value_string), that bug was
+    silently zeroing out every symbol whose byte-value had to go through
+    this path -- including several real strings (USB_STR_*, cfg_filename,
+    infochan) that got exported as empty `{ 0 }` arrays even though the
+    actual bytes are sitting right there in the file.
+
+    Memory.getByte(Address) -> byte is a completely different JPype code
+    path (single primitive in/out, no array marshaling at all), so it
+    doesn't share whatever's wrong with the bulk path. It's one JNI call
+    per byte, so only worth it as a fallback -- which is exactly how it's
+    used here: it only fires for the addresses where the fast path failed.
     """
+    mem = program.getMemory()
+
     try:
         jbuf = jpype.JArray(jpype.JByte)(size)
-        program.getMemory().getBytes(addr, jbuf)
+        mem.getBytes(addr, jbuf)
         return bytes(b & 0xFF for b in jbuf)
     except Exception as e:
-        print(f"  [warn] failed to read {size} byte(s) at {addr}: {e}")
+        print(f"  [warn] bulk read failed for {size} byte(s) at {addr}: "
+              f"{type(e).__name__}: {e} -- retrying per-byte")
+
+    try:
+        out = bytearray(size)
+        for i in range(size):
+            out[i] = mem.getByte(addr.add(i)) & 0xFF
+        return bytes(out)
+    except Exception as e2:
+        print(f"  [warn] per-byte fallback also failed for {size} byte(s) "
+              f"at {addr}: {type(e2).__name__}: {e2}")
         return None
 
 def is_string_data(data):
@@ -189,10 +283,24 @@ def parse_ghidra_type_and_dim(dt, db, seen_types):
             'undefined1': 'uint8_t',  'byte': 'uint8_t',   'char': 'int8_t', 'sbyte': 'int8_t', 'bool': 'uint8_t',
             'undefined2': 'uint16_t', 'word': 'uint16_t',  'short': 'int16_t', 'ushort': 'uint16_t',
             'undefined4': 'uint32_t', 'dword': 'uint32_t', 'int': 'int32_t', 'uint': 'uint32_t', 'size_t': 'uint32_t',
-            'undefined8': 'uint64_t', 'qword': 'uint64_t', 'long': 'int64_t', 'ulong': 'uint64_t', 'long long': 'int64_t',
-            'float': 'float', 'double': 'double', 'string': 'char', 'terminatedcstring': 'char'
+            'undefined8': 'uint64_t', 'qword': 'uint64_t', 'long long': 'int64_t',
+            'float': 'float', 'double': 'double', 'string': 'char', 'terminatedcstring': 'char',
+            'void': 'void'
         }
-        c_type = type_map.get(name, sanitize_c_name(dt.getName()))
+        if name in ('long', 'ulong'):
+            # 'long'/'ulong' are the C *language* types, whose real width
+            # depends on the target ABI Ghidra analyzed this program with
+            # (4 bytes on the Win32/LLP64 target this sample was built
+            # for) -- NOT a fixed 8 bytes. Hardcoding them to [u]int64_t
+            # silently doubled the width of every `unsigned long` config
+            # value in this binary (cfg_reconnectsleep, cfg_ircmaxwaittime
+            # both came out as 8-byte fields instead of 4). Ask the type
+            # object for its actual length on THIS program instead.
+            width = dt.getLength()
+            c_type = ('uint32_t' if width <= 4 else 'uint64_t') if name == 'ulong' \
+                     else ('int32_t' if width <= 4 else 'int64_t')
+        else:
+            c_type = type_map.get(name, sanitize_c_name(dt.getName()))
 
     return c_type + ptr_str, dim_str
 
@@ -236,6 +344,47 @@ def is_unneeded_data(data, symbol, program):
             return True
             
     return False
+
+def reconcile_array_dim(dt, dim, data):
+    """
+    Ghidra occasionally hands back an Array DataType whose declared
+    getNumElements() is 0 for a Data unit that demonstrably occupies more
+    than 0 bytes (data.getLength() > 0) -- observed here on several
+    globals (USB_STR_*, cfg_filename, infochan) sitting near a region
+    auto_collate_large_arrays() had just merged into one flat byte blob.
+    Exporting that as `int8_t foo[0]` isn't just cosmetically wrong: the
+    declared element count and the byte-array initializer this script
+    emits alongside it (which get_data_value_string sizes from
+    data.getLength(), not from the Array type) go out of sync -- you'd
+    end up with a 0-element array initialized with a dozen values, which
+    doesn't compile, or (if the value path also failed) a 0-element array
+    that silently claims there was never any data here at all.
+
+    data.getLength() reflects the real, physically-laid-out extent Ghidra
+    assigned this specific address, so prefer it over a 0 coming from the
+    (possibly stale/generic) Array type object whenever the two disagree.
+    Only the outermost dimension is corrected -- nested member arrays
+    inside a struct aren't individually backed by this Data instance, so
+    a 0 there is left alone.
+    """
+    if not dim.endswith("[0]") or data is None:
+        return dim
+    try:
+        real_len = data.getLength()
+    except Exception:
+        return dim
+    if real_len <= 0:
+        return dim
+    elem = dt
+    while isinstance(elem, Array):
+        elem = elem.getDataType()
+    try:
+        elem_size = max(elem.getLength(), 1)
+    except Exception:
+        elem_size = 1
+    n = max(real_len // elem_size, 1)
+    return f"[{n}]" + dim[len("[0]"):]
+
 
 def extract_and_store_type(dt, db, seen_types):
     """Recursively parses Ghidra composites and registers them into the Database."""
@@ -416,6 +565,15 @@ def get_data_value_string(data, program):
         if hasattr(val, 'getValue'): num = val.getValue()
         elif hasattr(val, 'getOffset'): num = val.getOffset()
         elif isinstance(val, (int, float)): num = val
+        elif isinstance(val, str) and len(val) == 1:
+            # Ghidra's CharDataType.getValue() comes back as a single-
+            # character Python str via JPype (java.lang.Character), not a
+            # numeric type -- none of the branches above catch it, and
+            # falling straight to the old `return str(val)` below emitted
+            # that bare character completely unquoted, e.g. `{S, o, m, e,
+            # ...}` -- not valid C. Route it through the same hex-byte
+            # formatting every other scalar in this array already gets.
+            num = ord(val)
         
         if isinstance(num, int):
             size = dt.getLength()
@@ -683,17 +841,26 @@ def generate_global_files(path_to_binary, workspace_dir="."):
             processed_addrs.add(addr)
 
             if data and data.isDefined():
-                if is_string_data(data) and is_likely_real_text(data):
-                    raw_str = str(data.getValue() or "")
+                if is_string_data(data) and is_likely_real_text(data, program):
+                    raw_str = extract_c_string_value(data, program)
                     val = escape_c_string(raw_str)
                     db.add_or_update_global(name, gtype="const char", value_or_expr=val, is_string=True)
                 else:
                     dt = data.getDataType()
                     extract_and_store_type(dt, db, seen_types)
                     c_type, dim = parse_ghidra_type_and_dim(dt, db, seen_types)
+                    dim = reconcile_array_dim(dt, dim, data)
                     val_str = get_data_value_string(data, program)
                     db.add_or_update_global(name, gtype=f"{c_type}{dim}", value_or_expr=val_str, is_string=False)
-
+            else:
+                # Ghidra never wrapped this symbol in a typed Data object --
+                # this is the ONLY case the raw-byte fallback belongs to.
+                # Previously this ran unconditionally after the typed branch
+                # above too, so its add_or_update_global() call silently
+                # overwrote every correctly-typed global (structs, enums,
+                # typedefs -- everything) with a generic uint8_t/uint8_t[N],
+                # which is why the exported header showed nothing but byte
+                # arrays even for symbols Ghidra had real type info for.
                 inferred_size = infer_undefined_extent(addr)
                 if inferred_size > 1:
                     val_str = read_raw_bytes_value_string(addr, inferred_size)
@@ -716,6 +883,25 @@ def generate_global_files(path_to_binary, workspace_dir="."):
             addr = sym.getAddress()
             data = listing.getDataAt(addr)
             process_global(addr, data, sym)
+
+        # Pass 3: Extract types that only ever appear in a function's own
+        # signature (return type / parameters) -- these are invisible to
+        # Pass 1/2 above since nothing there ever walks Function objects,
+        # only Data at addresses. Without this, a type like an enum used
+        # solely as a by-value parameter never gets a typedef emitted, even
+        # though a later stage may already be generating a prototype that
+        # references it by name.
+        for func in fn_mgr.getFunctions(True):
+            if curated_addrs is not None and func.getEntryPoint().toString() not in curated_addrs:
+                continue
+            if curated_addrs is None and is_noise_function_name(func.getName()):
+                # Only applies in the uncurated fallback -- once
+                # extracted_functions/ has been pruned, curated_addrs
+                # already scopes this precisely and this check is a no-op.
+                continue
+            extract_and_store_type(func.getReturnType(), db, seen_types)
+            for param in func.getParameters():
+                extract_and_store_type(param.getDataType(), db, seen_types)
 
     db.export_header("data_globals.h")
     db.export_source("data_globals.c")
