@@ -8,6 +8,8 @@ from database.symbol_db import SymbolDB
 from ghidra.program.model.data import Array, Pointer, Structure, Union, Enum, TypeDef, ArrayDataType, ByteDataType, FunctionDefinition
 from ghidra.program.model.symbol import SourceType
 from ghidra.program.model.data import StringDataType, UnicodeDataType
+from ghidra.app.decompiler import DecompInterface
+from ghidra.util.task import ConsoleTaskMonitor
 
 
 C_KEYWORDS = {
@@ -29,7 +31,70 @@ def sanitize_c_name(name):
         name = '_' + name
     return name
 
-NOISE_TYPE_EXACT_NAMES = ("LIST_ENTRY", "RTL_CRITICAL_SECTION_DEBUG")
+# Exact bare names (leading underscores stripped before matching) that are
+# Windows/CRT internals and should never appear in the output header.
+NOISE_TYPE_EXACT_NAMES = frozenset({
+    # SEH / exception handling
+    "LIST_ENTRY",
+    "RTL_CRITICAL_SECTION_DEBUG",
+    "EXCEPTION_RECORD",
+    "EXCEPTION_POINTERS",
+    "FLOATING_SAVE_AREA",
+    "CONTEXT",
+    # TEB / PEB / NT internals
+    "NT_TIB",
+    "TEB",
+    "TEB_ACTIVE_FRAME",
+    "TEB_ACTIVE_FRAME_CONTEXT",
+    "CLIENT_ID",
+    "PROCESSOR_NUMBER",
+    "ACTIVATION_CONTEXT",
+    "ACTIVATION_CONTEXT_STACK",
+    "RTL_ACTIVATION_CONTEXT_STACK_FRAME",
+    "GDI_TEB_BATCH",
+    "GUID",
+    "CURDIR",
+    "STRING",
+    "UNICODE_STRING",
+    "RTL_DRIVE_LETTER_CURDIR",
+    "RTL_USER_PROCESS_PARAMETERS",
+    "PEB",
+    "PEB_LDR_DATA",
+    "LDR_DATA_TABLE_ENTRY",
+    "ASSEMBLY_STORAGE_MAP",
+    "LEAP_SECOND_DATA",
+    # CRT locale / multibyte / time internals
+    "crt_locale_data_public",
+    "crt_locale_data",
+    "crt_locale_refcount",
+    "crt_locale_pointers",
+    "crt_multibyte_data",
+    "crt_lc_time_data",
+    "lconv",
+    # CRT atexit / onexit machinery
+    "onexit_table_t",
+    # CRT argv / startup
+    "crt_argv_mode",
+    # Win32 large integer helpers  (the sample never uses these directly;
+    # they only appear as transitive members of the PEB/TEB graph)
+    "LARGE_INTEGER",
+    "ULARGE_INTEGER",
+    # exception disposition enum (SEH ABI detail)
+    "EXCEPTION_DISPOSITION",
+    # misc runtime / compiler helpers
+    "exception",
+})
+
+# Prefixes (on the bare, underscore-stripped name) whose whole family is noise.
+NOISE_TYPE_PREFIXES = (
+    "IMAGE_",          # PE header structs
+    "PEB_u_",          # PEB anonymous union/struct sub-types
+    "TEB_u_",          # TEB anonymous union/struct sub-types
+    "LARGE_INTEGER_",  # LARGE_INTEGER sub-types
+    "ULARGE_INTEGER_", # ULARGE_INTEGER sub-types
+    "unnamed_tag_",    # Ghidra auto-named anonymous sub-types
+    "unnamed_type_",   # ditto
+)
 
 # Function-name prefixes that mark CRT/mingw-runtime/locale/exception-glue
 # plumbing rather than anything belonging to the sample's own logic.
@@ -59,23 +124,31 @@ def is_noise_function_name(name):
 
 def is_noise_type_name(raw_name):
     """
-    True for well-known Windows/PE internal type names that add bulk to the
-    header without adding malware-analysis value (PE structs, TEB/PEB debug
-    plumbing, etc). Matched on the *unsanitized* Ghidra name, stripping
-    leading underscores first, since WinAPI struct tags are conventionally
-    underscore-prefixed (e.g. '_IMAGE_SECTION_HEADER', '_LIST_ENTRY') -- a
-    plain `.startswith("IMAGE_")` check misses those entirely.
+    True for well-known Windows/CRT/PE internal type names that add bulk to
+    the output header without adding malware-analysis value.
 
-    Note this deliberately does NOT blacklist RTL_CRITICAL_SECTION /
-    CRITICAL_SECTION themselves -- only their internal DebugInfo plumbing --
-    since CRITICAL_SECTION commonly shows up as a real, meaningful global.
+    Matching is done on the *bare* name (leading underscores stripped), since
+    WinAPI/CRT struct tags are conventionally underscore-prefixed in Ghidra's
+    type database (e.g. '_TEB', '_PEB', '__crt_locale_data') -- a plain
+    equality or prefix check on the raw string would miss all of them.
+
+    Two tiers:
+      NOISE_TYPE_EXACT_NAMES  -- the type's bare name is in the frozenset
+      NOISE_TYPE_PREFIXES     -- the type's bare name starts with a
+                                 noise-family prefix (PEB_u_*, TEB_u_*,
+                                 IMAGE_*, unnamed_tag_*, ...)
+
+    Note: RTL_CRITICAL_SECTION / CRITICAL_SECTION are intentionally NOT
+    blocked -- they show up as real, meaningful globals in many samples.
+    Only their DebugInfo plumbing (RTL_CRITICAL_SECTION_DEBUG, LIST_ENTRY)
+    is in the block-list.
     """
     if not raw_name:
         return False
     bare = raw_name.lstrip('_')
-    if bare.startswith("IMAGE_"):
-        return True
     if bare in NOISE_TYPE_EXACT_NAMES:
+        return True
+    if bare.startswith(NOISE_TYPE_PREFIXES):
         return True
     return False
 
@@ -150,47 +223,36 @@ def read_memory_bytes(addr, size, program):
     `addr`, returning a Python `bytes` object, or None if they genuinely
     can't be read.
 
-    Primary path: Memory.getBytes(Address, byte[]) via an explicit JPype
-    byte[] built with jpype.JArray(jpype.JByte). This is a single JNI call
-    and is what you want for the overwhelming majority of reads.
-
-    Fallback path: in one run this primary path threw "Class must be
-    array type" on essentially every call across an entire contiguous
-    region of .data (dozens of different addresses/sizes, not one bad
-    address) -- a JPype/overload-resolution problem with the bulk array
-    call itself, not a real memory-access failure. Because every caller
-    of this function treats a None return as "value is zero" (see
-    read_raw_bytes_value_string / get_data_value_string), that bug was
-    silently zeroing out every symbol whose byte-value had to go through
-    this path -- including several real strings (USB_STR_*, cfg_filename,
-    infochan) that got exported as empty `{ 0 }` arrays even though the
-    actual bytes are sitting right there in the file.
-
-    Memory.getByte(Address) -> byte is a completely different JPype code
-    path (single primitive in/out, no array marshaling at all), so it
-    doesn't share whatever's wrong with the bulk path. It's one JNI call
-    per byte, so only worth it as a fallback -- which is exactly how it's
-    used here: it only fires for the addresses where the fast path failed.
+    Memory.getBytes(Address, byte[]) is a Java method that wants a real
+    Java byte[]. Handing it a plain Python bytearray through pyghidra/JPype
+    is NOT guaranteed to marshal correctly, and both call sites that used
+    to do this wrapped the call in a bare `except: pass` -- so any
+    marshaling failure was silently swallowed and fell straight through to
+    a hard-coded "{ 0 }", which is almost certainly why previously-zeroed
+    buffers stayed zero even after being sized correctly. Building an
+    explicit JPype byte[] via jpype.JArray(jpype.JByte) is the reliable way
+    to call this API, and printing on failure means a real problem won't
+    silently masquerade as "this memory is just zero".
     """
-    mem = program.getMemory()
-
     try:
         jbuf = jpype.JArray(jpype.JByte)(size)
-        mem.getBytes(addr, jbuf)
+        program.getMemory().getBytes(addr, jbuf)
         return bytes(b & 0xFF for b in jbuf)
     except Exception as e:
-        print(f"  [warn] bulk read failed for {size} byte(s) at {addr}: "
-              f"{type(e).__name__}: {e} -- retrying per-byte")
-
-    try:
-        out = bytearray(size)
-        for i in range(size):
-            out[i] = mem.getByte(addr.add(i)) & 0xFF
-        return bytes(out)
-    except Exception as e2:
-        print(f"  [warn] per-byte fallback also failed for {size} byte(s) "
-              f"at {addr}: {type(e2).__name__}: {e2}")
-        return None
+        # Bulk array read failed -- fall back to a byte-at-a-time read via
+        # Memory.getByte(), which never touches the array-marshaling path
+        # that's failing above. Only warn if THIS also fails.
+        try:
+            mem = program.getMemory()
+            out = bytearray(size)
+            cur = addr
+            for i in range(size):
+                out[i] = mem.getByte(cur) & 0xFF
+                cur = cur.add(1)
+            return bytes(out)
+        except Exception as e2:
+            print(f"  [warn] failed to read {size} byte(s) at {addr}: {e} (fallback also failed: {e2})")
+            return None
 
 def is_string_data(data):
     if not data or not data.isDefined():
@@ -288,17 +350,16 @@ def parse_ghidra_type_and_dim(dt, db, seen_types):
             'void': 'void'
         }
         if name in ('long', 'ulong'):
-            # 'long'/'ulong' are the C *language* types, whose real width
-            # depends on the target ABI Ghidra analyzed this program with
-            # (4 bytes on the Win32/LLP64 target this sample was built
-            # for) -- NOT a fixed 8 bytes. Hardcoding them to [u]int64_t
-            # silently doubled the width of every `unsigned long` config
-            # value in this binary (cfg_reconnectsleep, cfg_ircmaxwaittime
-            # both came out as 8-byte fields instead of 4). Ask the type
-            # object for its actual length on THIS program instead.
-            width = dt.getLength()
-            c_type = ('uint32_t' if width <= 4 else 'uint64_t') if name == 'ulong' \
-                     else ('int32_t' if width <= 4 else 'int64_t')
+            # See comment above the type_map literal: don't hardcode a
+            # width for these -- ask Ghidra what it actually is for this
+            # program (4 on Windows, always -- but stay generic).
+            try:
+                size = dt.getLength()
+            except Exception:
+                size = 4
+            width_map = {1: '8', 2: '16', 4: '32', 8: '64'}
+            bits = width_map.get(size, '32')
+            c_type = f"int{bits}_t" if name == 'long' else f"uint{bits}_t"
         else:
             c_type = type_map.get(name, sanitize_c_name(dt.getName()))
 
@@ -317,10 +378,23 @@ def is_unneeded_data(data, symbol, program):
             
         dt = data.getDataType()
         dt_name = dt.getName()
-            
-        # Skip PE Structs by Data Type Name (handles '_IMAGE_...'-style tags too)
+
+        # Skip any global whose DataType is itself a noise type (e.g. a
+        # global of type _onexit_table_t or __crt_locale_pointers). Without
+        # this, a symbol named module_local_atexit_table would pass the
+        # symbol-name prefix filter below (it doesn't start with "__" etc.)
+        # but is pure CRT machinery -- its type name reveals that.
+        # Unwrap one level of TypeDef/Pointer so that e.g. a pointer-to-TEB
+        # global is also caught.
         if is_noise_type_name(dt_name):
             return True
+        try:
+            base = dt.getBaseDataType() if isinstance(dt, TypeDef) else (
+                dt.getDataType() if isinstance(dt, (Array, Pointer)) else None)
+            if base is not None and is_noise_type_name(base.getName()):
+                return True
+        except Exception:
+            pass
 
     if symbol:
         if symbol.getSource() == SourceType.USER_DEFINED:
@@ -344,47 +418,6 @@ def is_unneeded_data(data, symbol, program):
             return True
             
     return False
-
-def reconcile_array_dim(dt, dim, data):
-    """
-    Ghidra occasionally hands back an Array DataType whose declared
-    getNumElements() is 0 for a Data unit that demonstrably occupies more
-    than 0 bytes (data.getLength() > 0) -- observed here on several
-    globals (USB_STR_*, cfg_filename, infochan) sitting near a region
-    auto_collate_large_arrays() had just merged into one flat byte blob.
-    Exporting that as `int8_t foo[0]` isn't just cosmetically wrong: the
-    declared element count and the byte-array initializer this script
-    emits alongside it (which get_data_value_string sizes from
-    data.getLength(), not from the Array type) go out of sync -- you'd
-    end up with a 0-element array initialized with a dozen values, which
-    doesn't compile, or (if the value path also failed) a 0-element array
-    that silently claims there was never any data here at all.
-
-    data.getLength() reflects the real, physically-laid-out extent Ghidra
-    assigned this specific address, so prefer it over a 0 coming from the
-    (possibly stale/generic) Array type object whenever the two disagree.
-    Only the outermost dimension is corrected -- nested member arrays
-    inside a struct aren't individually backed by this Data instance, so
-    a 0 there is left alone.
-    """
-    if not dim.endswith("[0]") or data is None:
-        return dim
-    try:
-        real_len = data.getLength()
-    except Exception:
-        return dim
-    if real_len <= 0:
-        return dim
-    elem = dt
-    while isinstance(elem, Array):
-        elem = elem.getDataType()
-    try:
-        elem_size = max(elem.getLength(), 1)
-    except Exception:
-        elem_size = 1
-    n = max(real_len // elem_size, 1)
-    return f"[{n}]" + dim[len("[0]"):]
-
 
 def extract_and_store_type(dt, db, seen_types):
     """Recursively parses Ghidra composites and registers them into the Database."""
@@ -849,7 +882,6 @@ def generate_global_files(path_to_binary, workspace_dir="."):
                     dt = data.getDataType()
                     extract_and_store_type(dt, db, seen_types)
                     c_type, dim = parse_ghidra_type_and_dim(dt, db, seen_types)
-                    dim = reconcile_array_dim(dt, dim, data)
                     val_str = get_data_value_string(data, program)
                     db.add_or_update_global(name, gtype=f"{c_type}{dim}", value_or_expr=val_str, is_string=False)
             else:
@@ -902,6 +934,63 @@ def generate_global_files(path_to_binary, workspace_dir="."):
             extract_and_store_type(func.getReturnType(), db, seen_types)
             for param in func.getParameters():
                 extract_and_store_type(param.getDataType(), db, seen_types)
+
+        # Pass 4: types that only ever appear as a LOCAL variable inside a
+        # function body -- e.g. a thread entry point declared
+        # `DWORD WINAPI DL_Thread(LPVOID param)` (so Pass 3 above only
+        # ever sees void*), which then does
+        #     download_s *ds = (download_s *)param;
+        # The struct is real and meaningful, but neither the global-data
+        # walk nor the function-signature walk above ever looks at it --
+        # it's purely a decompiler-inferred local type. Ask the decompiler
+        # directly via HighFunction's local symbol map.
+        decomp = DecompInterface()
+        decomp.openProgram(program)
+        monitor = ConsoleTaskMonitor()
+        pass4_processed = 0
+        pass4_types_before = len(seen_types)
+        try:
+            for func in fn_mgr.getFunctions(True):
+                if curated_addrs is not None and func.getEntryPoint().toString() not in curated_addrs:
+                    continue
+                if curated_addrs is None and is_noise_function_name(func.getName()):
+                    continue
+                fname = func.getName()
+                fentry = func.getEntryPoint().toString()
+                try:
+                    result = decomp.decompileFunction(func, 60, monitor)
+                except Exception as e:
+                    print(f"  [warn] Pass 4: decompile raised for {fname} @ {fentry}: {e}")
+                    continue
+                if result is None:
+                    print(f"  [warn] Pass 4: no decompile result for {fname} @ {fentry}")
+                    continue
+                if not result.decompileCompleted():
+                    # A pcode-level error (e.g. Ghidra's own
+                    # "Unable to resolve constructor" warning) does NOT
+                    # necessarily mean nothing usable came back -- Ghidra
+                    # often still produces a partially-populated
+                    # HighFunction with everything it managed to resolve
+                    # before/around the failure point. Only bail if there's
+                    # truly nothing to read.
+                    msg = result.getErrorMessage() if result else "?"
+                    print(f"  [warn] Pass 4: decompile incomplete for {fname} @ {fentry}: {msg} "
+                          f"-- attempting partial local-symbol read anyway")
+                high_func = result.getHighFunction()
+                if high_func is None:
+                    print(f"  [warn] Pass 4: no HighFunction for {fname} @ {fentry} -- skipped, "
+                          f"any locals cast to a struct in this function were NOT recovered")
+                    continue
+                pass4_processed += 1
+                for hv in high_func.getLocalSymbolMap().getSymbols():
+                    try:
+                        extract_and_store_type(hv.getDataType(), db, seen_types)
+                    except Exception:
+                        continue
+        finally:
+            decomp.dispose()
+        print(f"Pass 4: decompiled {pass4_processed} curated function(s) for local-variable types, "
+              f"registered {len(seen_types) - pass4_types_before} new type(s).")
 
     db.export_header("data_globals.h")
     db.export_source("data_globals.c")
