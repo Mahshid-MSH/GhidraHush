@@ -98,7 +98,7 @@ Subpar decompiler output degrades LLM performance. To guarantee high-quality pse
 
 ## Workflow
 
-![Diagram](assets/diagram.png)
+![Diagram](assets/diagram.jpeg)
 
 ---
 
