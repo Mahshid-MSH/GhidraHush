@@ -726,271 +726,302 @@ def generate_global_files(path_to_binary, workspace_dir="."):
     
     print(f"Initializing Ghidra and opening: {path_to_binary}")
     
-    with pyghidra.open_program(path_to_binary) as flat_api:
-        program = flat_api.currentProgram
-        listing = program.getListing()
-        symbol_table = program.getSymbolTable()
-        ref_mgr = program.getReferenceManager()
-        fn_mgr = program.getFunctionManager()
+    project_location = os.path.join(workspace_dir, "ghidra_project")
+    project_name = f"{os.path.basename(path_to_binary)}_ghidra"
+    program_path = f"/{os.path.basename(path_to_binary)}"
 
-        # Retain collating large arrays in initialized memory
-        auto_collate_large_arrays(program, min_size=1024)
+    # Open the SAME persistent, already-analyzed Ghidra project that
+    # function_extractor.py (Stage 1) builds -- PDB symbols, custom GDT
+    # archives, GetProcAddress-resolved API types, and compiler-helper
+    # fixups all already live there. This used to call
+    # pyghidra.open_program(path_to_binary) directly, which opens a
+    # completely separate project and runs a fresh, un-enriched default
+    # analysis from scratch, silently missing everything Stage 1 already
+    # worked out. Reusing Stage 1's project instead of re-analyzing gets
+    # correct types AND is much faster (no second full analysis pass).
+    if not os.path.isdir(project_location):
+        raise RuntimeError(
+            f"No shared Ghidra project found at {project_location}. Run Stage 1 "
+            f"(function_extractor.py) on this binary first -- Stage 2 depends on "
+            f"the already-analyzed program it produces and no longer analyzes the "
+            f"binary independently."
+        )
+
+    print(f"Opening shared Ghidra project: {project_location}/{project_name}")
+    with pyghidra.open_project(project_location, project_name, create=False) as project:
+        existing_file = project.getProjectData().getFile(program_path)
+        if existing_file is None:
+            raise RuntimeError(
+                f"{program_path} was not found in the shared project at "
+                f"{project_location}. Run Stage 1 (function_extractor.py) on this "
+                f"binary first."
+            )
+
+        print(f"Opening already-analyzed program: {program_path}")
+        with pyghidra.program_context(project, program_path) as program:
+            listing = program.getListing()
+            symbol_table = program.getSymbolTable()
+            ref_mgr = program.getReferenceManager()
+            fn_mgr = program.getFunctionManager()
+
+            # Retain collating large arrays in initialized memory
+            auto_collate_large_arrays(program, min_size=1024)
         
-        seen_names = set()
-        seen_types = set()
-        processed_addrs = set()
+            seen_names = set()
+            seen_types = set()
+            processed_addrs = set()
 
-        def infer_undefined_extent(addr, max_size=4096):
-            """
-            Best-effort size guess for a symbol Ghidra never defined as real
-            data -- i.e. `data.isDefined()` is False and all we have is the
-            default 1-byte 'undefined' placeholder (or no code unit at all).
-            Walks forward until it hits the next symbol, the next incoming
-            reference, the next chunk of data Ghidra *has* defined, or the
-            end of the memory block, and treats that gap as the variable's
-            likely extent.
+            def infer_undefined_extent(addr, max_size=4096):
+                """
+                Best-effort size guess for a symbol Ghidra never defined as real
+                data -- i.e. `data.isDefined()` is False and all we have is the
+                default 1-byte 'undefined' placeholder (or no code unit at all).
+                Walks forward until it hits the next symbol, the next incoming
+                reference, the next chunk of data Ghidra *has* defined, or the
+                end of the memory block, and treats that gap as the variable's
+                likely extent.
 
-            This is a heuristic, not a guarantee -- it will over- or
-            under-shoot for tightly packed globals with no distinguishing
-            xrefs between them. Anything the exporter sizes via this path
-            (rather than from a real Ghidra-defined type) is worth a manual
-            look before you trust the layout. It exists to replace the old
-            behavior of silently asserting every such symbol was a single
-            uint8_t, which was flatly wrong for buffers/arrays like
-            serverports[]/inputL[] in the original source.
-            """
-            mem_block = program.getMemory().getBlock(addr)
-            if mem_block is None:
-                return 1
+                This is a heuristic, not a guarantee -- it will over- or
+                under-shoot for tightly packed globals with no distinguishing
+                xrefs between them. Anything the exporter sizes via this path
+                (rather than from a real Ghidra-defined type) is worth a manual
+                look before you trust the layout. It exists to replace the old
+                behavior of silently asserting every such symbol was a single
+                uint8_t, which was flatly wrong for buffers/arrays like
+                serverports[]/inputL[] in the original source.
+                """
+                mem_block = program.getMemory().getBlock(addr)
+                if mem_block is None:
+                    return 1
 
-            block_end = mem_block.getEnd()
-            scan_addr = addr.add(1)
-            size = 1
+                block_end = mem_block.getEnd()
+                scan_addr = addr.add(1)
+                size = 1
 
-            while scan_addr.compareTo(block_end) <= 0 and size < max_size:
-                if symbol_table.getPrimarySymbol(scan_addr) is not None:
-                    break
-                if ref_mgr.hasReferencesTo(scan_addr):
-                    break
-                scan_data = listing.getDataAt(scan_addr)
-                if scan_data is not None and scan_data.isDefined():
-                    break
-                try:
-                    scan_addr = scan_addr.add(1)
-                except Exception:
-                    break
-                size += 1
+                while scan_addr.compareTo(block_end) <= 0 and size < max_size:
+                    if symbol_table.getPrimarySymbol(scan_addr) is not None:
+                        break
+                    if ref_mgr.hasReferencesTo(scan_addr):
+                        break
+                    scan_data = listing.getDataAt(scan_addr)
+                    if scan_data is not None and scan_data.isDefined():
+                        break
+                    try:
+                        scan_addr = scan_addr.add(1)
+                    except Exception:
+                        break
+                    size += 1
 
-            return size
+                return size
 
-        def read_raw_bytes_value_string(addr, size):
-            """
-            The old fallback here just asserted "{ 0 }" for anything Ghidra
-            never wrapped in a typed Data object -- which is wrong whenever
-            the symbol lives in an *initialized* section (.data/.rdata):
-            those bytes are physically present in the file, Ghidra just
-            never got around to typing them. inputL[]/serverports[] are
-            exactly this case -- compiled-in literal arrays that Ghidra left
-            untyped, so their real values were being silently zeroed out.
+            def read_raw_bytes_value_string(addr, size):
+                """
+                The old fallback here just asserted "{ 0 }" for anything Ghidra
+                never wrapped in a typed Data object -- which is wrong whenever
+                the symbol lives in an *initialized* section (.data/.rdata):
+                those bytes are physically present in the file, Ghidra just
+                never got around to typing them. inputL[]/serverports[] are
+                exactly this case -- compiled-in literal arrays that Ghidra left
+                untyped, so their real values were being silently zeroed out.
 
-            We can't recover the original *element type* (Ghidra never told
-            us it was int[] vs char[] vs a struct array), so this still
-            emits a plain byte array -- but the actual bytes, and therefore
-            the real data, are preserved instead of discarded. If you need
-            proper element-level typing (e.g. int32_t[96] instead of
-            uint8_t[384]), retype the symbol in Ghidra and re-run.
+                We can't recover the original *element type* (Ghidra never told
+                us it was int[] vs char[] vs a struct array), so this still
+                emits a plain byte array -- but the actual bytes, and therefore
+                the real data, are preserved instead of discarded. If you need
+                proper element-level typing (e.g. int32_t[96] instead of
+                uint8_t[384]), retype the symbol in Ghidra and re-run.
 
-            .bss stays "{ 0 }" on purpose: it's genuinely zero-filled at
-            load time, there's nothing real to read.
-            """
-            mem_block = program.getMemory().getBlock(addr)
-            if mem_block is None or not mem_block.isInitialized():
+                .bss stays "{ 0 }" on purpose: it's genuinely zero-filled at
+                load time, there's nothing real to read.
+                """
+                mem_block = program.getMemory().getBlock(addr)
+                if mem_block is None or not mem_block.isInitialized():
+                    return "{ 0 }"
+                buf = read_memory_bytes(addr, size, program)
+                if buf is not None and any(buf):
+                    return "{" + ", ".join(f"0x{b:02x}" for b in buf) + "}"
                 return "{ 0 }"
-            buf = read_memory_bytes(addr, size, program)
-            if buf is not None and any(buf):
-                return "{" + ", ".join(f"0x{b:02x}" for b in buf) + "}"
-            return "{ 0 }"
 
-        def process_global(addr, data, sym):
-            if addr in processed_addrs:
-                return
+            def process_global(addr, data, sym):
+                if addr in processed_addrs:
+                    return
 
-            mem_block = program.getMemory().getBlock(addr)
-            # Do NOT skip uninitialized blocks (.bss)!
-            if not mem_block or mem_block.isExecute():
-                return
+                mem_block = program.getMemory().getBlock(addr)
+                # Do NOT skip uninitialized blocks (.bss)!
+                if not mem_block or mem_block.isExecute():
+                    return
             
-            block_name = mem_block.getName().lower()
-            if any(sec in block_name for sec in ['.debug', '.pdata', '.xdata', '.eh_frame', '.reloc', '.rsrc',
-                                                   'headers', '.idata', '.didata']):
-                # .idata/.didata hold the PE import directory table, IAT/ILT
-                # thunks, and hint/name entries (e.g. the _idata_5_*,
-                # _idata_7* symbols and the DWORD_004220xx import-descriptor
-                # fields) -- linker/loader metadata, not application globals.
-                return
+                block_name = mem_block.getName().lower()
+                if any(sec in block_name for sec in ['.debug', '.pdata', '.xdata', '.eh_frame', '.reloc', '.rsrc',
+                                                       'headers', '.idata', '.didata']):
+                    # .idata/.didata hold the PE import directory table, IAT/ILT
+                    # thunks, and hint/name entries (e.g. the _idata_5_*,
+                    # _idata_7* symbols and the DWORD_004220xx import-descriptor
+                    # fields) -- linker/loader metadata, not application globals.
+                    return
             
-            if fn_mgr.getFunctionContaining(addr) is not None:
-                return
+                if fn_mgr.getFunctionContaining(addr) is not None:
+                    return
             
-            if is_unneeded_data(data, sym, program):
-                return
+                if is_unneeded_data(data, sym, program):
+                    return
 
-            is_user_sym = sym and sym.getSource() == SourceType.USER_DEFINED
-            refs = ref_mgr.getReferencesTo(addr)
-            is_used_in_function = False
-            for ref in refs:
-                from_addr = ref.getFromAddress()
-                containing_func = fn_mgr.getFunctionContaining(from_addr)
-                if containing_func is None:
-                    continue
-                if curated_addrs is not None and containing_func.getEntryPoint().toString() not in curated_addrs:
-                    # Referenced from a real function, but not one the user
-                    # kept in extracted_functions/ -- almost certainly CRT
-                    # startup, mingw plumbing, exception-handling glue,
-                    # etc. Don't let it count as "used".
-                    continue
-                is_used_in_function = True
-                break
+                is_user_sym = sym and sym.getSource() == SourceType.USER_DEFINED
+                refs = ref_mgr.getReferencesTo(addr)
+                is_used_in_function = False
+                for ref in refs:
+                    from_addr = ref.getFromAddress()
+                    containing_func = fn_mgr.getFunctionContaining(from_addr)
+                    if containing_func is None:
+                        continue
+                    if curated_addrs is not None and containing_func.getEntryPoint().toString() not in curated_addrs:
+                        # Referenced from a real function, but not one the user
+                        # kept in extracted_functions/ -- almost certainly CRT
+                        # startup, mingw plumbing, exception-handling glue,
+                        # etc. Don't let it count as "used".
+                        continue
+                    is_used_in_function = True
+                    break
             
-            if not is_used_in_function and not is_user_sym:
-                return
+                if not is_used_in_function and not is_user_sym:
+                    return
                 
-            raw_name = sym.getName() if sym else f"DAT_{addr.toString()}"
-            if raw_name in TEB_PEB_IGNORE_LIST or raw_name in RUNTIME_SYMBOLS or raw_name in C_KEYWORDS:
-                return
-            if raw_name.startswith(("__imp_", "_refptr_", "__xc_", "__xi_", "__xd_", "_CRT", "__mingw", "__native", "__lib64")):
-                return
+                raw_name = sym.getName() if sym else f"DAT_{addr.toString()}"
+                if raw_name in TEB_PEB_IGNORE_LIST or raw_name in RUNTIME_SYMBOLS or raw_name in C_KEYWORDS:
+                    return
+                if raw_name.startswith(("__imp_", "_refptr_", "__xc_", "__xi_", "__xd_", "_CRT", "__mingw", "__native", "__lib64")):
+                    return
             
-            name = sanitize_c_name(raw_name)
-            if db.is_global_excluded(name):
-                # Permanently blacklisted via manage_symbols.py. Ghidra will
-                # keep finding this symbol every run because it genuinely is
-                # referenced from code, but the user has already judged it
-                # noise -- honor that instead of silently re-adding it.
-                return
-            if name in seen_names:
-                name = f"{name}_{addr.toString()}"
-            seen_names.add(name)
-            processed_addrs.add(addr)
+                name = sanitize_c_name(raw_name)
+                if db.is_global_excluded(name):
+                    # Permanently blacklisted via manage_symbols.py. Ghidra will
+                    # keep finding this symbol every run because it genuinely is
+                    # referenced from code, but the user has already judged it
+                    # noise -- honor that instead of silently re-adding it.
+                    return
+                if name in seen_names:
+                    name = f"{name}_{addr.toString()}"
+                seen_names.add(name)
+                processed_addrs.add(addr)
 
-            if data and data.isDefined():
-                if is_string_data(data) and is_likely_real_text(data, program):
-                    raw_str = extract_c_string_value(data, program)
-                    val = escape_c_string(raw_str)
-                    db.add_or_update_global(name, gtype="const char", value_or_expr=val, is_string=True)
+                if data and data.isDefined():
+                    if is_string_data(data) and is_likely_real_text(data, program):
+                        raw_str = extract_c_string_value(data, program)
+                        val = escape_c_string(raw_str)
+                        db.add_or_update_global(name, gtype="const char", value_or_expr=val, is_string=True)
+                    else:
+                        dt = data.getDataType()
+                        extract_and_store_type(dt, db, seen_types)
+                        c_type, dim = parse_ghidra_type_and_dim(dt, db, seen_types)
+                        val_str = get_data_value_string(data, program)
+                        db.add_or_update_global(name, gtype=f"{c_type}{dim}", value_or_expr=val_str, is_string=False)
                 else:
-                    dt = data.getDataType()
-                    extract_and_store_type(dt, db, seen_types)
-                    c_type, dim = parse_ghidra_type_and_dim(dt, db, seen_types)
-                    val_str = get_data_value_string(data, program)
-                    db.add_or_update_global(name, gtype=f"{c_type}{dim}", value_or_expr=val_str, is_string=False)
-            else:
-                # Ghidra never wrapped this symbol in a typed Data object --
-                # this is the ONLY case the raw-byte fallback belongs to.
-                # Previously this ran unconditionally after the typed branch
-                # above too, so its add_or_update_global() call silently
-                # overwrote every correctly-typed global (structs, enums,
-                # typedefs -- everything) with a generic uint8_t/uint8_t[N],
-                # which is why the exported header showed nothing but byte
-                # arrays even for symbols Ghidra had real type info for.
-                inferred_size = infer_undefined_extent(addr)
-                if inferred_size > 1:
-                    val_str = read_raw_bytes_value_string(addr, inferred_size)
-                    db.add_or_update_global(name, gtype=f"uint8_t[{inferred_size}]",
-                                             value_or_expr=val_str, is_string=False)
-                else:
-                    val_str = read_raw_bytes_value_string(addr, 1)
-                    db.add_or_update_global(name, gtype="uint8_t", value_or_expr=val_str, is_string=False)
+                    # Ghidra never wrapped this symbol in a typed Data object --
+                    # this is the ONLY case the raw-byte fallback belongs to.
+                    # Previously this ran unconditionally after the typed branch
+                    # above too, so its add_or_update_global() call silently
+                    # overwrote every correctly-typed global (structs, enums,
+                    # typedefs -- everything) with a generic uint8_t/uint8_t[N],
+                    # which is why the exported header showed nothing but byte
+                    # arrays even for symbols Ghidra had real type info for.
+                    inferred_size = infer_undefined_extent(addr)
+                    if inferred_size > 1:
+                        val_str = read_raw_bytes_value_string(addr, inferred_size)
+                        db.add_or_update_global(name, gtype=f"uint8_t[{inferred_size}]",
+                                                 value_or_expr=val_str, is_string=False)
+                    else:
+                        val_str = read_raw_bytes_value_string(addr, 1)
+                        db.add_or_update_global(name, gtype="uint8_t", value_or_expr=val_str, is_string=False)
 
-        # Pass 1: Extract collated large arrays & defined globals
-        data_iter = listing.getDefinedData(True)
-        for data in data_iter:
-            addr = data.getAddress()
-            sym = symbol_table.getPrimarySymbol(addr)
-            process_global(addr, data, sym)
+            # Pass 1: Extract collated large arrays & defined globals
+            data_iter = listing.getDefinedData(True)
+            for data in data_iter:
+                addr = data.getAddress()
+                sym = symbol_table.getPrimarySymbol(addr)
+                process_global(addr, data, sym)
 
-        # Pass 2: Extract uninitialized (.bss) and standard global symbols
-        sym_iter = symbol_table.getSymbolIterator(True)
-        for sym in sym_iter:
-            addr = sym.getAddress()
-            data = listing.getDataAt(addr)
-            process_global(addr, data, sym)
+            # Pass 2: Extract uninitialized (.bss) and standard global symbols
+            sym_iter = symbol_table.getSymbolIterator(True)
+            for sym in sym_iter:
+                addr = sym.getAddress()
+                data = listing.getDataAt(addr)
+                process_global(addr, data, sym)
 
-        # Pass 3: Extract types that only ever appear in a function's own
-        # signature (return type / parameters) -- these are invisible to
-        # Pass 1/2 above since nothing there ever walks Function objects,
-        # only Data at addresses. Without this, a type like an enum used
-        # solely as a by-value parameter never gets a typedef emitted, even
-        # though a later stage may already be generating a prototype that
-        # references it by name.
-        for func in fn_mgr.getFunctions(True):
-            if curated_addrs is not None and func.getEntryPoint().toString() not in curated_addrs:
-                continue
-            if curated_addrs is None and is_noise_function_name(func.getName()):
-                # Only applies in the uncurated fallback -- once
-                # extracted_functions/ has been pruned, curated_addrs
-                # already scopes this precisely and this check is a no-op.
-                continue
-            extract_and_store_type(func.getReturnType(), db, seen_types)
-            for param in func.getParameters():
-                extract_and_store_type(param.getDataType(), db, seen_types)
-
-        # Pass 4: types that only ever appear as a LOCAL variable inside a
-        # function body -- e.g. a thread entry point declared
-        # `DWORD WINAPI DL_Thread(LPVOID param)` (so Pass 3 above only
-        # ever sees void*), which then does
-        #     download_s *ds = (download_s *)param;
-        # The struct is real and meaningful, but neither the global-data
-        # walk nor the function-signature walk above ever looks at it --
-        # it's purely a decompiler-inferred local type. Ask the decompiler
-        # directly via HighFunction's local symbol map.
-        decomp = DecompInterface()
-        decomp.openProgram(program)
-        monitor = ConsoleTaskMonitor()
-        pass4_processed = 0
-        pass4_types_before = len(seen_types)
-        try:
+            # Pass 3: Extract types that only ever appear in a function's own
+            # signature (return type / parameters) -- these are invisible to
+            # Pass 1/2 above since nothing there ever walks Function objects,
+            # only Data at addresses. Without this, a type like an enum used
+            # solely as a by-value parameter never gets a typedef emitted, even
+            # though a later stage may already be generating a prototype that
+            # references it by name.
             for func in fn_mgr.getFunctions(True):
                 if curated_addrs is not None and func.getEntryPoint().toString() not in curated_addrs:
                     continue
                 if curated_addrs is None and is_noise_function_name(func.getName()):
+                    # Only applies in the uncurated fallback -- once
+                    # extracted_functions/ has been pruned, curated_addrs
+                    # already scopes this precisely and this check is a no-op.
                     continue
-                fname = func.getName()
-                fentry = func.getEntryPoint().toString()
-                try:
-                    result = decomp.decompileFunction(func, 60, monitor)
-                except Exception as e:
-                    print(f"  [warn] Pass 4: decompile raised for {fname} @ {fentry}: {e}")
-                    continue
-                if result is None:
-                    print(f"  [warn] Pass 4: no decompile result for {fname} @ {fentry}")
-                    continue
-                if not result.decompileCompleted():
-                    # A pcode-level error (e.g. Ghidra's own
-                    # "Unable to resolve constructor" warning) does NOT
-                    # necessarily mean nothing usable came back -- Ghidra
-                    # often still produces a partially-populated
-                    # HighFunction with everything it managed to resolve
-                    # before/around the failure point. Only bail if there's
-                    # truly nothing to read.
-                    msg = result.getErrorMessage() if result else "?"
-                    print(f"  [warn] Pass 4: decompile incomplete for {fname} @ {fentry}: {msg} "
-                          f"-- attempting partial local-symbol read anyway")
-                high_func = result.getHighFunction()
-                if high_func is None:
-                    print(f"  [warn] Pass 4: no HighFunction for {fname} @ {fentry} -- skipped, "
-                          f"any locals cast to a struct in this function were NOT recovered")
-                    continue
-                pass4_processed += 1
-                for hv in high_func.getLocalSymbolMap().getSymbols():
-                    try:
-                        extract_and_store_type(hv.getDataType(), db, seen_types)
-                    except Exception:
+                extract_and_store_type(func.getReturnType(), db, seen_types)
+                for param in func.getParameters():
+                    extract_and_store_type(param.getDataType(), db, seen_types)
+
+            # Pass 4: types that only ever appear as a LOCAL variable inside a
+            # function body -- e.g. a thread entry point declared
+            # `DWORD WINAPI DL_Thread(LPVOID param)` (so Pass 3 above only
+            # ever sees void*), which then does
+            #     download_s *ds = (download_s *)param;
+            # The struct is real and meaningful, but neither the global-data
+            # walk nor the function-signature walk above ever looks at it --
+            # it's purely a decompiler-inferred local type. Ask the decompiler
+            # directly via HighFunction's local symbol map.
+            decomp = DecompInterface()
+            decomp.openProgram(program)
+            monitor = ConsoleTaskMonitor()
+            pass4_processed = 0
+            pass4_types_before = len(seen_types)
+            try:
+                for func in fn_mgr.getFunctions(True):
+                    if curated_addrs is not None and func.getEntryPoint().toString() not in curated_addrs:
                         continue
-        finally:
-            decomp.dispose()
-        print(f"Pass 4: decompiled {pass4_processed} curated function(s) for local-variable types, "
-              f"registered {len(seen_types) - pass4_types_before} new type(s).")
+                    if curated_addrs is None and is_noise_function_name(func.getName()):
+                        continue
+                    fname = func.getName()
+                    fentry = func.getEntryPoint().toString()
+                    try:
+                        result = decomp.decompileFunction(func, 60, monitor)
+                    except Exception as e:
+                        print(f"  [warn] Pass 4: decompile raised for {fname} @ {fentry}: {e}")
+                        continue
+                    if result is None:
+                        print(f"  [warn] Pass 4: no decompile result for {fname} @ {fentry}")
+                        continue
+                    if not result.decompileCompleted():
+                        # A pcode-level error (e.g. Ghidra's own
+                        # "Unable to resolve constructor" warning) does NOT
+                        # necessarily mean nothing usable came back -- Ghidra
+                        # often still produces a partially-populated
+                        # HighFunction with everything it managed to resolve
+                        # before/around the failure point. Only bail if there's
+                        # truly nothing to read.
+                        msg = result.getErrorMessage() if result else "?"
+                        print(f"  [warn] Pass 4: decompile incomplete for {fname} @ {fentry}: {msg} "
+                              f"-- attempting partial local-symbol read anyway")
+                    high_func = result.getHighFunction()
+                    if high_func is None:
+                        print(f"  [warn] Pass 4: no HighFunction for {fname} @ {fentry} -- skipped, "
+                              f"any locals cast to a struct in this function were NOT recovered")
+                        continue
+                    pass4_processed += 1
+                    for hv in high_func.getLocalSymbolMap().getSymbols():
+                        try:
+                            extract_and_store_type(hv.getDataType(), db, seen_types)
+                        except Exception:
+                            continue
+            finally:
+                decomp.dispose()
+            print(f"Pass 4: decompiled {pass4_processed} curated function(s) for local-variable types, "
+                  f"registered {len(seen_types) - pass4_types_before} new type(s).")
 
     db.export_header("data_globals.h")
     db.export_source("data_globals.c")
