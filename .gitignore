@@ -1,0 +1,12 @@
+.env
+
+workspace/
+
+# Python cache & bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+.vscode/
+.idea/
