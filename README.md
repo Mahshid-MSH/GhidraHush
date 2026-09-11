@@ -2,219 +2,194 @@
 
 ![GhidraHush Logo](assets/banner.jpeg)
 
-GhidraHush is a binary reverse engineering and orchestration toolchain. Designed for security researchers, it leverages the Ghidra decompiler API and Large Language Models (LLMs) to extract, refactor, and enhance C code. This creates a framework for malware analysis, threat hunting, and executing structural mutation and robustness testing on compiled binaries.
+GhidraHush is an LLM-assisted binary reverse engineering and automated code refactoring framework. Designed for threat analysis, security research, and binary modification, it pairs headless **Ghidra decompilation APIs** with local **Large Language Models (Ollama)** to extract, clean, beautify, and refactor decompiled C code.
 
-**Important:** This pipeline is **not totally automated**. It operates on a "human-in-the-loop" philosophy. While the toolchain handles heavy lifting like extraction, LLM interactions, and compilation loops, user oversight, especially for filtering functions and verifying logic, is strictly required for maximum accuracy.
+---
 
-> **Disclaimer:** **For Educational Purposes Only!**
-> GhidraHush is created strictly for research, education, and authorized security assessments. I accept zero responsibility for what you do with this tool.
+## Navigation
+* [Overview](#overview)
+* [Ghidra Pre-Decompilation Tuning](#ghidra-pre-decompilation-tuning)
+* [Input Requirements & Workspace Isolation](#input-requirements--workspace-isolation)
+* [System Architecture](#system-architecture)
+* [Core Components & Utility Scripts](#core-components--utility-scripts)
+* [Stage 2 vs. Stage 4 Tradeoffs](#stage-2-vs-stage-4-tradeoffs)
+* [Prerequisites & Environment Setup](#prerequisites--environment-setup)
+* [Execution Workflow](#execution-workflow)
+* [Notes & Development](#notes--development)
+* [Disclaimer](#disclaimer)
 
-## 🌟 The Golden Rule: Tune Your Ghidra
+---
 
-It is absolutely crucial to tune your Ghidra environment before starting the decompilation process. It does not matter even if you have the best sources available and have access to the strongest LLM in the world; if you don't tune Ghidra to give you clean, accurate outputs in the first stage, the LLM will likely struggle to understand the code and context easily. **Just like a guitar, you must tune your Ghidra before playing.**
+## Overview
 
-To achieve optimal decompilation quality, `GhidraHush` automates several core tuning steps directly within `function_extractor.py`:
+GhidraHush operates on a **Human-in-the-Loop** execution model. While the framework handles extraction, compilation loops, and LLM transformations, user oversight is required—specifically during function filtering and logic verification—to ensure structural fidelity and eliminate decompiler noise.
 
-* **Custom GDT Archives:** If your target binary uses structures or data types that are not part of Ghidra's default type system, you must create a custom Ghidra Data Type (`.gdt`) archive. The extraction pipeline automatically checks the `gdt_archives/` directory and loads all `.gdt` files directly into the program's data type manager before decompilation begins.
+---
 
+## Input Requirements & Workspace Isolation
 
-* **Dynamic API Type Resolution (`GetProcAddress`):** For binaries using evasion techniques to hide imports, the script utilizes P-Code tracing to locate `GetProcAddress` calls and extracts the targeted API string directly from memory. It then cross-references this string with loaded GDT definitions to automatically retype the variables with the correct function pointer signatures, propagating the types downstream and revealing the true API calls.
+For optimal decompilation quality, observe the following guidelines:
 
+* **Binary State:** Unstripped binaries are strongly preferred.
+* **PDB Symbols (MSVC):** If analyzing MSVC targets with accompanying `.pdb` files, ensure the PDB shares the exact base name as the binary (e.g., `target.exe` and `target.pdb`) and resides in the same directory.
+* **Workspace Isolation:** All analysis operations execute inside isolated `workspace/run_X/` directories. Target binaries, PDBs, intermediate extractions, and LLM logs are self-contained per execution session.
 
-* **Compiler Helper Fixups:** Decompilers often misinterpret compiler-generated helper routines, leading to corrupted stack layouts and incorrect variable boundaries. The `function_extractor.py` script automatically cleans these up so stack items resolve accurately:
+---
 
+## Prerequisites & Environment Setup
 
-* **MinGW Stack Probes (`chkstk_ms`):** MinGW binaries use stack probes that pollute register state during decompilation. The script locates references to `chkstk_ms` and NOPs out the call sites. This preserves the `EAX` register (which holds the allocation size) and enables Ghidra to calculate local stack frame allocations correctly.
+### System Requirements
 
+* Linux host environment
+* Docker & Docker Compose
+* GPU Acceleration (Recommended for local LLM inference)
 
-* **MSVC Stack Allocators (`chkstk`, `alloca_probe`):** For Microsoft-compiled binaries, the script disables inlining on stack allocation functions and explicitly applies the `__chkstk` call fixup to restore accurate stack layout signatures.
+### Initialization
 
-
-* **Security Cookie Checks (`security_check_cookie`):** Stack security check routines are forced to inline, removing control flow noise so the decompiler can output clear, uncluttered pseudocode.
-
-
-## Input Requirements & Workspace
-
-To get the most out of GhidraHush, please observe the following input guidelines:
-
-* **Binary State:** It is highly preferred that the input binary is not stripped.
-* **PDB Files:** If the binary was compiled with MSVC, providing a `.pdb` file ensures maximum decompilation accuracy. If a PDB is provided, it **must** have the exact same base name as the binary (e.g., `malware.exe` and `malware.pdb`) and be located in the same directory.
-* **Workspace Isolation:** Every binary should be copied inside the `workspace` directory before usage. The control script automatically handles this by allocating a new `workspace/run_X` directory for each session. This folder will securely contain your binary, its PDB (if present), and all pipeline outputs.
-
-## Project Architecture
-
-The repository is structured to separate orchestration infrastructure from application logic. Here is a breakdown of what each core component is responsible for:
-
-* **`/` (Root Infrastructure):**
-* `docker-compose.yaml`: Defines the containerized services, mapping volumes and setting up the LLM environment (Ollama) with GPU support.(Feel free to change the GPU support.)
-* `Dockerfile`: Builds the `GhidraHush` container, installing dependencies including Python 3.11, OpenJDK 21, Ghidra 12.1.2, and MinGW compilers for 32-bit binaries.
-* `GhidraHush.sh`: The interactive Bash wrapper that serves as the entry point. It handles workspace directory creation, copies the target executable, tracks environment variables in `.env`, and launches the specific pipeline stages inside Docker.
-
-* **`src/entry.py`:** The main Python orchestrator. It parses user arguments, and sequentially fires the pipeline stages. It also manages Abstract Syntax Tree (AST) syncing and proactive header patching.
-* **`src/ghidra_scripts/function_extractor.py`:** A headless Ghidra script that analyzes the binary. It configures the decompiler, loads PDBs and custom GDT archives, resolves dynamic API calls, and applies preliminary filters to ignore standard library thunks and compiler-generated wrappers.
-* **`workspace/`:** A dynamically generated I/O directory containing the isolated `run_X` folders where all extraction, LLM processing, and compilation takes place.
-
-
-### Core Scripts
-
-#### 1. `src/utils/getprocaddress_resolver.py`
-
-This module resolves dynamic API calls in obfuscated binaries. It uses P-Code tracing to identify `GetProcAddress` calls, extracts target API names directly from memory, and matches them against loaded Ghidra Data Type (`.gdt`) archives. Once identified, it retypes local variables and propagates these function signature updates downstream to callee parameter lists.
-
-#### 2. `src/ghidra_scripts/extract_global_data.py`
-
-Executing as Stage 2, this script extracts state data directly from the target binary. Using PyGhidra, it parses `.data` and `.bss` memory blocks, collapses large contiguous arrays, extracts string constants, and converts composite structs, unions, and enums into C-compliant headers (`data_globals.h`) and source definitions (`data_globals.c`).
-
-#### 3. `src/utils/add_missing_globals.py`
-
-This module acts as Stage 4 of the pipeline. It parses extracted `.c` function files to identify undeclared identifiers and references missing from `data_globals.h`. It then queries Ghidra's symbol table and listing to resolve the memory location, applies array sizing heuristics to un-parsed memory blobs, and appends missing variable definitions to the database.
-
-#### 4. `src/llm/base_agent.py`
-
-Defines the base class (`BaseLLMAgent`) for managing Ollama LLM communications. It standardizes model connections, response streaming, C code extraction from raw markdown responses, and prompt-response logging inside the `llm_logs/` workspace directory.
-
-#### 5. `src/llm/c_code_enhancer.py`
-
-Contains the `CCodeEnhancer` agent, which processes decompiled pseudocode through a multi-pass pipeline:
-
-* **Pass 1:** Normalizes Ghidra data types to `<stdint.h>`, renames cryptically named variables, strips compiler artifacts (e.g., `__RTC_CheckEsp`, security cookies), and enforces standard variable declarations.
-
-
-* **Pass 2:** Cleans pointer arithmetic into array indexing, restores pointer casts, and formats API call arguments.
-
-
-* **Pass 3:** Formats control flow constructs, eliminates raw `goto` statements where possible, and prepares C99/C11 compilable code.
-
-
-* **Topological Sort:** Functions are sorted using a call graph dependency tree so callees are beautified and prototyped before their callers.
-
-
-
-#### 6. `src/llm/evasion_techniques.py`
-
-Contains the `DefensiveEvasion` class, which applies LLM-driven obfuscation techniques to mutate generated C functions:
-
-* **Junk Code Insertion:** Adds dead execution branches with opaque math predicates and Windows system API calls.
-
-
-* **Stack-String XOR Obfuscation:** Replaces string literals with volatile character arrays decrypted at runtime using distinct keys.
-
-
-* **Variable Aliasing:** Replaces scalar variables with pointer-indirection stack arrays.
-
-
-* **Control Flow Obfuscation:** Flattens execution flow into state machines using volatile variables and `goto` dispatchers.
-
-
-* **Local Context Struct Packaging:** Packages all local variables inside a single `volatile struct`.
-
-
-
-#### 7. `src/ghidra_scripts/function_extractor.py`
-
-Drives Stage 1 headless Ghidra decompilation. It loads PDB symbols, imports `.gdt` type archives, ignores runtime library thunks/wrappers, applies dynamic `GetProcAddress` resolutions, and outputs extracted C function files along with a call graph mapping (`call_graph.json`).
-
-
-#### ⚠️ Stage 2 (`global_data`) vs. Stage 4 (`add_missing`)
-
-##### Stage 2 (`global_data`)
-
-* **Primary Scope:** Extracts global variables, string constants, structure definitions, and static buffers directly from the binary's memory structures via Ghidra.
-
-
-* **Data Integrity:** Highly accurate because it derives declarations directly from defined section headers (`.data`, `.bss`) and binary symbol tables.
-
-
-##### Stage 4 (`add_missing`)
-
-* **Primary Scope:** Performs a secondary scan of extracted `.c` source files, searching for used identifiers that were not caught during Stage 2, and attempts to resolve them against Ghidra symbols.
-
-
-* **Heuristic Reliance:** Uses regular expression heuristics to infer un-annotated memory boundaries and array limits.
-
-
-### Usage Recommendation & Tradeoff
-
-Do **not** run Stage 4 (`add_missing`) unless you are certain there are legitimate global variables that Ghidra failed to capture during Stage 2.
-
-* **The Tradeoff:** Decompiled pseudocode frequently contains unresolved local stack variables, compiler macros, or temporary identifiers. Running Stage 4 unnecessarily forces the pipeline to turn these unresolved local identifiers into declared globals in `data_globals.h`, introducing **significant noise**, unnecessary stub variables, and cluttered variable scopes.
-
-## Prerequisites
-
-Ensure you have the following installed on your host system:
-
-* [Docker](https://docs.docker.com/get-docker/)
-* [Docker Compose](https://docs.docker.com/compose/install/)
-
-## First-Time Setup
-
-Before running the pipeline for the first time, you must build the environment and pull the required LLM into the Ollama service.
-
-1. **Start the containers in detached mode:**
-
+1. **Start container infrastructure:**
 ```bash
 docker compose up -d
 
 ```
-
-2. **Pull the LLM model into Ollama:**
-*Note: Do this only the first time you want to use the program or if you need to update the model.*
-
-
+2. **Pull local model weights into Ollama:**
 ```bash
-docker compose exec ollama ollama run [the LLM of your choice]
+docker compose exec ollama ollama run [MODEL_NAME]
 
 ```
 
-> **Model Recommendation:** I have personally used the models from WhiteRabbit and have been satisfied with their performance. If you want to try them out, go check out [WhiteRabbitNeo on Hugging Face](https://huggingface.co/WhiteRabbitNeo).
+*Note: Security-tailored models such as WhiteRabbitNeo weights yield strong results for C code refactoring.*
+3. **Set target model:**
+Specify your downloaded model name in the root `.env` file under `LLM_MODEL`.
 
 
-## LLM Environment Configuration
 
-Before launching the toolchain, inspect the `.env` file created in your working directory. You must specify the exact model name of the LLM you downloaded into Ollama via the `LLM_MODEL` variable. The agents rely on this variable to route prompts to the correct local model instance.
+---
+## Usage
 
-## Usage & Human-in-The-Loop Workflow
-
-The entire pipeline is controlled via the interactive Bash wrapper.
-
-1. **Launch the menu:**
-
+1. **Execute interactive runner:**
 ```bash
 ./GhidraHush.sh
-
 ```
 
-2. **Provide the target executable:**
-When prompted, provide the path to your executable. The script will automatically generate a new `workspace/run_X/` directory and copy the binary there.
-3. **Execute Stage 1.**
-4. **⚠️ MANUAL INTERVENTION REQUIRED:**
-After Stage 1 completes, navigate to `workspace/run_X/extracted_functions/`. You must manually review and remove useless functions, such as C/C++ runtimes or compiler-generated artifacts.
-*Note: The script automatically filters out standard thunks, external functions, and functions with known prefixes (like `__scrt` or `std::`), but it cannot catch everything.*
-5. **Resume the pipeline:** Once the extracted functions are cleaned up, return to the wrapper and proceed to Stage 2.
+2. **Load Target:** Enter the path to the executable. The script provisions `workspace/run_X/`.
+3. **Execute Stage 1:** Run automated headless Ghidra decompilation and dynamic API resolution.
+4. **Manual Intervention:** Inspect `workspace/run_X/extracted_functions/`. Delete compiler runtime wrappers, standard C/C++ thunks, or uninteresting setup functions before proceeding.
+5. **Resume Execution:** Return to `./GhidraHush.sh` and execute Stages 2 through 5.
+
+
+---
+
+
+## Ghidra Pre-Decompilation Tuning
+
+> *"Just like a guitar, you must tune your Ghidra before playing."*
+
+Subpar decompiler output degrades LLM performance. To guarantee high-quality pseudocode prior to model ingestion, `src/ghidra_scripts/function_extractor.py` enforces the following automated pre-decompilation passes:
+
+| Target Fixup | Implementation Mechanism |
+| :--- | :--- |
+| **Custom GDT Archives** | Automatically parses and loads custom `.gdt` type definitions from `gdt_archives/` into Ghidra’s Type Manager before extraction begins. |
+| **Dynamic API Resolution** | Traces P-Code around `GetProcAddress` calls, resolves target API strings in memory, matches them against loaded GDT definitions, and propagates function pointer signatures downstream. |
+| **MinGW Stack Probes (`chkstk_ms`)** | Identifies `chkstk_ms` call sites and NOPs them out. Preserves the `EAX` allocation size register and enables accurate local stack frame calculation. |
+| **MSVC Stack Allocators (`chkstk`)** | Disables inlining on Microsoft stack allocation functions and applies explicit `__chkstk` call fixups to restore stack frame layout signatures. |
+| **Security Cookie Checks** | Forces inlining on `security_check_cookie` routines to eliminate control flow noise around stack cookies. |
+
+---
 
 ## Workflow
 
-![GhidraHush Logo](assets/workflow2.png)
+![Diagram](assets/Diagram.jpeg)
 
+---
 
-## Pipeline Stages Detail
+## System Architecture
 
-The orchestration pipeline consists of 10 distinct phases:
+```text
+GhidraHush/
+├── docker-compose.yaml        # Infrastructure orchestration (Ghidra, Python, Ollama)
+├── Dockerfile                 # Image specs (Python 3.11, OpenJDK 21, Ghidra 12.1.2)
+├── GhidraHush.sh              # Interactive CLI entry point
+├── src/
+│   ├── entry.py               # Main orchestrator (AST sync, header patching)
+│   ├── ghidra_scripts/        # Headless Ghidra automation
+│   │   ├── function_extractor.py
+│   │   └── extract_global_data.py
+│   ├── llm/                   # LLM integration & transformation engines
+│   │   ├── base_agent.py
+│   │   ├── c_code_enhancer.py
+│   │   └── evasion_techniques.py
+│   └── utils/                 # Binary parsing & P-Code tracing
+│       ├── getprocaddress_resolver.py
+│       └── add_missing_globals.py
+└── workspace/                 # Dynamic run-isolated session outputs
 
-1. **Extract functions from binary (Ghidra):** Automates the Ghidra headless analyzer to dump target functions. Crucially, if the binary uses evasion techniques like `getProcAddress` to hide its imports, this stage utilizes a dynamic `getProcAddress` resolver to propagate downstream types and reveal the true API calls.
-2. **Extract global variables & data (Ghidra):** Extracts `.data` and `.bss` segments for state preservation.
-3. **Beautify & refactor extracted C code (LLM):** Prompts the LLM agent to clean up decompiled pseudocode into standard C syntax.
-4. **Resolve & add missing global declarations:** Stitches dependencies back into the refactored code and syncs the Abstract Syntax Tree (AST) to update C prototypes.
-5. **Apply defensive evasion techniques:** Allows the user to dynamically select techniques (like junk code insertion, string encryption, or anti-debugging) to mutate the C code before compilation.
+```
 
+---
 
-## Contributing
+## Core Components & Utility Scripts
 
-Contributions are more than welcome! This project thrives on community collaboration. Whether you want to squash bugs, refine prompt engineering for the LLM agents, add novel evasion techniques, or expand custom GDT archives, your participation is heavily encouraged!
+### `src/utils/getprocaddress_resolver.py`
 
-Feel free to fork the repository, open issues, or submit Pull Requests. Jump in and help take this framework to the next level!
+Resolves dynamically loaded APIs in obfuscated binaries. Performs P-Code analysis around `GetProcAddress` calls, extracts string parameters from memory, maps signatures against `.gdt` type archives, and updates variable definitions and callee parameter lists.
 
-## Notes
+### `src/ghidra_scripts/extract_global_data.py` [Stage 2]
 
-* Any changes made to Python files inside `src/` are instantly reflected in the container via volume mounts. You do not need to rebuild the Docker image when modifying application logic.
-* You only need to run `docker compose build` if you modify system-level dependencies in the `Dockerfile` or `requirements.txt`.
+Parses defined `.data` and `.bss` memory blocks via PyGhidra. Converts structs, unions, enums, string constants, and static buffers directly into C-compliant headers (`data_globals.h`) and implementations (`data_globals.c`).
+
+### `src/utils/add_missing_globals.py` [Stage 4]
+
+Performs a secondary parsing pass on refactored `.c` function files to detect un-declared identifiers missing from `data_globals.h`. Resolves memory offsets via Ghidra's symbol table and appends array/structure definitions.
+
+### `src/llm/base_agent.py`
+
+Base client (`BaseLLMAgent`) handling communication with the local Ollama instance, response streaming, Markdown block parsing, and session logging inside `llm_logs/`.
+
+### `src/llm/c_code_enhancer.py`
+
+Applies a multi-pass C beautification and normalization sequence:
+
+1. **Pass 1:** Standardizes types (`<stdint.h>`), renames generic identifiers, and strips compiler artifacts (e.g., `__RTC_CheckEsp`).
+2. **Pass 2:** Transforms raw pointer arithmetic into array indexing, restores explicit casts, and formats system API call signatures.
+3. **Pass 3:** Eliminates unnecessary `goto` statements, simplifies control flow, and prepares standard C99/C11 code.
+4. **Topological Sort:** Sorts C functions using a call-graph dependency tree so callees are beautified and prototyped prior to their callers.
+
+### `src/llm/evasion_techniques.py`
+
+Applies structural mutation and obfuscation engines (`DefensiveEvasion` class) to generated C functions:
+
+* **Junk Code Insertion:** Injects dead code branches driven by opaque predicates and system APIs.
+* **Stack-String XOR Encryption:** Replaces raw string literals with runtime-decrypted stack character arrays.
+* **Variable Aliasing:** Converts scalar variable assignments into multi-pointer stack arrays.
+* **Control Flow Flattening:** Flattens structured execution into state machines utilizing `goto` dispatchers.
+
+---
+
+## Stage 2 vs. Stage 4 Tradeoffs
+
+```text
+[ Stage 2: Direct Binary Memory Extraction ]
+  └── High Fidelity: Pulls directly from .data / .bss sections and symbol tables.
+
+[ Stage 4: Heuristic Regex Parsing ]
+  └── Low Fidelity Risk: Scans decompiled .c files. Can mistake temporary local 
+      stack variables or decompiler noise for missing globals, polluting data_globals.h.
+
+```
+
+> **Recommendation:** Do not run Stage 4 (`add_missing`) unless verified global variables were skipped during Stage 2.
+
+---
+
+## Notes & Development
+
+* **Live Reloading:** Modifications to files inside `src/` propagate directly to the running container via volume mounts without needing an image rebuild.
+* **Container Rebuild:** Run `docker compose build` only when modifying Dockerfile layers or updating `requirements.txt`.
+
+---
+
+## Disclaimer
+
+**For Authorized Educational and Security Research Purposes Only.**
+
+GhidraHush is developed strictly for research, binary analysis education, and authorized assessments. The author assumes no liability for unauthorized or illegal use.
