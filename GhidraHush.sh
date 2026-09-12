@@ -94,6 +94,7 @@ show_banner() {
                                                                                                                
 EOF
 }
+
 show_menu() {
     local ws="$1"
     echo -e "\n${CYAN}============================================================${RESET}"
@@ -105,15 +106,9 @@ show_menu() {
     desc[2]="Extract global variables & data (Ghidra)"
     desc[3]="Beautify & refactor extracted C code (LLM)"
     desc[4]="Resolve & add missing global declarations"
-    desc[5]="Generate main wrapper script"
-    desc[6]="Apply defensive evasion techniques"
-    desc[7]="Compile LLM_globals.c & main.c"
-    desc[8]="Agentic compilation loop & patching (LLM)"
-    desc[9]="Link output objects into final executable"
-    desc[10]="Verify behavioral equivalence against original binary"
+    desc[5]="Apply defensive evasion techniques"
 
-    # Updated to loop up to 10
-    for stage in {1..10}; do
+    for stage in {1..5}; do
         if check_stage "$stage"; then
             status="${GREEN}[✓]${RESET}"
         else
@@ -155,50 +150,49 @@ update_env_var "LAST_COMPLETED_STAGE" "0"
 while true; do
     show_menu "$workspace_dir"
     
-    read -p "$(echo -e "${YELLOW}${BOLD}Select stage to start/resume from (0-10): ${RESET}")" choice
+    read -p "$(echo -e "${YELLOW}${BOLD}Select stage to start/resume from (0-5): ${RESET}")" choice
     
     if [[ "$choice" == "0" ]]; then
         echo -e "${RED}Exiting pipeline.${RESET}"
         exit 0
     fi
     
-    if [[ "$choice" =~ ^([1-9]|10)$ ]]; then
+    if [[ "$choice" =~ ^[1-5]$ ]]; then
         echo -e "${GREEN}Starting pipeline from stage $choice inside Docker...${RESET}"
         
-        # --- Handle Dynamic Evasion Selection for Stage 6 ---
+        # --- Handle Dynamic Evasion Selection for Stage 5 ---
         EVASION_ENV=""
-        if [[ "$choice" == "6" ]]; then
+        if [[ "$choice" == "5" ]]; then
             echo -e "\n${YELLOW}${BOLD}Available Evasion Techniques:${RESET}"
-            echo -e "  1. Junk Code Insertion"
-            echo -e "  2. String Encryption"
-            echo -e "  3. API Call Substitution"
-            echo -e "  4. Anti-Debugging"
-            echo -e "  5. Control Flow Obfuscation"
-            echo -e "  6. Anti-Disassembly"
+            echo -e "  1. Junk Code Insertion (Opaque Predicates)"
+            echo -e "  2. Stack-String XOR Obfuscation (Volatile Arrays)"
+            echo -e "  3. Variable Aliasing (Pointer-Indirection)"
+            echo -e "  4. Control Flow Flattening (State Machines)"
+            echo -e "  5. Local Context Struct Packaging"
             echo -e "${CYAN}Enter the numbers of the techniques to apply, separated by commas (e.g., 1,2,4): ${RESET}\c"
             read -r tech_choices
             
             TECH_NAMES=()
             for opt in $(echo "$tech_choices" | tr "," "\n" | tr -d ' '); do
                 case $opt in
-                    1) TECH_NAMES+=("junk_code_insertion") ;;
-                    2) TECH_NAMES+=("string_encryption") ;;
-                    3) TECH_NAMES+=("api_call_substitution") ;;
-                    4) TECH_NAMES+=("anti_debugging") ;;
-                    5) TECH_NAMES+=("control_flow_obfuscation") ;;
-                    6) TECH_NAMES+=("anti_disassembly") ;;
-                    *) echo -e "${RED}Warning: Ignored invalid option '$opt'${RESET}" ;;
-                esac
+         1) TECH_NAMES+=("junk_code_insertion") ;;
+         2) TECH_NAMES+=("stack_string_xor_obfuscation") ;;
+         3) TECH_NAMES+=("aggressive_variable_aliasing") ;;
+         4) TECH_NAMES+=("control_flow_obfuscation") ;;
+         5) TECH_NAMES+=("local_context_struct_packaging") ;;
+         *) echo -e "${RED}Warning: Ignored invalid option '$opt'${RESET}" ;;
+	     esac
             done
             
             # Join the array into a comma-separated string for the env var
             EVASION_ENV=$(IFS=, ; echo "${TECH_NAMES[*]}")
             
             if [[ -z "$EVASION_ENV" ]]; then
-                echo -e "${RED}No valid techniques selected. Aborting Stage 6.${RESET}"
+                echo -e "${RED}No valid techniques selected. Aborting Stage 5.${RESET}"
                 continue
             fi
         fi
+        
         # Pass the EVASION_TECHNIQUES via environment variable to Docker
         docker compose -f "$COMPOSE_FILE" run --rm -e EVASION_TECHNIQUES="$EVASION_ENV" app python3 ./src/entry.py \
             --stage "$choice" \
@@ -209,6 +203,6 @@ while true; do
             echo -e "\n${RED}${BOLD}Pipeline halted due to an error. Check the logs above.${RESET}"
         fi
     else
-        echo -e "${RED}Invalid option. Please enter a number between 0 and 10.${RESET}"
+        echo -e "${RED}Invalid option. Please enter a number between 0 and 5.${RESET}"
     fi
 done
