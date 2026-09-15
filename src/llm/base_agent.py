@@ -8,10 +8,10 @@ from openai import OpenAI
 class BaseLLMAgent:
     """Core class to handle DeepSeek connections, streaming, code extraction, and logging."""
 
-    def __init__(self, model_name=None, base_url=None, delay_between_requests=20):
+    def __init__(self, model_name=None, base_url=None, delay_between_requests=40):
         # 1. Ensure the base URL includes the /v1 path required by the OpenAI-compatible router
         self.base_url = base_url or os.environ.get(
-            "DEEPSEEK_BASE_URL", "http://localhost:3000/v1"
+    "DEEPSEEK_BASE_URL", "https://api.deepseek.com"
         )
         
         # 2. Use a standard model name supported by the wrapper (e.g., "deepseek-chat")

@@ -164,6 +164,10 @@ def ensure_function_pointer_typedef(func_def, db, seen_types):
         return name
     seen_types.add(name)
 
+    extract_and_store_type(func_def.getReturnType(), db, seen_types)
+    for arg in func_def.getArguments():
+        extract_and_store_type(arg.getDataType(), db, seen_types)
+
     ret_type, ret_dim = parse_ghidra_type_and_dim(func_def.getReturnType(), db, seen_types)
     params = []
     for arg in func_def.getArguments():
