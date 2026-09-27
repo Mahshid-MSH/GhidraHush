@@ -1,39 +1,86 @@
 #!/usr/bin/env python3
 """
-add_missing_globals.py
------------------------
-Scans all .c files in extracted_functions for global variable references
-that are missing from data_globals.h and appends them via SymbolDB.
-Includes a universal heuristic to auto-detect unstructured array boundaries.
+add_missing_globals.py -- Stage 4 (Deterministic Symbol Completion).
+
+DISCOVERY: The compiler is the oracle. Stage 3's compilation gates record exactly 
+which identifiers failed to resolve (`compile_manifest.json` -> `missing_symbols`). 
+Windows.h names, keywords, struct members, and calling conventions never appear 
+in that list, so no text-scanning heuristics are needed—and none of the legacy scan's 
+poisoning classes (globals named HANDLE/std/__stdcall, struct members like cFileName) 
+can occur.
+
+RESOLUTION LADDER per missing name:
+  Rung 1: Exact symbol in Ghidra's memory space -> emit from the binary
+          (function -> prototype; data -> typed/byte-array global).
+  Rung 2: Decompiler overlap alias: '_X' over declared global 'X'
+          (e.g., `strcpy(Status,"YES")` compiles to a dword store, which the
+          decompiler renders as `_Status = 0x534559;`). Emitted as a
+          cast-macro via `db.add_alias`: `#define _Status (*(uint32_t*)(Status))`.
+  Rung 3: DAT_<hex> names encode their own address -> resolve directly.
+  Rung 4: FUN_<hex> likewise -> emit the Ghidra-signature prototype
+          (recovering prototypes that the text parser failed to extract).
+  Else:   Recorded in `unresolved_symbols.json` and SKIPPED. Never fabricated: 
+          a placeholder `uintptr_t foo = 0;` compiles cleanly while silently 
+          redirecting program writes to dead memory.
+
+SIZE PINNING: Call-site literals beat boundary inference (`&blob, 0xc2` 
+means 194 bytes even if the boundary scan found 184; `(0x400, Drives)` 
+means the buffer is >=1024 bytes even if typed as a scalar).
+
+REUSE: Opens the ALREADY-ANALYZED Stage-1 shared Ghidra project. Never calls 
+`pyghidra.open_program()` here, which would otherwise re-run a full analysis 
+per function call.
 """
 
 import os
 import re
 import sys
+import json
 import struct
+
 import pyghidra
+try:
+    pyghidra.start()          # No-op if the PyGhidra JVM is already running
+except Exception:
+    pass
+
 from jpype import JArray, JByte
 from database.symbol_db import SymbolDB
 
+WIDTH_TO_TYPE = {1: 'uint8_t', 2: 'uint16_t', 4: 'uint32_t', 8: 'uint64_t'}
+
+_DAT_RE = re.compile(r'^DAT_([0-9A-Fa-f]+)$')
+_FUN_RE = re.compile(r'^FUN_([0-9A-Fa-f]+)$')
+
+
+# ======================================================================
+# Type Helpers
+# ======================================================================
 
 def parse_ghidra_type_and_dim(dt):
+    """
+    Parses a Ghidra data type object and extracts its primitive C type and array dimensions.
+    
+    Why it's here: Ghidra data types (like `undefined1`, `dword`, or custom structs) 
+    must be mapped cleanly to strict C99 primitives (`uint8_t`, `uint32_t`, etc.) 
+    to ensure the generated headers compile without warnings.
+    """
     if dt is None:
         return "uint32_t", ""
-        
     name = dt.getName().lower()
     dim = ""
-    
     if '[' in name and ']' in name:
         dim = name[name.find('['):]
         base_name = name[:name.find('[')]
     else:
         base_name = name
-
+        
     if 'undefined1' in base_name or 'byte' in base_name or 'char' in base_name:
         c_type = "uint8_t"
     elif 'undefined2' in base_name or 'word' in base_name:
         c_type = "uint16_t"
-    elif 'undefined4' in base_name or 'dword' in base_name or 'ulong' in base_name or 'long' in base_name:
+    elif ('undefined4' in base_name or 'dword' in base_name
+          or 'ulong' in base_name or 'long' in base_name):
         c_type = "uint32_t"
     elif 'undefined8' in base_name or 'qword' in base_name:
         c_type = "uint64_t"
@@ -43,86 +90,60 @@ def parse_ghidra_type_and_dim(dt):
         c_type = "double"
     else:
         c_type = "uint32_t"
-
     return c_type, dim
 
 
 def get_c_type_size(c_type):
-    """Returns the byte size of standard C types."""
-    if "64" in c_type or c_type == "double": return 8
-    if "32" in c_type or c_type == "float": return 4
-    if "16" in c_type: return 2
+    """Returns the byte size for a given C primitive type."""
+    if "64" in c_type or c_type == "double": 
+        return 8
+    if "32" in c_type or c_type == "float": 
+        return 4
+    if "16" in c_type: 
+        return 2
     return 1
 
 
 def _is_incidental_marker(program, addr):
     """
-    True if `addr` looks like an incidental label Ghidra placed on a byte
-    the decompiler happened to dereference - NOT a real boundary between
-    two separate globals.
-
-    Two conditions both have to hold:
-      1. The data type there is still Undefined (Ghidra never concluded
-         this was the start of a distinct, independently-typed variable).
-      2. Every symbol at that address has SourceType.DEFAULT - i.e. it's
-         one of Ghidra's own auto-generated placeholder names (the
-         DAT_xxxxxxxx / PTR_xxxxxxxx pattern), not something a person or
-         a prior analysis pass deliberately identified as its own thing.
-
-    This is what lets a large unstructured array (any size, any binary)
-    stay intact: Ghidra typically auto-labels every individual offset
-    that code touches inside such a blob, and without this check each of
-    those labels would incorrectly look like "the next global starts
-    here," fragmenting one real array into dozens of tiny ones.
+    Checks if an address is an incidental auto-label on undefined data 
+    (Ghidra's own DAT_/PTR_ placeholder), NOT a real boundary between two globals.
+    
+    Why it's here: Skipping incidental markers keeps large unstructured byte arrays 
+    intact rather than artificially fragmenting them.
     """
     from ghidra.program.model.symbol import SourceType
     from ghidra.program.model.data import Undefined
-
+    
     data = program.getListing().getDataAt(addr)
     if data is not None and not Undefined.isUndefined(data.getDataType()):
         return False
-
-    syms = program.getSymbolTable().getSymbols(addr)
-    if len(syms) == 0:
+    syms = list(program.getSymbolTable().getSymbols(addr))
+    if not syms:
         return True
     return all(s.getSource() == SourceType.DEFAULT for s in syms)
 
 
 def get_data_boundary(program, addr):
     """
-    UNIVERSAL HEURISTIC:
-    Finds the exact byte size of an unknown data block by scanning forward
-    until it hits a REAL boundary - either the end of the memory block, or
-    a symbol/data item that Ghidra or a person has actually distinguished
-    from a plain undefined byte. Incidental auto-labels sitting on still-
-    Undefined data (see `_is_incidental_marker`) are skipped over rather
-    than treated as boundaries, so one large unstructured array doesn't
-    get sliced into fragments at every offset the decompiled code touches.
-
-    Candidate boundaries are also only trusted if they fall inside the
-    SAME memory block as `addr` - a symbol/data item that happens to sit
-    further along in address order but lives in a different block (e.g.
-    across a section gap, or in a block not actually backed by real
-    bytes) is ignored, so the computed size can never reach past what
-    Ghidra can actually read back.
+    Scans forward to the next real memory boundary within the same memory block.
     """
     mem_block = program.getMemory().getBlock(addr)
     if not mem_block:
         return 1
-
     end_offset = mem_block.getEnd().getOffset() + 1
 
-    def _in_same_block(candidate_addr):
+    def _in_same_block(candidate):
         try:
-            return mem_block.contains(candidate_addr)
+            return mem_block.contains(candidate)
         except Exception:
             return False
 
-    # 1. Walk forward through symbols, skipping incidental markers, until
-    #    a genuine boundary or the end of the block is reached.
+    from ghidra.program.model.data import Undefined
+    listing = program.getListing()
+
     next_sym_offset = end_offset
-    sym_iter = program.getSymbolTable().getSymbolIterator(addr, True)
-    for sym in sym_iter:
+    for sym in program.getSymbolTable().getSymbolIterator(addr, True):
         sym_addr = sym.getAddress()
         if sym_addr.getOffset() <= addr.getOffset():
             continue
@@ -133,11 +154,6 @@ def get_data_boundary(program, addr):
         next_sym_offset = sym_addr.getOffset()
         break
 
-    # 2. Same idea for defined data: skip past Undefined-typed data units
-    #    (those are what incidental labels normally sit on) and only stop
-    #    at data Ghidra actually gave a real type.
-    from ghidra.program.model.data import Undefined
-    listing = program.getListing()
     next_data_offset = end_offset
     next_data = listing.getDefinedDataAfter(addr)
     while next_data:
@@ -150,21 +166,14 @@ def get_data_boundary(program, addr):
         next_data_offset = nd_addr.getOffset()
         break
 
-    # The true size is bounded by whatever real boundary comes first
-    actual_size = min(next_sym_offset, next_data_offset, end_offset) - addr.getOffset()
-    return actual_size if actual_size > 0 else 1
+    actual = min(next_sym_offset, next_data_offset, end_offset) - addr.getOffset()
+    return actual if actual > 0 else 1
 
 
 def _read_bytes_with_fallback(memory, addr, requested_len):
     """
-    Reads `requested_len` bytes starting at `addr`. If the full-length read
-    fails (MemoryAccessException), binary-searches for the longest prefix
-    that Ghidra CAN actually deliver, and zero-pads the remainder rather
-    than discarding the whole read. This matters most for large arrays:
-    a single bad byte near the tail of a 32KB array shouldn't cost you
-    the other 32KB of real data.
-
-    Returns (bytes_buffer, num_real_bytes_recovered).
+    Reads binary memory with a robust fallback. If the requested length causes a fault, 
+    it binary-searches for the longest readable prefix and zero-pads the remainder.
     """
     if requested_len <= 0:
         return b"", 0
@@ -179,7 +188,6 @@ def _read_bytes_with_fallback(memory, addr, requested_len):
     except Exception:
         pass
 
-    # Binary search for the longest readable prefix from `addr`.
     lo, hi, best = 0, requested_len, b""
     while lo < hi:
         mid = (lo + hi + 1) // 2
@@ -188,47 +196,39 @@ def _read_bytes_with_fallback(memory, addr, requested_len):
             lo = mid
         except Exception:
             hi = mid - 1
-
+            
     return best + b"\x00" * (requested_len - len(best)), len(best)
 
 
 def extract_generic_array(program, addr, c_type, byte_len):
-    """Extracts arbitrary memory blocks and formats them into clean C arrays."""
+    """
+    Converts raw binary memory into a C array initializer block. 
+    All-zero blocks automatically collapse to `{ 0 }`.
+    """
     try:
-        buf, real_bytes = _read_bytes_with_fallback(program.getMemory(), addr, byte_len)
-
-        if real_bytes < byte_len:
-            print(f"WARNING: only recovered {real_bytes}/{byte_len} real bytes at {addr}; "
-                  f"remaining {byte_len - real_bytes} byte(s) zero-padded (array size preserved)")
-
-        # MASSIVE ARRAY OPTIMIZATION: 
-        # If the block is populated entirely with zeroes, return standard C zero-initializer.
+        buf, real = _read_bytes_with_fallback(program.getMemory(), addr, byte_len)
+        if real < byte_len:
+            print(f"WARNING: recovered {real}/{byte_len} bytes at {addr}; "
+                  f"{byte_len - real} zero-padded")
         if not any(buf):
             return "{ 0 }"
-
+            
         lines = []
-        
         if "uint32_t" in c_type or "int32_t" in c_type:
-            count = byte_len // 4
-            vals = struct.unpack(f"<{count}I", buf[:count * 4])
+            vals = struct.unpack(f"<{byte_len // 4}I", buf[:(byte_len // 4) * 4])
             for i in range(0, len(vals), 8):
                 lines.append("  " + ", ".join(f"0x{v:08X}L" for v in vals[i:i+8]))
-                
         elif "uint16_t" in c_type or "int16_t" in c_type:
-            count = byte_len // 2
-            vals = struct.unpack(f"<{count}H", buf[:count * 2])
+            vals = struct.unpack(f"<{byte_len // 2}H", buf[:(byte_len // 2) * 2])
             for i in range(0, len(vals), 12):
                 lines.append("  " + ", ".join(f"0x{v:04X}" for v in vals[i:i+12]))
-                
         elif "uint64_t" in c_type or "int64_t" in c_type:
-            count = byte_len // 8
-            vals = struct.unpack(f"<{count}Q", buf[:count * 8])
+            vals = struct.unpack(f"<{byte_len // 8}Q", buf[:(byte_len // 8) * 8])
             for i in range(0, len(vals), 4):
                 lines.append("  " + ", ".join(f"0x{v:016X}ULL" for v in vals[i:i+4]))
-                
         else:
             for i in range(0, len(buf), 16):
-                lines.append("  " + ", ".join(f"0x{b & 0xff:02x}" for b in buf[i:i+16]))
+                lines.append("  " + ", ".join(f"0x{b:02x}" for b in buf[i:i+16]))
                 
         return "{\n" + ",\n".join(lines) + "\n}"
     except Exception as e:
@@ -236,186 +236,290 @@ def extract_generic_array(program, addr, c_type, byte_len):
         return "{ 0 }"
 
 
-def append_missing_declarations(header_path, source_path, missing, workspace_dir, program=None):
+# ======================================================================
+# Call-Site Size Pinning
+# ======================================================================
+
+def pin_length_from_callsites(name, source_dir):
+    """
+    Performs deterministic size pinning by analyzing arguments passed at function call sites:
+      - Pattern 1: `&name, <literal>` (blob passed with explicit byte length)
+      - Pattern 2: `<literal>, name` (capacity-then-buffer APIs, e.g., `GetLogicalDriveStringsA(0x400, Drives)`)
+    Returns the maximum literal size observed, or None.
+    """
+    best = None
+    p1 = re.compile(rf'&{re.escape(name)}\b\s*,\s*(0x[0-9A-Fa-f]+|\d+)\b')
+    p2 = re.compile(
+        rf'(0x[0-9A-Fa-f]+|\d+)\s*,\s*(?:\([^()]*\)\s*)?&?{re.escape(name)}\s*[,)]')
+        
+    for root, _, files in os.walk(source_dir):
+        for fname in files:
+            if not fname.endswith(('.c', '.cpp')):
+                continue
+            try:
+                with open(os.path.join(root, fname), errors='ignore') as fh:
+                    text = fh.read()
+            except OSError:
+                continue
+            for pat in (p1, p2):
+                for m in pat.finditer(text):
+                    tok = m.group(1)
+                    val = int(tok, 16) if tok.lower().startswith('0x') else int(tok)
+                    best = val if best is None else max(best, val)
+    return best
+
+
+# ======================================================================
+# Core Resolution Ladder
+# ======================================================================
+
+def append_missing_declarations(header_path, source_path, missing,
+                                workspace_dir, program):
+    """
+    Iterates through the missing symbol list and executes the 4-rung resolution ladder 
+    to extract exact binary data or function prototypes from Ghidra.
+    """
     if not missing:
         print("No missing globals found.")
         return
+    if program is None:
+        raise SystemExit(
+            "ERROR: no Ghidra program available. Pass the binary path so the "
+            "already-analyzed Stage-1 project can be opened:\n"
+            "  python add_missing_globals.py <binary> [workspace_dir]\n"
+            "Refusing to emit placeholder values for symbols we cannot read.")
 
     db = SymbolDB(workspace_dir=workspace_dir)
+    symbol_table = program.getSymbolTable()
+    listing = program.getListing()
+    fn_mgr = program.getFunctionManager()
+    extracted_dir = os.path.join(workspace_dir, "extracted_functions")
+    unresolved = []
 
-    if program is not None:
-        symbol_table = program.getSymbolTable()
-        listing = program.getListing()
+    def _sanitize(n):
+        return re.sub(r'[^A-Za-z0-9_]', '_', n or 'param')
 
-        for name in missing:
-            symbols = list(symbol_table.getSymbols(name))
-            if not symbols:
-                db.add_or_update_global(name, gtype="uintptr_t", value_or_expr="0", is_string=False)
+    for name in missing:
+        all_syms = list(symbol_table.getSymbols(name))
+        # Keep memory-space symbols only (filters out stack variables sharing global names)
+        symbols = [s for s in all_syms
+                   if s.getAddress().getAddressSpace().isMemorySpace()]
+
+        # ---- Rung 2: Decompiler Overlap Alias ('_X' over declared 'X') ----
+        if not symbols and name.startswith('_') and name[1:] in db.list_global_names():
+            base = name[1:]
+            width = 4                       # Default dword store assumption
+            for s in all_syms:
+                try:
+                    w = s.getDataType().getLength()
+                    if w in (1, 2, 4, 8):
+                        width = w
+                        break
+                except Exception:
+                    pass
+            db.add_alias(name, base, width)
+            print(f"  [resolve] '{name}' -> alias of '{base}' "
+                  f"({WIDTH_TO_TYPE[width]} view)")
+            continue
+
+        # ---- Rungs 3 & 4: DAT_ / FUN_ Names Encoding Addresses ----
+        m = _DAT_RE.match(name) or _FUN_RE.match(name)
+        if not symbols and m:
+            addr = (program.getAddressFactory().getDefaultAddressSpace()
+                    .getAddress(int(m.group(1), 16)))
+            func = fn_mgr.getFunctionAt(addr)
+            if func is not None:
+                if '::' in func.getName(True):
+                    print(f"  [resolve] '{name}' is a C++ member function -- "
+                          f"cannot be declared in the C header")
+                    unresolved.append(name)
+                    continue
+                rt, _rd = parse_ghidra_type_and_dim(func.getReturnType())
+                ps = []
+                for p in func.getParameters():
+                    pt, pd = parse_ghidra_type_and_dim(p.getDataType())
+                    ps.append(f"{pt}{pd} {_sanitize(p.getName())}")
+                if func.hasVarArgs():
+                    ps.append("...")
+                proto = (f"{rt} {_sanitize(func.getName())}"
+                         f"({', '.join(ps) if ps else 'void'});")
+                db.parse_and_upsert_prototype(proto)
+                print(f"  [resolve] '{name}' -> prototype {proto}")
                 continue
+                
+            blk = program.getMemory().getBlock(addr)
+            if (blk and blk.isInitialized() and not blk.isExecute()
+                    and fn_mgr.getFunctionContaining(addr) is None):
+                size = max(get_data_boundary(program, addr), 1)
+                init_val = extract_generic_array(program, addr, "uint8_t", size)
+                db.add_or_update_global(name, gtype=f"uint8_t[{size}]",
+                                        value_or_expr=init_val, is_string=False)
+                print(f"  [resolve] '{name}' -> uint8_t[{size}] @ {addr}")
+                continue
+                
+            print(f"  [resolve] '{name}': synthetic name but no resolvable "
+                  f"data/function at encoded address")
+            unresolved.append(name)
+            continue
 
-            def _symbol_sort_key(sym):
-                # Lower key = preferred. Primary symbols first, then symbols
-                # whose address falls in a real, loaded/initialized memory
-                # block (as opposed to an EXTERNAL/synthetic placeholder).
-                blk = program.getMemory().getBlock(sym.getAddress())
-                has_real_block = bool(blk) and blk.isInitialized()
-                return (0 if sym.isPrimary() else 1, 0 if has_real_block else 1)
+        # ---- Rung 1: Exact Memory-Space Symbol ----
+        if not symbols:
+            # Never fabricate silent placeholders; record as unresolved.
+            print(f"  [resolve] '{name}': no memory-space symbol found -- "
+                  f"NOT fabricating; recorded as unresolved")
+            unresolved.append(name)
+            continue
 
-            symbols.sort(key=_symbol_sort_key)
-            addr = symbols[0].getAddress()
-            data = listing.getDefinedDataAt(addr) or listing.getDataAt(addr)
-            
-            c_type, dim = "uint8_t", ""
-            is_ghidra_array = False
-            
-            if data:
-                dt = data.getDataType()
-                c_type, dim = parse_ghidra_type_and_dim(dt)
-                is_ghidra_array = dim or data.isArray()
-            
-            # Universal Array Heuristic Trigger.
-            # Never trust a Ghidra-typed array's own length as the upper bound:
-            # Ghidra frequently only recognizes/types the LEADING slice of what
-            # is really one much larger, mostly-undefined byte blob (an embedded
-            # file, a resource, a partially-annotated lookup table, etc). Always
-            # probe the real boundary and compare against what Ghidra typed.
-            boundary_len = get_data_boundary(program, addr)
-            ghidra_len = data.getLength() if data else 0
+        def _sort_key(sym):
+            blk = program.getMemory().getBlock(sym.getAddress())
+            return (0 if sym.isPrimary() else 1,
+                    0 if (blk and blk.isInitialized()) else 1)
+                    
+        symbols.sort(key=_sort_key)
+        addr = symbols[0].getAddress()
 
-            if is_ghidra_array and boundary_len > ghidra_len:
-                # Ghidra's own array type only covers part of a bigger
-                # unstructured blob. Don't keep stretching its narrow element
-                # type (e.g. uint32_t) across the whole extended region -
-                # fall back to raw bytes for both type and size so every byte
-                # in the true, larger region round-trips correctly.
-                c_type = "uint8_t"
-                byte_len = boundary_len
-                is_ghidra_array = False  # force final_dim to be recomputed below
-            elif is_ghidra_array:
-                byte_len = ghidra_len
+        func = fn_mgr.getFunctionAt(addr)
+        if func is not None:
+            if '::' in func.getName(True):
+                print(f"  [resolve] '{name}' is a C++ member function -- "
+                      f"cannot be declared in the C header")
+                unresolved.append(name)
+                continue
+            rt, _rd = parse_ghidra_type_and_dim(func.getReturnType())
+            ps = []
+            for p in func.getParameters():
+                pt, pd = parse_ghidra_type_and_dim(p.getDataType())
+                ps.append(f"{pt}{pd} {_sanitize(p.getName())}")
+            if func.hasVarArgs():
+                ps.append("...")
+            proto = (f"{rt} {_sanitize(func.getName())}"
+                     f"({', '.join(ps) if ps else 'void'});")
+            db.parse_and_upsert_prototype(proto)
+            print(f"  [resolve] '{name}' -> prototype {proto}")
+            continue
+
+        data = listing.getDefinedDataAt(addr) or listing.getDataAt(addr)
+        c_type, dim = "uint8_t", ""
+        is_ghidra_array = False
+        if data:
+            c_type, dim = parse_ghidra_type_and_dim(data.getDataType())
+            is_ghidra_array = bool(dim or data.isArray())
+
+        boundary_len = get_data_boundary(program, addr)
+        ghidra_len = data.getLength() if data else 0
+        byte_len = ghidra_len if is_ghidra_array else boundary_len
+
+        # Call-site evidence overrides boundary inference.
+        pinned = pin_length_from_callsites(name, extracted_dir)
+        if pinned and pinned > byte_len:
+            print(f"  [pin] '{name}': callsite passes {pinned} bytes "
+                  f"(> inferred {byte_len}) -- extending at byte granularity")
+            c_type, dim, is_ghidra_array = "uint8_t", "", False
+            byte_len = pinned
+
+        c_size = get_c_type_size(c_type)
+        if is_ghidra_array or byte_len > c_size:
+            num_elements = byte_len // c_size if byte_len // c_size > 0 else 1
+            final_dim = dim if is_ghidra_array else f"[{num_elements}]"
+            mem_block = program.getMemory().getBlock(addr)
+            if not mem_block or not mem_block.isInitialized():
+                init_val = "{ 0 }"
             else:
-                byte_len = boundary_len
-
-            c_size = get_c_type_size(c_type)
-
-            if is_ghidra_array or byte_len > c_size:
-                # 1. Maintain true array bounds for C code regardless of extraction size
-                num_elements = byte_len // c_size if byte_len // c_size > 0 else 1
-                final_dim = dim if is_ghidra_array else f"[{num_elements}]"
-                
-                # 2. Safely grab the memory block to check initialization
-                mem_block = program.getMemory().getBlock(addr)
-                is_init = mem_block.isInitialized() if mem_block else False
-                
-                if not is_init:
-                    # 3. Unmapped or BSS section. Do not attempt a read.
-                    init_val = "{ 0 }"
-                else:
-                    # 4. Cap extraction to 1MB to prevent Python OOM, but keep the full C array dimension above
-                    extract_len = min(byte_len, 2048 * 2048)
-                    init_val = extract_generic_array(program, addr, c_type, extract_len)
-                
-                db.add_or_update_global(name, gtype=f"{c_type}{final_dim}", value_or_expr=init_val, is_string=False)
-            
+                init_val = extract_generic_array(
+                    program, addr, c_type, min(byte_len, 2048 * 2048))
+            db.add_or_update_global(name, gtype=f"{c_type}{final_dim}",
+                                    value_or_expr=init_val, is_string=False)
+        else:
+            val = data.getValue() if data else None
+            if val is None:
+                val_str = "0"
+            elif hasattr(val, 'getUnsignedValue'):
+                val_str = f"0x{val.getUnsignedValue():x}"
+            elif hasattr(val, 'getOffset'):
+                val_str = f"0x{(val.getOffset() & 0xFFFFFFFFFFFFFFFF):x}"
             else:
-                # Extract as a single scalar value
-                val = data.getValue() if data else None
-                if val is None:
-                    val_str = "0"
-                elif hasattr(val, 'getUnsignedValue'):
-                    val_str = f"0x{val.getUnsignedValue():x}"
-                elif hasattr(val, 'getOffset'):
-                    val_str = f"0x{(val.getOffset() & 0xFFFFFFFFFFFFFFFF):x}"
-                else:
-                    val_str = str(val)
+                val_str = str(val)
+            db.add_or_update_global(name, gtype=c_type,
+                                    value_or_expr=val_str, is_string=False)
 
-                # Clamp values safely
-                if val_str.startswith("-0x") or val_str.startswith("0x"):
-                    try:
-                        num_val = int(val_str, 16)
-                        if c_type == "uint8_t": val_str = f"0x{num_val & 0xFF:02x}"
-                        elif c_type == "uint16_t": val_str = f"0x{num_val & 0xFFFF:04x}"
-                        elif c_type == "uint32_t" or c_type == "int32_t": val_str = f"0x{num_val & 0xFFFFFFFF:08x}L"
-                        elif c_type == "uint64_t" or c_type == "int64_t": val_str = f"0x{num_val & 0xFFFFFFFFFFFFFFFF:016x}ULL"
-                    except ValueError:
-                        pass
-
-                db.add_or_update_global(name, gtype=c_type, value_or_expr=val_str, is_string=False)
-    else:
-        for name in missing:
-            db.add_or_update_global(name, gtype="uintptr_t", value_or_expr="0", is_string=False)
-
+    # Export synchronized state back to header and source files
     db.export_header(os.path.basename(header_path))
     db.export_source(os.path.basename(source_path))
-    print(f"Added {len(missing)} missing global(s) with real binary values.")
+    print(f"Added {len(missing) - len(unresolved)} symbol(s) with real binary values.")
+    
+    if unresolved:
+        path = os.path.join(workspace_dir, "unresolved_symbols.json")
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(sorted(unresolved), f, indent=2)
+        print(f"{len(unresolved)} unresolved name(s) -> {path}")
 
-# [Keep your existing DECLARED_RE, C_KEYWORDS, COMMENT_STR_RE, FUNC_RE, DECL_RE, IDENT_RE here]
-DECLARED_RE = re.compile(r'extern\s+[\w_]+(?:\s*\*)*\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*;')
 
-C_KEYWORDS = {
-    'auto', 'break', 'case', 'char', 'const', 'continue', 'default', 'do',
-    'double', 'else', 'enum', 'extern', 'float', 'for', 'goto', 'if',
-    'inline', 'int', 'long', 'register', 'restrict', 'return', 'short',
-    'signed', 'sizeof', 'static', 'struct', 'switch', 'typedef', 'union',
-    'unsigned', 'void', 'volatile', 'while', 'bool', 'true', 'false',
-    'NULL', 'uintptr_t', 'int8_t', 'int16_t', 'int32_t', 'int64_t',
-    'uint8_t', 'uint16_t', 'uint32_t', 'uint64_t', 'size_t', 'byte',
-    'undefined', 'undefined1', 'undefined2', 'undefined4', 'undefined8',
-    'ulong', 'ushort', 'uint', 'longlong', 'ulonglong'
-}
+# ======================================================================
+# Entry Points & Orchestration
+# ======================================================================
 
-COMMENT_STR_RE = re.compile(r'//.*?$|/\*.*?\*/|"(?:\\.|[^\\"])*"', re.DOTALL | re.MULTILINE)
-FUNC_RE = re.compile(r'\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(')
-DECL_RE = re.compile(r'\b(?:[a-zA-Z_][a-zA-Z0-9_]*\s+)+[*]*\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*(?:[=;,\[\)])')
-IDENT_RE = re.compile(r'\b([a-zA-Z_][a-zA-Z0-9_]*)\b')
+def collect_missing_names(workspace_dir):
+    """
+    Discovers missing symbols directly from the compilation manifest (`compile_manifest.json`).
+    
+    Why it's here: The compiler acts as the absolute oracle. By reading compile errors 
+    rather than scanning source text, we completely eliminate false positives like 
+    system keywords or standard library headers.
+    """
+    manifest_path = os.path.join(workspace_dir, "compile_manifest.json")
+    missing = set()
+    if os.path.isfile(manifest_path):
+        with open(manifest_path, encoding="utf-8") as f:
+            for r in json.load(f).get("functions", []):
+                missing.update(r.get("missing_symbols", []))
+    return sorted(missing)
 
-def get_declared_globals(header_path):
-    declared = set()
-    if not os.path.exists(header_path):
-        return declared
-    with open(header_path, 'r', encoding='utf-8') as f:
-        for line in f:
-            match = DECLARED_RE.search(line)
-            if match:
-                declared.add(match.group(1))
-    return declared
 
-def find_used_globals(source_dir):
-    used = set()
-    for root, _, files in os.walk(source_dir):
-        for file in files:
-            if not file.endswith(('.c', '.cpp')): continue
-            path = os.path.join(root, file)
-            with open(path, 'r', encoding='utf-8', errors='ignore') as f:
-                content = f.read()
-
-            clean_code = COMMENT_STR_RE.sub('', content)
-            declared_locals = set(DECL_RE.findall(clean_code))
-            func_names = set(FUNC_RE.findall(clean_code))
-
-            for match in IDENT_RE.finditer(clean_code):
-                name = match.group(1)
-                if name not in C_KEYWORDS and name not in declared_locals and name not in func_names:
-                    used.add(name)
-    return used
-
-def add_missing_values(workspace_dir=".", path_to_binary=None, program=None):
+def add_missing_values(workspace_dir=".", path_to_binary=None, program=None, names=None):
+    """
+    Coordinates loading the Stage-1 shared Ghidra project and triggering symbol resolution.
+    """
     header_file = os.path.join(workspace_dir, "data_globals.h")
     source_file = os.path.join(workspace_dir, "data_globals.c")
-    target_dir = os.path.join(workspace_dir, "extracted_functions")
+    path_to_binary = path_to_binary or os.environ.get("INPUT_EXE_PATH") or ""
+    if path_to_binary:
+        path_to_binary = os.path.basename(path_to_binary)
+    if not path_to_binary:
+        raise SystemExit("ERROR: binary name unknown -- pass path_to_binary "
+                         "or set INPUT_EXE_PATH.")
 
-    if not os.path.isdir(target_dir): sys.exit(1)
-    if not os.path.isfile(header_file): sys.exit(1)
+    missing = (sorted(names) if names is not None
+               else collect_missing_names(workspace_dir))
+    db = SymbolDB(workspace_dir)
+    
+    if not missing:
+        db.export_header(os.path.basename(header_file))
+        db.export_source(os.path.basename(source_file))
+        print("No missing globals -- header re-synced from DB.")
+        return
 
-    declared = get_declared_globals(header_file)
-    used = find_used_globals(target_dir)
-    missing = used - declared
+    if program is not None:
+        append_missing_declarations(header_file, source_file, missing,
+                                    workspace_dir, program)
+        return
 
-    if missing and program is None and path_to_binary is not None:
-        with pyghidra.open_program(path_to_binary) as flat_api:
-            append_missing_declarations(header_file, source_file, missing, workspace_dir, flat_api.currentProgram)
-    else:
-        append_missing_declarations(header_file, source_file, missing, workspace_dir, program)
+    # Reuse the existing Stage-1 project to avoid expensive re-analysis
+    binary_name = os.path.basename(path_to_binary)
+    project_location = os.path.join(workspace_dir, "ghidra_project")
+    project_name = f"{binary_name}_ghidra"
+    
+    with pyghidra.open_project(project_location, project_name,
+                               create=False) as project:
+        if project.getProjectData().getFile(f"/{binary_name}") is None:
+            raise SystemExit(f"/{binary_name} not in the Ghidra project -- "
+                             f"run Stage 1 first.")
+        with pyghidra.program_context(project, f"/{binary_name}") as prog:
+            append_missing_declarations(header_file, source_file, missing,
+                                        workspace_dir, prog)
+
 
 if __name__ == "__main__":
-    add_missing_values()
+    if len(sys.argv) < 2:
+        sys.exit("usage: add_missing_globals.py <binary_path> [workspace_dir]")
+    add_missing_values(workspace_dir=sys.argv[2] if len(sys.argv) > 2 else ".",
+                       path_to_binary=sys.argv[1])

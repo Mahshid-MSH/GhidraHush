@@ -13,6 +13,7 @@ from llm.c_code_enhancer import CCodeEnhancer
 from ghidra_scripts.dump_global_values import generate_global_files
 from utils.add_missing_globals import add_missing_values
 from llm.evasion_techniques import DefensiveEvasion
+from compiler.orchestrator import CompilerOrchestrator
 import glob
 
 class Colors:
@@ -25,13 +26,14 @@ class Colors:
     RESET = '\033[0m'
     BOLD = '\033[1m'
 
+
+
 STAGES = {
     1: "Extract functions from binary (Ghidra)",
     2: "Extract global variables & data (Ghidra)",
-    3: "Beautify & refactor extracted C code (LLM)",
-    4: "Resolve & add missing global declarations",
+    3: "Beautify & refactor extracted code (LLM)",
+    4: "Compile, repair & resolve missing symbols (gcc/g++)",
     5: "Apply defensive evasion techniques",
-    6: "Verify behavioral equivalence against original binary"
 }
 
 ENV_PATH = os.path.abspath(".env")
@@ -107,28 +109,36 @@ def run_pipeline():
             print(f"{Colors.GREEN}Stage 3 completed successfully.{Colors.RESET}")
         except Exception as e:
             print(f"{Colors.RED}{Colors.BOLD}Fatal error in Stage 3:{Colors.RESET} {Colors.RED}{e}{Colors.RESET}")
+        
             sys.exit(1)
 
     # ======================= Phase 4: Add Missing Globals ===========================
+
     elif start_stage == 4:
         print_stage(4, STAGES[4])
         try:
-            # In your entry.py menu logic for Step 4
+            # 4a: deterministic completion of compiler-recorded missing symbols
             add_missing_values(workspace_dir=workspace_dir, path_to_binary=input_exe_path)
-            # NEW: Sync prototypes after missing globals are resolved
-            extracted_dir = os.path.join(workspace_dir, "extracted_functions")
-            header_path = os.path.join(workspace_dir, "data_globals.h")
-            print(f"{Colors.CYAN}Syncing AST and prototypes...{Colors.RESET}")
-            #sync_ast_and_headers(extracted_dir, header_path) 
+            # 4b: compile every processed function; LLM-repair failures with
+            # prioritized errors + relevant header context; sync prototypes.
+            orch = CompilerOrchestrator(
+            model_name=model_name,
+            base_url=os.environ.get("LLM_BASE_URL"),
+            max_retries=int(os.environ.get("COMPILE_MAX_RETRIES", "3")),
+            workspace_dir=workspace_dir,
+            binary_name=os.path.basename(input_exe_path),   # <-- THE name
+            )
+            orch.process_directory(os.path.join(workspace_dir, "processed_functions"))
             mark_stage_complete(4)
         except Exception as e:
             print(f"{Colors.RED}{Colors.BOLD}Fatal error in Stage 4:{Colors.RESET} {Colors.RED}{e}{Colors.RESET}")
             sys.exit(1)
 
+
     # ================== Phase 5: Apply Defensive Evasion ===============================
     
     elif start_stage == 5:
-        print_stage(6, STAGES[5])
+        print_stage(5, STAGES[5])
         try:
             evader = DefensiveEvasion(model_name=model_name)
             processed_dir = os.path.join(workspace_dir, "processed_functions")
@@ -153,16 +163,16 @@ def run_pipeline():
             header_path = os.path.join(workspace_dir, "data_globals.h")
             print(f"{Colors.CYAN}Syncing AST and prototypes...{Colors.RESET}")
             #sync_ast_and_headers(processed_dir, header_path)
-            mark_stage_complete(6)
-            print(f"{Colors.GREEN}Stage 6 completed successfully.{Colors.RESET}")
+            mark_stage_complete(5)
+            print(f"{Colors.GREEN}Stage 5 completed successfully.{Colors.RESET}")
         except Exception as e:
-            print(f"{Colors.RED}{Colors.BOLD}Fatal error in Stage 6:{Colors.RESET} {Colors.RED}{e}{Colors.RESET}")
+            print(f"{Colors.RED}{Colors.BOLD}Fatal error in Stage 5:{Colors.RESET} {Colors.RED}{e}{Colors.RESET}")
             sys.exit(1)
 
     # ================== Phase 6: Verify behavioral equivalence ===========================
-    elif start_stage == 7:
-        print_stage(7, STAGES[7])
-        print(f"{Colors.YELLOW}Stage 7 is not yet implemented.{Colors.RESET}")
+    elif start_stage == 6:
+        print_stage(6, STAGES[6])
+        print(f"{Colors.YELLOW}Stage 6 is not yet implemented.{Colors.RESET}")
         sys.exit(0)
 
 if __name__ == "__main__":

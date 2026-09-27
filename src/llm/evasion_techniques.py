@@ -211,7 +211,7 @@ class DefensiveEvasion(BaseLLMAgent):
         binary_name = os.path.splitext(exe_name)[0]
         
         for tech in techniques:
-            tech_dir = os.path.join(workspace_dir, "processed_functions", f"{binary_name}_{tech}")
+            tech_dir = os.path.join(workspace_dir, "compiled_successfully", f"{binary_name}_{tech}")
             os.makedirs(tech_dir, exist_ok=True)
             
             print(f"\n--- Generating Variant Directory: {tech_dir} ---")

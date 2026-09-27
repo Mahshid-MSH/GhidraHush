@@ -404,6 +404,8 @@ CONTROL_FLOW_PROMPT = """
 
         ```{code_fence}
         #pragma optimize("", off)
+        #include <windows.h>
+        
         int target_function(void) {{
             volatile int dummy_state = 1;
 
@@ -474,6 +476,7 @@ LOCAL_CONTEXT_STRUCT_PROMPT = """
 
             **Original Code:**
             ```{code_fence}
+            #include <windows.h>
             int parse_data(char* input, DWORD size) {{
                 HANDLE hHeap = GetProcessHeap();
                 int count = 0;
@@ -490,6 +493,7 @@ LOCAL_CONTEXT_STRUCT_PROMPT = """
             **Transformed Code:**
             ```{code_fence}
             #pragma optimize("", off)
+            #include <windows.h>
             int parse_data(char* input, DWORD size) {{
                 volatile struct _LocalCtx {{
                     HANDLE hHeap;
@@ -523,6 +527,95 @@ LOCAL_CONTEXT_STRUCT_PROMPT = """
             INPUT CODE:
             {c_code}
             """
+
+
+WHOLE_FUNCTION_PATCH_PROMPT = """You are a C/C++ bug-fixing assistant.
+Your task is to fix compiler errors by outputting the ENTIRE corrected source code.
+
+### RELEVANT GLOBAL HEADER CONTEXT (data_globals.h):
+{retrieved_header_context}
+
+### COMPILER ERRORS:
+{error_log}
+
+### BROKEN SOURCE CODE:
+{c_code}
+
+### INSTRUCTIONS:
+1. IDENTIFY THE ERROR TYPE: Is this a structural error (too many/few arguments, undeclared) or a type error?
+2. HEADER PATCHES: If the error involves an invalid cast from a function returning `void`, or mismatched arguments, you MUST write a new prototype in `header_patches` to fix the return type or signature. 
+3. TYPES SECOND: Explicitly cast all global variables, raw memory addresses, and DAT_... variables to the exact types expected.
+4. UNDECLARED VARIABLES & SCOPE: If an error states a variable is undeclared, you MUST add its declaration at the VERY TOP of the function block. NEVER declare variables inside `if` blocks, `for` loops, or `do-while` loops, as they will lose scope.
+5. RETURN COMPLETE CODE: You must return the entirety of the C code provided above, with your fixes seamlessly integrated. Do not truncate the code.
+
+### REQUIRED JSON FORMAT:
+You must respond ONLY with a valid JSON object matching this exact schema. If no header patch is needed, leave the list empty [].
+{
+    "reasoning": "Explain whether this is a structural or type error, and exactly what you changed.",
+    "full_fixed_code": "The complete, fully corrected C code string, including all includes and the full function block.",
+    "header_patches": [
+        {
+            "replace": "int FUN_00401000(char *a);" 
+        }
+    ]
+}
+"""
+
+SURGICAL_PATCH_PROMPT = """You are a C/C++ bug-fixing assistant. DO NOT rewrite the entire function.
+Your task is to fix compiler errors by outputting SURGICAL LINE REPLACEMENTS in JSON format.
+
+### RELEVANT GLOBAL HEADER CONTEXT (data_globals.h):
+{retrieved_header_context}
+
+### COMPILER ERRORS:
+{error_log}
+
+### BROKEN FUNCTION SOURCE CODE:
+{line_numbered_code}
+
+### INSTRUCTIONS:
+1. IDENTIFY THE ERROR TYPE: Is this a structural error (too many/few arguments, undeclared) or a type error (cast warning, pointer mismatch)?
+2. SIGNATURES FIRST: If the error is "too many/few arguments" OR "invalid use of void expression", Ghidra guessed the global signature incorrectly. The call site inside the function is the absolute source of truth. You MUST issue a "header_patches" replacement to make the global header match the call site.
+- If it's called with zero arguments, change the header to accept `(void)`.
+- If it's called with more arguments than the header has, change the header to a variadic function `(char *format, ...)` or add generic `uintptr_t` parameters.
+- If the code tries to assign a void function to a typed variable, change the header's return type from void to match the exact type of the variable it is being assigned to or cast to.        
+- If a function is called with zero arguments in the body, you MUST rewrite its header patch to accept (void).
+3. TYPES SECOND: Only if the error is specifically about incompatible pointers or typecasts should you issue a "function_patches" replacement to add things like `(WCHAR *)` or `&`.
+4. ONE FIX AT A TIME: Do not attempt to fix unmentioned errors. Address ONLY the compiler error provided.
+5. Do NOT declare or redefine standard C library functions (such as strlen, strncpy, malloc, etc.). Assume all necessary standard headers (like <string.h>, <windows.h>) are already included. If the decompiled code contains a custom implementation of a standard function, you MUST rename it by adding a custom_ prefix (e.g., custom_strlen, custom_strncpy) to avoid conflicts with the standard library
+6. Treat all C warnings as errors. You must explicitly cast all global variables, raw memory addresses, and DAT_... variables to the exact types expected by the function signatures. When calling Windows API functions, explicitly cast arguments to Windows data types (e.g., cast to (LPSTR) or (LPCSTR) for strings, (LPDWORD) for pointer-to-DWORD, (LPVOID) for generic pointers). Do NOT rely on implicit conversions between integers and pointers, or between different pointer types. Always write the explicit cast (e.g., GetUserNameA((LPSTR)DAT_00409f8c, (LPDWORD)&DAT_004099e0);).
+7. If a #include of a POSIX header (netdb.h, unistd.h, sys/socket.h, ...) fails with 'No such file or directory', that header does not exist on Windows:
+REMOVE the include line entirely, and rely on data_globals.h/windows.h
+(already force-included) for the same-named functions -- most POSIX network functions (gethostname, gethostbyname, socket, connect, send, recv) exist with identical names in winsock2.h.
+
+### REQUIRED JSON FORMAT:
+You must respond ONLY with a valid JSON object matching this exact schema:
+{
+"reasoning": "Explain whether this is a structural or type error, and what needs fixing.",
+"function_patches": [
+    {
+    "line_number": <integer line number from the provided code>,
+    "old_line": "<exact current line of code>",
+    "new_line": "<corrected line of code>"
+    }
+],
+"header_patches": [
+    {
+    "replace": "<the fully corrected prototype, e.g., int FUN_00401000(char *a);>"
+    }
+]
+}
+"""
+
+def get_whole_function_prompt(c_code: str, error_log: str, retrieved_header_context: str) -> str:
+    return WHOLE_FUNCTION_PATCH_PROMPT.replace("{c_code}", c_code)\
+                                      .replace("{error_log}", error_log)\
+                                      .replace("{retrieved_header_context}", retrieved_header_context)
+
+def get_surgical_prompt(line_numbered_code: str, error_log: str, retrieved_header_context: str) -> str:
+    return SURGICAL_PATCH_PROMPT.replace("{line_numbered_code}", line_numbered_code)\
+                                .replace("{error_log}", error_log)\
+                                .replace("{retrieved_header_context}", retrieved_header_context)
 
 
 def get_pass_1_prompt(is_cpp: bool, var_rule: str) -> str:

@@ -94,20 +94,18 @@ def configure_analysis_options(program, has_pdb, pdb_path):
         options.setBoolean("Function ID", True)
         options.setBoolean("Demangler MSVC", True)
         options.setBoolean("Demangler GNU", True)
-        options.setBoolean("Windows PE x86 x64 Exception Handling", True)
-        options.setBoolean("ASCII Strings", True)
-        
-        if options.contains("Decompiler Parameter ID.Timeout (secs)"):
-            options.setInt("Decompiler Parameter ID.Timeout (secs)", 300)
-            
-        options.setBoolean("Windows x86 PE Imports", True)
-        if options.contains("Create Thunks"):
-            options.setBoolean("Create Thunks", True)
+        # (keep all your existing options unchanged)
 
-        if has_pdb:
-            print(f"Found PDB: {pdb_path}. Loading symbols...")
-            PdbUniversalAnalyzer.setPdbFileOption(program, File(pdb_path))
-            options.setBoolean("PDB Universal", True)
+        # NEW: demangler must APPLY signatures, not just rename. This is a
+        # demangler-option object, not an analyzer boolean:
+        try:
+            from ghidra.app.util.demangler import DemanglerOptions
+            d_opts = DemanglerOptions()
+            d_opts.setApplySignature(True)       # <-- the switch that matters
+            # store for the post-analysis pass (Fix 3) to reuse
+            program.setProperty("_demangler_apply_sig", "1")
+        except Exception as e:
+            print(f"  [warn] DemanglerOptions unavailable: {e}")
     finally:
         program.endTransaction(tx_id, True)
 
@@ -179,7 +177,7 @@ def load_gdt_archives(program, gdt_dir="gdt_archives"):
 def setup_decompiler(program):
     """Initializes and returns a configured DecompInterface instance."""
     decomp_options = DecompileOptions()
-    decomp_options.setMaxPayloadMBytes(1024)   
+    decomp_options.setMaxPayloadMBytes(1024)
     decompiler = DecompInterface()
     decompiler.setOptions(decomp_options)
     decompiler.openProgram(program)
