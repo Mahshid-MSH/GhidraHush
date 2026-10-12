@@ -5,35 +5,6 @@ dump_global_values.py
 Stage 2: extracts global variables, custom types and function-pointer
 typedefs referenced by the curated functions, and stores them in the
 SymbolDB (which renders data_globals.h / data_globals.c).
-
-Changelog (compile-rate fixes):
- [1] C_KEYWORDS split into TRUE_C_KEYWORDS vs WINAPI_TYPES. WinAPI names
-     (HANDLE, DWORD, LPVOID, ...) are defined by windows.h and must NOT be
-     mangled to _HANDLE etc. by sanitize_c_name().
- [2] caseD_/switchdataD_ runtime symbols are prefix-matched, not exact.
- [3] size_t width comes from dt.getLength() (uint64_t on x64); added
-     'undefined' -> uint8_t; longlong/ulonglong mapped to stdint.
- [4] String escapes use 3-digit octal (self-terminating) instead of
-     greedy hex escapes ("\x41"+"B" parsed as one broken char).
- [5] Primitive-name filter is exact-match (BUILTIN_TYPE_NAMES) instead of
-     startswith(); typedefs already defined by windows.h are passed
-     through instead of re-emitted (redefinition errors).
- [6] Function-pointer typedefs: fnptr_ prefix (no name collisions),
-     signature-level dedup (identical callbacks share one typedef),
-     array returns collapsed to void*.
- [7] Enumerators deduplicated and E_-prefixed (file-scope in C; collided
-     with each other and with windows.h macros like TRUE/FALSE/NULL).
- [8] Disambiguation suffixes for duplicate global names are C-sanitized.
- [9] SECTION_MARKER_SYMBOLS (_data/_rdata/_bss/...) checked FIRST in
-     is_unneeded_data: COFF imports mark them USER_DEFINED, so they
-     bypassed every prefix denylist AND shared addresses with real
-     variables ('_data' aliased 'shellcode', and the processed_addrs
-     guard silently dropped the real symbol).
- [10] Executable-block data extraction, v2: shellcode/blob globals in
-      .text are extracted when any non-call/non-jump reference targets
-      the address (isData() alone misses COMPUTED refs from lea/&global).
-      The function-containing check is bypassed for exec blocks, because
-      Ghidra may have disassembled a data blob into a pseudo-function.
 """
 
 import os
@@ -58,19 +29,11 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 # --- Constants & Configuration ---
 
-# FIX [9]: MinGW/COFF linker section markers. These label section
-# boundaries, not program variables -- but Ghidra imports them from the
-# COFF symbol table with USER_DEFINED source, so they bypass the prefix
-# denylists. They MUST be checked before the USER_DEFINED early-return in
-# is_unneeded_data, because they share addresses with real variables and
-# shadow them (observed: '_data' aliasing 'shellcode' at the same address,
-# causing the real symbol to be dropped by the processed_addrs guard).
 SECTION_MARKER_SYMBOLS = frozenset({
     "_data", "_rdata", "_bss", "_edata", "_end",
     "__data_start__", "__data_end__", "__bss_start__", "__bss_end__",
 })
 
-# FIX [1]: only actual C keywords get the '_' escaping treatment.
 TRUE_C_KEYWORDS = {
     'auto', 'break', 'case', 'char', 'const', 'continue', 'default', 'do', 
     'double', 'else', 'enum', 'extern', 'float', 'for', 'goto', 'if', 'int', 
@@ -79,8 +42,6 @@ TRUE_C_KEYWORDS = {
     'while',
 }
 
-# FIX [1]: these are NOT keywords -- windows.h defines them. Mangling them
-# (HANDLE -> _HANDLE) produced undeclared identifiers in every generated file.
 WINAPI_TYPES = frozenset({
     "BOOL", "BYTE", "CHAR", "DWORD", "HANDLE", "HGLOBAL", "HKEY", 
     "HMODULE", "HWND", "LPCSTR", "LPDWORD", "LPOVERLAPPED", "LPSECURITY_ATTRIBUTES", 
@@ -88,14 +49,8 @@ WINAPI_TYPES = frozenset({
     "UINT", "WPARAM", "LPARAM", "FILE", "HINSTANCE", "ATOM"
 })
 
-# Full set: used ONLY to decide whether a *global variable name* would
-# collide with a known type name (a global named HANDLE would shadow the
-# windows.h typedef and break compilation), so it is skipped entirely.
 C_KEYWORDS = TRUE_C_KEYWORDS | WINAPI_TYPES
 
-# FIX [5]: exact-match set of primitive/type names that must never be
-# emitted as custom type definitions. Replaces the old startswith() check,
-# which silently dropped legitimate types like 'intWrapper'.
 BUILTIN_TYPE_NAMES = frozenset({
     'void', 'bool', 'char', 'sbyte', 'byte', 'short', 'ushort', 'int', 'uint',
     'long', 'ulong', 'longlong', 'ulonglong', 'long long',
@@ -150,7 +105,7 @@ RUNTIME_SYMBOLS = {
     "_fmode", "_commode", "_dowildcard", "_newmode", "_environ", "__initenv"
 }
 
-# FIX [2]: these are symbol *families* (address-templated names), so exact
+# these are symbol *families* (address-templated names), so exact
 # matching never fired. Prefix-match instead.
 RUNTIME_SYMBOL_PREFIXES = ("caseD_", "switchdataD_")
 
@@ -160,7 +115,6 @@ def sanitize_c_name(name):
     if not name: return "unknown_type"
     name = name.replace("struct ", "").replace("enum ", "").replace("union ", "")
     name = re.sub(r'[^a-zA-Z0-9_]', '_', name)
-    # FIX [1]: only escape true C keywords, never WinAPI type names.
     if name in TRUE_C_KEYWORDS or (name and name[0].isdigit()):
         name = '_' + name
     return name
@@ -237,18 +191,12 @@ def is_string_data(data):
     if not data or not data.isDefined(): return False
     dt_name = data.getDataType().getName().lower()
     return 'string' in dt_name or 'char' in dt_name or 'unicode' in dt_name
-
-# FIX [6]: signature -> typedef-name cache so identical function-pointer
-# signatures share one typedef instead of colliding via INSERT OR IGNORE.
 _FPTR_SIG_CACHE = {}
 
 def reset_fptr_cache():
-    """Call once per binary run so typedef numbering is deterministic."""
     _FPTR_SIG_CACHE.clear()
 
 def ensure_function_pointer_typedef(func_def, db, seen_types):
-    # FIX [6]: 'fnptr_' prefix guarantees the typedef name cannot collide
-    # with a struct/union/enum/global of the same sanitized name.
     base = "fnptr_" + sanitize_c_name(func_def.getName())
 
     if base in seen_types:
@@ -257,7 +205,6 @@ def ensure_function_pointer_typedef(func_def, db, seen_types):
 
     ret_type, ret_dim = parse_ghidra_type_and_dim(func_def.getReturnType(), db, seen_types)
     if ret_dim:
-        # FIX [6]: C forbids functions returning arrays; collapse to pointer.
         ret_type, ret_dim = "void*", ""
 
     params = []
@@ -267,11 +214,6 @@ def ensure_function_pointer_typedef(func_def, db, seen_types):
     if func_def.hasVarArgs():
         params.append("...")
     param_list = ", ".join(params) if params else "void"
-
-    # FIX [6]: reuse an existing typedef when the signature is identical
-    # (common for callbacks). Different signatures under the same base name
-    # (C++ overloads) still resolve first-wins -- but they no longer poison
-    # a struct/global with the same name.
     signature = f"{ret_type}({param_list})"
     cached = _FPTR_SIG_CACHE.get(signature)
     if cached is not None:
@@ -304,9 +246,6 @@ def parse_ghidra_type_and_dim(dt, db, seen_types):
         dt = underlying
 
     if isinstance(dt, (Structure, Union, Enum, TypeDef)):
-        # FIX [5]: windows.h already defines these names (DWORD, HANDLE, ...).
-        # Pass the name through -- re-emitting our own typedef was a
-        # guaranteed 'redefinition' error against the Windows headers.
         if isinstance(dt, TypeDef) and sanitize_c_name(dt.getName()) in WINAPI_TYPES:
             return sanitize_c_name(dt.getName()) + ptr_str, dim_str
 
@@ -326,15 +265,12 @@ def parse_ghidra_type_and_dim(dt, db, seen_types):
             'undefined4': 'uint32_t', 'dword': 'uint32_t', 'int': 'int32_t', 'uint': 'uint32_t',
             'undefined8': 'uint64_t', 'qword': 'uint64_t', 'long long': 'int64_t',
             'float': 'float', 'double': 'double', 'string': 'char', 'terminatedcstring': 'char',
-            'undefined': 'uint8_t',   # FIX [3]: was unmapped -> emitted invalid C
-            'longlong': 'int64_t',    # FIX [3]: Ghidra 64-bit names (the shim
-            'ulonglong': 'uint64_t',  # also covers them, but do not generate
-                                      # unresolved bases in the first place)
+            'undefined': 'uint8_t',
+            'longlong': 'int64_t',
+            'ulonglong': 'uint64_t',
             'void': 'void'
-            # FIX [3]: 'size_t' REMOVED from the map -- it is width-resolved
-            # below from the actual byte size (uint64_t on x64, not uint32_t).
+
         }
-        # FIX [3]: pointer/width-sensitive types resolved by real size.
         if name in ('long', 'ulong', 'size_t', 'ssize_t'):
             try:
                 size = dt.getLength()
@@ -348,8 +284,6 @@ def parse_ghidra_type_and_dim(dt, db, seen_types):
     return c_type + ptr_str, dim_str
 
 def is_unneeded_data(data, symbol, program):
-    # FIX [9]: section markers first -- frequently USER_DEFINED (COFF symbol
-    # table), so this must precede the USER_DEFINED early-return below.
     if symbol and symbol.getName() in SECTION_MARKER_SYMBOLS:
         return True
 
@@ -402,8 +336,6 @@ def extract_and_store_type(dt, db, seen_types):
         return
 
     name = sanitize_c_name(dt.getName())
-    # FIX [5]: exact-match against primitives instead of startswith(); also
-    # skip WinAPI names entirely (windows.h owns those definitions).
     if name in seen_types or name in BUILTIN_TYPE_NAMES or name in WINAPI_TYPES:
         return
         
@@ -426,11 +358,6 @@ def extract_and_store_type(dt, db, seen_types):
         db.add_custom_type(name, "\n".join(lines))
 
     elif isinstance(dt, Enum):
-        # FIX [7]: enumerators are file-scope identifiers in C. Two enums
-        # declaring the same name -- or an enumerator colliding with a
-        # windows.h macro (TRUE, FALSE, NULL, MAX_PATH, ...) -- caused
-        # redefinition / macro-expansion syntax errors. Deduplicate per
-        # original name and emit with an E_ prefix.
         lines = [f"typedef enum {name} {{"]
         for enum_name in dt.getNames():
             safe = sanitize_c_name(enum_name)
@@ -446,8 +373,7 @@ def extract_and_store_type(dt, db, seen_types):
     elif isinstance(dt, TypeDef):
         extract_and_store_type(dt.getBaseDataType(), db, seen_types)
         base_type, dim = parse_ghidra_type_and_dim(dt.getBaseDataType(), db, seen_types)
-        # Note: dim attaches to the typedef NAME, which is valid C:
-        # 'typedef uint8_t buf_t[64];'
+        # Note: dim attaches to the typedef NAME, which is valid C: 'typedef uint8_t buf_t[64];' WFT :/
         db.add_custom_type(name, f"typedef {base_type} {name}{dim};\n")
 
 def auto_collate_large_arrays(program, min_size=1024):
@@ -686,10 +612,7 @@ class GlobalValueExtractor:
             return
 
         if mem_block.isExecute():
-            # FIX [10-v2]: shellcode blobs in .text are extractable, but a
-            # real FUNCTION ENTRY never is. getFunctionAt (exact address)
-            # catches function symbols even where a blob was disassembled;
-            # containing-check stays bypassed for genuinely embedded data.
+
             if self.fn_mgr.getFunctionAt(addr) is not None:
                 return
             if not any(not (r.getReferenceType().isCall()
@@ -720,10 +643,6 @@ class GlobalValueExtractor:
             return
         
         raw_name = sym.getName() if sym else f"DAT_{addr.toString()}"
-        # FIX [2]: prefix-match runtime symbol families. C_KEYWORDS here is
-        # the full union: a *global* whose name collides with any known type
-        # (C keyword or WinAPI type) is skipped rather than renamed, because
-        # shadowing it breaks compilation.
         if (raw_name in TEB_PEB_IGNORE_LIST
                 or raw_name in RUNTIME_SYMBOLS
                 or raw_name.startswith(RUNTIME_SYMBOL_PREFIXES)
@@ -739,7 +658,7 @@ class GlobalValueExtractor:
             return
             
         if name in self.seen_names:
-            # FIX [8]: sanitize the suffix too -- address strings are not
+            # sanitize the suffix too 
             # guaranteed C-safe in every address space.
             name = sanitize_c_name(f"{name}_{addr.toString()}")
             if name in self.seen_names:
