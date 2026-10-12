@@ -94,15 +94,10 @@ def configure_analysis_options(program, has_pdb, pdb_path):
         options.setBoolean("Function ID", True)
         options.setBoolean("Demangler MSVC", True)
         options.setBoolean("Demangler GNU", True)
-        # (keep all your existing options unchanged)
-
-        # NEW: demangler must APPLY signatures, not just rename. This is a
-        # demangler-option object, not an analyzer boolean:
         try:
             from ghidra.app.util.demangler import DemanglerOptions
             d_opts = DemanglerOptions()
-            d_opts.setApplySignature(True)       # <-- the switch that matters
-            # store for the post-analysis pass (Fix 3) to reuse
+            d_opts.setApplySignature(True)     
             program.setProperty("_demangler_apply_sig", "1")
         except Exception as e:
             print(f"  [warn] DemanglerOptions unavailable: {e}")
@@ -196,8 +191,6 @@ def extract_functions(file_path, workspace_dir):
     project_location = os.path.join(workspace_dir, "ghidra_project")
     project_name = f"{base_name}_ghidra"
     os.makedirs(project_location, exist_ok=True)
-
-    # Manage shared project persistence
     try:
         project_cm = pyghidra.open_project(project_location, project_name, create=False)
         print(f"Opened existing shared Ghidra project at {project_location}/{project_name}")
@@ -243,24 +236,55 @@ def extract_functions(file_path, workspace_dir):
                 decompiler = setup_decompiler(program)
 
             function_manager = program.getFunctionManager()
-            all_functions = list(function_manager.getFunctions(True))
             memory = program.getMemory()
+            reference_manager = program.getReferenceManager()
+            listing = program.getListing()
 
-            print(f"Total functions in binary: {len(all_functions)}. Applying signature and name filters...")
+            # FIND ACTUAL ROOT ENTRY POINTS 
+            USER_ENTRY_NAMES = {"main", "wmain", "WinMain", "wWinMain", "DllMain"}
+            roots = []
+            
+            for f in function_manager.getFunctions(True):
+                if f.getName() in USER_ENTRY_NAMES:
+                    roots.append(f)
+            
+            # If stripped or weirdly compiled, fallback to the symbolic entry point
+            if not roots:
+                print("  [info] No standard main found. Falling back to binary Entry Points.")
+                entry_iter = program.getSymbolTable().getExternalEntryPointIterator()
+                while entry_iter.hasNext():
+                    addr = entry_iter.next()
+                    func = function_manager.getFunctionAt(addr)
+                    if func:
+                        roots.append(func)
 
+            print(f"Total root functions found to begin traversal: {len(roots)}")
+
+            #TOP-DOWN GRAPH TRAVERSAL (BFS)
             extracted_data = []
             call_graph = {}
             binary_has_cpp = False
+            
             skip_counts = {
-                "non_exec": 0, 
-                "prefix": 0, 
-                "thunk_external": 0, 
-                "decompile_failed": 0, 
-                "library_fn": 0
+                "non_exec": 0, "prefix": 0, "thunk_external": 0, 
+                "decompile_failed": 0, "library_fn": 0
             }
 
-            for function in all_functions:
+            queue = deque(roots)
+            visited_addrs = set()
+
+            while queue:
+                function = queue.popleft()
+                
+                function = resolve_thunk(function)
                 entry_point = function.getEntryPoint()
+                func_addr = entry_point.getOffset()
+
+                # Guard against infinite recursion / diamond patterns
+                if func_addr in visited_addrs:
+                    continue
+                visited_addrs.add(func_addr)
+
                 memory_block = memory.getBlock(entry_point)
                 
                 # Check executable section bounds
@@ -272,17 +296,16 @@ def extract_functions(file_path, workspace_dir):
                 lower_name = clean_name.lower()
                 is_exception = any(exc in lower_name for exc in TARGET_EXCEPTIONS)
 
-                # Filter 1: Ignored runtime prefixes
-                if not is_exception and lower_name.startswith(IGNORED_PREFIXES):
-                    skip_counts["prefix"] += 1
-                    continue
-
-                # Filter 2: External/Thunk routines
+                # External/Thunk routines
                 if not is_exception and (function.isExternal() or function.isThunk()):
                     skip_counts["thunk_external"] += 1
                     continue
 
-                # Decompile Function
+                # Ignored runtime prefixes (Prunes tree from traversing standard library)
+                if not is_exception and lower_name.startswith(IGNORED_PREFIXES):
+                    skip_counts["prefix"] += 1
+                    continue
+
                 results = decompiler.decompileFunction(function, 300, TaskMonitor.DUMMY)
                 c_code = (
                     results.getDecompiledFunction().getC()
@@ -296,7 +319,6 @@ def extract_functions(file_path, workspace_dir):
                     print(f"  [warn] Decompile failed for {clean_name} @ {entry_point}: {err_msg}")
                     continue
 
-                # Filter 3: Library Signatures
                 if not is_exception and "/* Library Function" in c_code:
                     skip_counts["library_fn"] += 1
                     print(f"  [info] {clean_name} @ {entry_point} matched library signature -- excluded.")
@@ -311,13 +333,29 @@ def extract_functions(file_path, workspace_dir):
                         binary_has_cpp = True
 
                 func_id = make_function_id(function)
+                callee_ids = []
+
+                # Enqueue direct calls
+                for callee in function.getCalledFunctions(TaskMonitor.DUMMY):
+                    actual_callee = resolve_thunk(callee)
+                    callee_ids.append(make_function_id(actual_callee))
+                    if actual_callee.getEntryPoint().getOffset() not in visited_addrs:
+                        queue.append(actual_callee)
+                
+                # Enqueue functions passed as pointers (Callbacks, ThreadProcs, UI Event Loops)
+                instructions = listing.getInstructions(function.getBody(), True)
+                for inst in instructions:
+                    for ref in reference_manager.getReferencesFrom(inst.getAddress()):
+                        if ref.getReferenceType().isData():
+                            ref_func = function_manager.getFunctionAt(ref.getToAddress())
+                            if ref_func:
+                                actual_ref_func = resolve_thunk(ref_func)
+                                if actual_ref_func.getEntryPoint().getOffset() not in visited_addrs:
+                                    queue.append(actual_ref_func)
 
                 call_graph[func_id] = {
                     "name": full_name,
-                    "callees": [
-                        make_function_id(resolve_thunk(c))
-                        for c in function.getCalledFunctions(TaskMonitor.DUMMY)
-                    ],
+                    "callees": callee_ids,
                 }
 
                 extracted_data.append((func_id, full_name, c_code))
@@ -331,15 +369,13 @@ def extract_functions(file_path, workspace_dir):
                 c_file_path = os.path.join(file_output_dir, f"{func_id}{file_ext}")
                 with open(c_file_path, "w", encoding="utf-8") as f:
                     f.write(c_code)
-                print(f" Extracted: {func_id}{file_ext}  (symbol: {full_name})")
-
-    # Export Call Graph
+                    
     graph_path = os.path.join(file_output_dir, "call_graph.json")
     with open(graph_path, "w", encoding="utf-8") as f:
         json.dump(call_graph, f, indent=4)
 
-    print(f"\nExtracted {len(extracted_data)} total functions.")
-    print(f"Skipped: {skip_counts['non_exec']} non-executable, {skip_counts['prefix']} ignored-prefix, "
+    print(f"\nExtracted {len(extracted_data)} top-down reachable functions.")
+    print(f"Traversal skipped: {skip_counts['non_exec']} non-executable, {skip_counts['prefix']} ignored-prefix, "
           f"{skip_counts['thunk_external']} thunk/external, {skip_counts['decompile_failed']} decompile-failed, "
           f"{skip_counts['library_fn']} matched-library-function.")
     print(f"Call graph exported to {graph_path}")
