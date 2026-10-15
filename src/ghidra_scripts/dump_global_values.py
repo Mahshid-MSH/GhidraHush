@@ -105,8 +105,7 @@ RUNTIME_SYMBOLS = {
     "_fmode", "_commode", "_dowildcard", "_newmode", "_environ", "__initenv"
 }
 
-# these are symbol *families* (address-templated names), so exact
-# matching never fired. Prefix-match instead.
+# these are symbol *families* (address-templated names), so exact matching never fired. Prefix-match instead.
 RUNTIME_SYMBOL_PREFIXES = ("caseD_", "switchdataD_")
 
 # --- Core Helper Functions ---
@@ -501,8 +500,7 @@ def get_data_value_string(data, program):
             elif size == 8: num &= 0xFFFFFFFFFFFFFFFF
             return f"0x{num:x}"
 
-        # 4-byte float literals get an 'f' suffix (avoids
-        # double-to-float conversion warnings with -Werror setups).
+        # 4-byte float literals get an 'f' suffix (avoids double-to-float conversion warnings with -Werror setups).
         if isinstance(num, float):
             try: size = dt.getLength()
             except Exception: size = 8
@@ -522,10 +520,6 @@ def escape_c_string(val):
         elif char == '\r': escaped.append('\\r')
         elif char == '\t': escaped.append('\\t')
         elif 32 <= code <= 126: escaped.append(char)
-        # FIX [4]: octal, exactly 3 digits. C hex escapes are unbounded, so
-        # "\x41" followed by 'B' parsed as one broken char "\x41B". A
-        # 3-digit octal escape is capped by the standard, hence
-        # self-terminating: "\001" + "2" parses correctly as char 1, '2'.
         else: escaped.append(f'\\{code & 0xff:03o}')
     return "".join(escaped)
 
@@ -658,8 +652,6 @@ class GlobalValueExtractor:
             return
             
         if name in self.seen_names:
-            # sanitize the suffix too 
-            # guaranteed C-safe in every address space.
             name = sanitize_c_name(f"{name}_{addr.toString()}")
             if name in self.seen_names:
                 return
@@ -773,8 +765,7 @@ def generate_global_files(path_to_binary, workspace_dir="."):
     db = SymbolDB(workspace_dir=workspace_dir)
     db.reset_globals()
     db.reset_custom_types()
-    reset_fptr_cache()  # FIX [6]: deterministic typedef numbering per run
-
+    reset_fptr_cache() 
     curated_addrs = load_curated_function_entry_points(workspace_dir, path_to_binary)
     if curated_addrs is not None:
         print(f"Found {len(curated_addrs)} curated function(s) in extracted_functions/ -- "
@@ -805,10 +796,8 @@ def generate_global_files(path_to_binary, workspace_dir="."):
 
         print(f"Opening already-analyzed program: {program_path}")
         with pyghidra.program_context(project, program_path) as program:
-            # Retain collating large arrays in initialized memory
             auto_collate_large_arrays(program, min_size=1024)
             
-            # Execute Extraction Passes via the modular class
             extractor = GlobalValueExtractor(program, db, curated_addrs)
             extractor.extract_defined_and_bss_globals()
             extractor.extract_function_signatures()
