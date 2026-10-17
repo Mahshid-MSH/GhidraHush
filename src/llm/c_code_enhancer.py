@@ -4,7 +4,7 @@ import sys
 import argparse
 import graphlib
 import json
-import re       
+import re, shutil       
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
@@ -12,7 +12,7 @@ if current_dir not in sys.path:
 
 from base_agent import BaseLLMAgent
 from database.symbol_db import SymbolDB
-from prompts import get_pass_1_prompt, get_pass_2_prompt, get_pass_3_prompt
+from prompts import get_pass_1_prompt
 from code_utils import (
     pre_process_ghidra_types,
     build_name_to_id_map,
@@ -21,29 +21,84 @@ from code_utils import (
     find_code_files,
     append_prototype_to_header,
 )
+STUB_BODY_MARKERS = (
+    "halt_baddata",
+    "Bad instruction",
+    "Unable to resolve",
+    "Control flow encountered bad instruction data",
+    "software_bkpt",
+)
+
+CONTROL_FLOW_RE = re.compile(r'\b(if|while|for|switch|goto|do)\b')
+
+STUB_NAME_RE = re.compile(
+    r'^(thunk_|std__|_?_?scrt_|__security_|_RTC_|__GSHandler|_guard_|__acrt_|__vcrt_|'
+    r'FID_conflict|_alloca_probe|__chkstk|_?_?SEH_|__except_handler|__CxxFrameHandler|'
+    r'_?_?DllMainCRTStartup|_?_?tmainCRTStartup|mainCRTStartup)',
+    re.IGNORECASE,
+)
+
+LIBRARY_FUNCS = {
+    "time", "memcpy", "memset", "memmove", "strlen", "strcmp", "strcpy", "strncpy",
+    "malloc", "free", "calloc", "realloc", "printf", "sprintf", "puts", "exit",
+    "atexit", "abort", "_amsg_exit", "_initterm", "_onexit",
+}
+ADDR_SUFFIX_RE = re.compile(r'_[0-9a-fA-F]{6,}$')
+
 
 
 class CCodeEnhancer(BaseLLMAgent):
-    """
-    Core Decompilation Cleanup Engine.
-    
-    Why this exists: Raw Ghidra decompilation is notoriously ugly and rarely compiles. 
-    It contains synthetic variables (uVar1, piVar2), weird pointer arithmetic, and broken casts. 
-    This class orchestrates a multi-pass LLM pipeline combined with static compilation 
-    checks to transform raw Ghidra output into clean, compilable C/C++ code.
-    """
-
     def __init__(self, model_name=None, base_url=None):
         super().__init__(model_name, base_url)
 
+    def _classify_stub(self, code, base_name):
+        bare_name = ADDR_SUFFIX_RE.sub('', base_name)
+        if bare_name in LIBRARY_FUNCS:
+            return "known library function"
+        if STUB_NAME_RE.match(bare_name):
+            return "name matches CRT/thunk/library pattern"
+
+
+        for marker in STUB_BODY_MARKERS:
+            if marker in code:
+                return f"contains Ghidra marker: {marker}"
+        stripped = re.sub(r'/\*.*?\*/', '', code, flags=re.S)
+        stripped = re.sub(r'//[^\n]*', '', stripped)
+        start, end = stripped.find('{'), stripped.rfind('}')
+        if start == -1 or end <= start:
+            return "no function body"
+        body = stripped[start + 1:end]
+
+        statements = [s.strip() for s in body.split(';') if s.strip()]
+        meaningful = []
+        for s in statements:
+            if re.fullmatch(r'return(\s+(0|0x0|NULL))?', s):   # bare return / return 0
+                continue
+            if re.fullmatch(r'[\w\s\*]+', s) and not s.startswith('return'):  # local declaration
+                continue
+            meaningful.append(s)
+
+        if not meaningful:
+            return "empty/trivial body"
+
+        # Normalise "x = f(args); return x;" into "f(args)"
+        if len(meaningful) == 2:
+            m = re.fullmatch(r'return\s+(\w+)', meaningful[1])
+            if m and re.match(
+                    rf'{re.escape(m.group(1))}\s*=\s*(\([\w\s\*:]+\))?\s*[\w:]+\s*\(',
+                    meaningful[0]):
+                meaningful = [meaningful[0].split('=', 1)[1].strip()]
+
+        # Single call with no logic = forwarding thunk
+        if (len(meaningful) == 1 and '(' in meaningful[0]
+                and '=' not in meaningful[0] and not CONTROL_FLOW_RE.search(body)):
+            return "single-call forwarding thunk"
+
+        return None
+
+    
+
     def _run_llm_pass(self, prompt_template, current_code, pass_name, base_name="unknown", workspace_dir="."):
-        """
-        Injects code into the prompt template and executes the LLM task.
-        
-        Why it's here: Standardizes the logging and error-handling format across 
-        all passes. Setting `temperature=0` is critical here—we want deterministic 
-        code refactoring, not creative hallucinations.
-        """
         print(f"  -> Running {pass_name}...")
         prompt = prompt_template.replace("___C_CODE_PLACEHOLDER___", current_code)
         
@@ -58,79 +113,30 @@ class CCodeEnhancer(BaseLLMAgent):
             }
         )
 
-    def beautify_code(self, code, callee_prototypes="", is_cpp=False,
-                      base_name="unknown", workspace_dir=".", db=None):
-        """
-        The core multi-pass enhancement loop with a "Compile Gate" short-circuit.
-        
-        Why it's here: LLMs often fail to fix complex pointer/cast issues in a single pass.
-        We use an iterative approach:
-          - Pass 1: Syntax cleanup and variable renaming.
-          - Pass 2+: Deep semantic fixes (pointers, Win32 constants).
-        Crucially, we run a background compiler check (`_try_syntax_check`) after every pass. 
-        If the code compiles, we STOP immediately. This saves API tokens and prevents 
-        subsequent LLM passes from accidentally breaking already-working code.
-        """
+    def beautify_code(self, code, is_cpp=False,
+                      base_name="unknown", workspace_dir="."):
         lang_name = "C++" if is_cpp else "C"
-        max_passes = int(os.environ.get("STAGE3_PASSES", "1"))
-        print(f"Beautifying {lang_name} code ({max_passes} pass max)...")
+        print(f"Beautifying {lang_name} code (Single Pass)...")
 
         # C89 requires variables at the top of the block; C++ prefers local scope.
-        # Enforcing this constraint prevents simple compiler errors later.
         var_rule = (
             "3. **C89 COMPLIANCE**: ALL variables MUST be declared at the top of the function block before executable statements."
             if not is_cpp else
             "3. **C++ SCOPE**: Declare variables as close as possible to their first use, following modern C++ best practices."
         )
 
-        context_block = ""
-        if callee_prototypes:
-            context_block = (f"\n### KNOWN CALLEE PROTOTYPES:\nStrictly cast "
-                             f"arguments to match these exact signatures:\n"
-                             f"{callee_prototypes}\n")
+        prompt = get_pass_1_prompt(is_cpp, var_rule)
+        current = self._run_llm_pass(prompt, code, "Pass_1", base_name, workspace_dir)
+        if not current:
+            current = code
 
-        current = code
-        for i in range(max_passes):
-            prev = current
-
-            # Determine the appropriate prompt for the current pass
-            if i == 0:
-                prompt = get_pass_1_prompt(is_cpp, var_rule)
-            else:
-                prompt = get_pass_2_prompt(is_cpp, context_block)
-
-            current = self._run_llm_pass(prompt, current,
-                                         f"Pass_{i + 1}", base_name,
-                                         workspace_dir)
-            
-            # Fallback if LLM failed to return valid code
-            if not current:
-                current = prev
-                
-            # Compile Gate: If it compiles, stop burning API tokens and accept the code.
-            gate = self._try_syntax_check(current, workspace_dir, is_cpp)
-            if gate is not None and gate[0]:
-                print(f"  -> compiles after pass {i + 1}; skipping remaining passes")
-                break
-
-            # Convergence Check: If the LLM stopped making changes, give up to avoid loops.
-            if i > 0 and current == prev:
-                print(f"  -> pass {i + 1} changed nothing; stopping")
-                current = prev
-                break
-
-        # Deterministic insertion: Always better to use python for guaranteed formatting
-        # rather than begging the LLM to remember to include a header file.
+        # Deterministic header inclusion
         current = self._ensure_header_include(current)
 
         print("  -> Beautification complete.")
         return {"code": current}
-
+    
     def _try_syntax_check(self, code, workspace_dir, is_cpp):
-        """
-        Invokes the local compiler (GCC/Clang) to verify syntax.
-        Returns (True, stderr) if successful, None if compiler is unavailable.
-        """
         try:
             from code_utils import syntax_check
             return syntax_check(code, workspace_dir, is_cpp=is_cpp)
@@ -138,14 +144,6 @@ class CCodeEnhancer(BaseLLMAgent):
             return None
 
     def _ensure_header_include(self, code):
-        """
-        Deterministically injects `#include "data_globals.h"`.
-        
-        Why it's here: In earlier versions of this pipeline, an LLM pass was used 
-        just to add include headers. LLMs are notoriously bad at arbitrary structural 
-        rules. Doing it via regex/string manipulation guarantees the header is present 
-        and prevents breaking multi-file compilation setups.
-        """
         if re.search(r'#\s*include\s*"data_globals\.h"', code):
             return code
             
@@ -161,15 +159,6 @@ class CCodeEnhancer(BaseLLMAgent):
         return "\n".join(lines)
     
     def process_function_file(self, file_path, workspace_dir, call_graph=None, db=None, name_to_id=None):
-        """
-        End-to-end processing for a single C/C++ function file.
-        
-        Why it's here: This method handles the "Context Assembly". Before asking the 
-        LLM to fix a function, it looks at the call graph, finds all functions *this* 
-        function calls, looks up their exact prototypes from the SQLite DB, and injects 
-        them into the prompt. This prevents the LLM from hallucinating variable types 
-        during function calls.
-        """
         output_dir = os.path.join(workspace_dir, 'processed_functions')
         os.makedirs(output_dir, exist_ok=True)
         header_path = os.path.join(workspace_dir, "data_globals.h")
@@ -180,45 +169,17 @@ class CCodeEnhancer(BaseLLMAgent):
         base_name = os.path.splitext(os.path.basename(file_path))[0]
         print(f"\nProcessing: {base_name}")
 
-        # --- Context Injection Block ---
-        # Fetch verified prototypes of all functions called by this file
-        callee_prototypes_str = ""
-        if call_graph and base_name in call_graph:
-            entry = call_graph[base_name]
-            callees = entry.get("callees", []) if isinstance(entry, dict) else entry
-            
-            if name_to_id is None:
-                name_to_id = build_name_to_id_map(call_graph)
-
-            prototypes = []
-            for callee_id in callees:
-                clean_callee_id = resolve_callee_id(callee_id, call_graph, name_to_id)
-                proto = None
-                if db:
-                    try:
-                        row = db.get_function_by_func_id(clean_callee_id)
-                        if row:
-                            proto = f"{row[0]} {row[1]}({row[2]});"
-                    except Exception as e:
-                        print(f"  [!] DB lookup failed for {clean_callee_id}: {e}")
-                if proto:
-                    prototypes.append(proto)
-
-            callee_prototypes_str = "\n".join(prototypes)
-
         is_cpp = file_path.endswith(".cpp")
         
-        # Remove Ghidra-specific junk types (e.g., 'undefined8') before LLM sees it
+        # Remove Ghidra-specific junk types before LLM sees it
         cleaned_code = pre_process_ghidra_types(original_code)
         
-        # Run the multi-pass LLM agent
+        # Run the single-pass LLM agent
         enhancement = self.beautify_code(
             cleaned_code, 
-            callee_prototypes_str, 
             is_cpp=is_cpp, 
             base_name=base_name, 
             workspace_dir=workspace_dir,
-            db=db,
         )
         result = enhancement["code"]
 
@@ -236,20 +197,51 @@ class CCodeEnhancer(BaseLLMAgent):
             'original': file_path,
             'beautified': beautified_path,
         }
+    
+    def filter_stubs(self, files, workspace_dir):
+        """
+        Pre-pass: moves stub/non-user-defined functions into <workspace>/quarantined/
+        and returns only the files that should go through the pipeline.
+        Quarantined files are never touched by the LLM or the DAG again.
+        """
+        if os.environ.get("STAGE3_QUARANTINE", "1") != "1":
+            return files
+
+        qdir = os.path.join(workspace_dir, "quarantined")
+        manifest_path = os.path.join(qdir, "quarantine_manifest.json")
+        manifest = {}
+        if os.path.exists(manifest_path):
+            with open(manifest_path, "r", encoding="utf-8") as f:
+                manifest = json.load(f)
+
+        kept = []
+        for path in files:
+            base_name = os.path.splitext(os.path.basename(path))[0]
+            with open(path, "r", encoding="utf-8") as f:
+                code = f.read()
+
+            reason = self._classify_stub(code, base_name)
+            if not reason:
+                kept.append(path)
+                continue
+
+            os.makedirs(qdir, exist_ok=True)
+            dest = os.path.join(qdir, os.path.basename(path))
+            shutil.move(path, dest)          # gone from the input dir for good
+            manifest[base_name] = {"reason": reason, "original_path": path}
+            print(f"  -> QUARANTINED {base_name}: {reason}")
+
+        if manifest:
+            os.makedirs(qdir, exist_ok=True)
+            with open(manifest_path, "w", encoding="utf-8") as f:
+                json.dump(manifest, f, indent=2)
+
+        return kept
 
     def process_directory(self, input_dir, workspace_dir):
-        """
-        Orchestrates processing of an entire decompiled project using Topological Sort.
-        
-        Why it's here: If function `main()` calls `calculate_hash()`, we MUST process 
-        `calculate_hash()` first so we can extract its definitive prototype and feed 
-        it to the LLM when it processes `main()`. 
-        
-        By using a Directed Acyclic Graph (DAG) and topological sorting based on 
-        `call_graph.json`, we process the codebase "bottom-up" (leaf functions first). 
-        This is the secret to getting a decompiled codebase to successfully recompile.
-        """
+
         found_files = find_code_files(input_dir)
+        found_files = self.filter_stubs(found_files, workspace_dir)
         if not found_files:
             print(f"No source files found in {input_dir}")
             return []
@@ -326,6 +318,9 @@ if __name__ == "__main__":
     if os.path.isdir(args.input_path):
         enhancer.process_directory(args.input_path, workspace_dir=args.workspace)
     elif os.path.isfile(args.input_path):
-        enhancer.process_function_file(args.input_path, workspace_dir=args.workspace)
+        if enhancer.filter_stubs([args.input_path], args.workspace):
+            enhancer.process_function_file(args.input_path, workspace_dir=args.workspace)
+        else:
+            print(f"{args.input_path} was quarantined; nothing to process.")
     else:
         print(f"Invalid path provided: {args.input_path}")

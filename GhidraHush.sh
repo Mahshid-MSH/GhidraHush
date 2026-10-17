@@ -8,7 +8,6 @@ cd "$SCRIPT_DIR" || exit 1
 COMPOSE_FILE="docker-compose.yaml"
 ENV_FILE=".env"
 WORKSPACE_BASE_DIR="workspace"
-WORKSPACE_PREFIX="run"
 
 # --- Colors ---
 CYAN='\033[96m'
@@ -134,7 +133,9 @@ if [[ ! -f "$raw_input_exe" ]]; then
     echo -e "${RED}${BOLD}Error:${RESET} ${RED}Specified executable '$raw_input_exe' does not exist.${RESET}"
     exit 1
 fi
-
+target_exe_name=$(basename "$raw_input_exe")
+binary_base_name="${target_exe_name%.*}"
+WORKSPACE_PREFIX="$binary_base_name"
 workspace_dir=$(get_or_create_workspace)
 echo -e "${GREEN}Allocated workspace: ${BOLD}${workspace_dir}${RESET}"
 

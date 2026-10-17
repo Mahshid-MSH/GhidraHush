@@ -26,54 +26,91 @@ from utils.getprocaddress_resolver import (
     resolve_getprocaddress_types,
 )
 
+# ---------------------------------------------------------------------------
 # Constants & Filters
+# ---------------------------------------------------------------------------
 TARGET_EXCEPTIONS = ["winmain", "entry"]
 
+# Names of user-level entry points. Compared after stripping leading
+# underscores (32-bit MinGW/MSVC often name it "_main").
+USER_ENTRY_NAMES = {"main", "wmain", "winmain", "wwinmain", "dllmain"}
+
+# True PREFIXES (compared against the lowercased raw name).
 IGNORED_PREFIXES = (
-    # Compiler / Runtime Artifacts & Linker Prefixes
-    "unwind", "~", "___scrt", "mingw", "Ordinal", "WinMainCRTStartup",
-    "_imp__", "__imp_", "??", "@","__",
-    
+    "unwind", "ordinal", "mingw", "_imp__", "__imp_", "??", "@", "__",
+)
+IGNORED_PREFIXES_LOWER = tuple(p.lower() for p in IGNORED_PREFIXES)
+
+# PREFIXES compared against the *normalized* name (lowercase, leading "_" stripped).
+IGNORED_NORMALIZED_PREFIXES = ("findpesection", "pei386")
+
+# EXACT names (compared against the normalized name). These used to be prefixes,
+# which silently swallowed user functions such as "free_list" or "exit_handler".
+_IGNORED_EXACT_RAW = (
     # Standard C Library: String & Memory Operations
-    "strcat", "strncat", "strcpy", "strncpy", "strlen", "strstr", "strchr", 
-    "strrchr", "strtok", "strcspn", "strspn", "strpbrk", "strcmp", "strncmp", 
-    "strcasecmp", "strncasecmp", "wcscpy", "wcsncpy", "wcscat", "wcsncat", 
-    "wcscmp", "wcsncmp", "wcslen", "wcsstr", "wcschr", "wcsrchr", "wcscasecmp", 
-    "wcsncasecmp", "wcsnlen", "mbsrtowcs", "wcsrtombs", "memcpy", "memmove", 
-    "memcmp", "memchr", "memset", "bzero", "bcopy", "bcmp",
-
+    "strcat", "strncat", "strcpy", "strncpy", "strlen", "strnlen", "strstr",
+    "strchr", "strrchr", "strtok", "strcspn", "strspn", "strpbrk", "strcmp",
+    "strncmp", "strcasecmp", "strncasecmp", "wcscpy", "wcsncpy", "wcscat",
+    "wcsncat", "wcscmp", "wcsncmp", "wcslen", "wcsstr", "wcschr", "wcsrchr",
+    "wcscasecmp", "wcsncasecmp", "wcsnlen", "mbsrtowcs", "wcsrtombs", "memcpy",
+    "memmove", "memcmp", "memchr", "memset", "bzero", "bcopy", "bcmp",
     # Dynamic Memory & Conversions
-    "malloc", "calloc", "realloc", "free", "atoi", "atol", "atoll", "atof", 
+    "malloc", "calloc", "realloc", "free", "atoi", "atol", "atoll", "atof",
     "strtol", "strtoul", "strtod", "atexit",
-
     # Standard I/O & Formatting
-    "printf", "fprintf", "sprintf", "snprintf", "vprintf", "vfprintf", 
-    "vsprintf", "vsnprintf", "scanf", "fscanf", "sscanf", "fopen", "fclose", 
-    "fread", "fwrite", "fseek", "ftell", "puts", "gets", "fgets", "fputs", 
-    "putchar", "getchar", "abort", "dtoa_lock", "dtoa_lock_cleanup", "FindPESection",
-
+    "printf", "fprintf", "sprintf", "snprintf", "vprintf", "vfprintf",
+    "vsprintf", "vsnprintf", "scanf", "fscanf", "sscanf", "fopen", "fclose",
+    "fread", "fwrite", "fseek", "ftell", "puts", "gets", "fgets", "fputs",
+    "putchar", "getchar", "abort", "dtoa_lock", "dtoa_lock_cleanup",
     # MSVC / Universal CRT Startup & Internals
-    "mainCRTStartup", "wmainCRTStartup", "wWinMainCRTStartup", "DllMainCRTStartup",
-    "signal", "_initterm", "_initterm_e", "_cexit", "_exit", "exit", 
-    "localconv", "mbrlen", "__security_init_cookie", "__security_check_cookie",
-    "init_codepage_func", "_seh_filter_exe", "_seh_filter_dll", 
-    "_configure_wide_argv", "_configure_narrow_argv",
+    "mainCRTStartup", "wmainCRTStartup", "WinMainCRTStartup", "wWinMainCRTStartup",
+    "DllMainCRTStartup", "signal", "_initterm", "_initterm_e", "_cexit", "_exit",
+    "exit", "localconv", "mbrlen", "__security_init_cookie",
+    "__security_check_cookie", "init_codepage_func", "_seh_filter_exe",
+    "_seh_filter_dll", "_configure_wide_argv", "_configure_narrow_argv",
     "_initialize_narrow_environment", "_initialize_wide_environment",
     "__acrt_iob_func", "__stdio_common_vfprintf", "__stdio_common_vsprintf",
-    "_amsg_exit", "_get_initial_narrow_environment", "_get_initial_wide_environment"
+    "_amsg_exit", "_get_initial_narrow_environment", "_get_initial_wide_environment",
+    # MinGW CRT internals
+    "_setargv", "_matherr", "_fpreset", "_gnu_exception_handler",
+    "_IsNonwritableInCurrentImage", "_GetPEImageBase", "_ValidateImageBase",
+    "mark_section_writable", "_lock_file", "_unlock_file", "wcrtomb", "mbrtowc",
 )
 
 
+def normalize_name(name):
+    """Lowercase, strip leading underscores and any stdcall '@N' suffix."""
+    return name.lower().lstrip("_").split("@")[0]
+
+
+IGNORED_EXACT = {normalize_name(n) for n in _IGNORED_EXACT_RAW}
+
+
+def is_ignored_runtime(lower_name):
+    """True for CRT / libc / compiler-runtime functions that should not be emitted."""
+    if lower_name.startswith(IGNORED_PREFIXES_LOWER):
+        return True
+    base = normalize_name(lower_name)
+    return base in IGNORED_EXACT or base.startswith(IGNORED_NORMALIZED_PREFIXES)
+
+
+def is_user_entry(name):
+    return name.lstrip("_").lower() in USER_ENTRY_NAMES
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 def make_function_id(function):
     """Generates a stable, collision-free identifier for a Ghidra Function with length protection."""
     qualified_name = function.getName(True)
     safe_name = re.sub(r'[^A-Za-z0-9_~]', '_', qualified_name)
     addr_str = str(function.getEntryPoint())
-    
+
     if len(safe_name) > 120:
         name_hash = hashlib.md5(qualified_name.encode('utf-8')).hexdigest()[:8]
         safe_name = f"{safe_name[:120]}_{name_hash}"
-        
+
     return f"{safe_name}_{addr_str}"
 
 
@@ -84,6 +121,58 @@ def resolve_thunk(function):
         if target is not None:
             return target
     return function
+
+
+def collect_children(function, function_manager, reference_manager, listing):
+    """
+    Returns (callee_ids, children).
+
+    callee_ids : IDs of directly called functions (used for call-graph edges).
+    children   : every function reachable from this one in a single step, i.e.
+                 direct calls PLUS functions whose address is taken (callbacks,
+                 ThreadProcs, window procs...). These are what we enqueue.
+    """
+    callee_ids = []
+    children = []
+
+    for callee in function.getCalledFunctions(TaskMonitor.DUMMY):
+        actual_callee = resolve_thunk(callee)
+        callee_ids.append(make_function_id(actual_callee))
+        children.append(actual_callee)
+
+    for inst in listing.getInstructions(function.getBody(), True):
+        for ref in reference_manager.getReferencesFrom(inst.getAddress()):
+            if ref.getReferenceType().isData():
+                ref_func = function_manager.getFunctionAt(ref.getToAddress())
+                if ref_func:
+                    children.append(resolve_thunk(ref_func))
+
+    return callee_ids, children
+
+
+def collapse_edges(all_edges, emitted_ids):
+    """
+    Builds the exported call graph. Functions that were traversed but not emitted
+    (CRT startup, libc, ...) are collapsed out: an edge A -> crt -> B becomes A -> B,
+    so the graph has no dangling callee IDs and still shows that
+    WinMainCRTStartup eventually leads to main.
+    """
+    collapsed = {}
+    for fid in emitted_ids:
+        result = []
+        seen = set()
+        stack = list(reversed(all_edges.get(fid, [])))
+        while stack:
+            cid = stack.pop()
+            if cid in seen:
+                continue
+            seen.add(cid)
+            if cid in emitted_ids:
+                result.append(cid)
+            else:
+                stack.extend(reversed(all_edges.get(cid, [])))
+        collapsed[fid] = result
+    return collapsed
 
 
 def configure_analysis_options(program, has_pdb, pdb_path):
@@ -97,7 +186,7 @@ def configure_analysis_options(program, has_pdb, pdb_path):
         try:
             from ghidra.app.util.demangler import DemanglerOptions
             d_opts = DemanglerOptions()
-            d_opts.setApplySignature(True)     
+            d_opts.setApplySignature(True)
             program.setProperty("_demangler_apply_sig", "1")
         except Exception as e:
             print(f"  [warn] DemanglerOptions unavailable: {e}")
@@ -117,12 +206,12 @@ def patch_compiler_helpers(program):
 
         for func in fm.getFunctions(True):
             func_name = func.getName().lower()
-        
+
             # MinGW Stack Probes: NOP out call sites to preserve allocation size in EAX
             if "chkstk_ms" in func_name:
                 func.setInline(False)
                 func.setCallFixup(None)
-            
+
                 entry_point = func.getEntryPoint()
                 for ref in ref_mgr.getReferencesTo(entry_point):
                     if ref.getReferenceType().isCall():
@@ -132,12 +221,12 @@ def patch_compiler_helpers(program):
                             length = inst.getLength()
                             listing.clearCodeUnits(call_addr, call_addr.add(length - 1), False)
                             mem.setBytes(call_addr, b'\x90' * length)
-            
+
             # MSVC Stack Allocators
             elif "chkstk" in func_name or "alloca_probe" in func_name:
                 func.setInline(False)
                 func.setCallFixup("__chkstk")
-        
+
             # Security Cookie Checks: Force inline
             elif "security_check_cookie" in func_name:
                 func.setInline(True)
@@ -179,6 +268,9 @@ def setup_decompiler(program):
     return decompiler
 
 
+# ---------------------------------------------------------------------------
+# Main extraction
+# ---------------------------------------------------------------------------
 def extract_functions(file_path, workspace_dir):
     output_dir = os.path.join(workspace_dir, "extracted_functions")
     base_name = os.path.basename(file_path)
@@ -213,7 +305,7 @@ def extract_functions(file_path, workspace_dir):
         with pyghidra.program_context(project, program_path) as program:
             if needs_full_analysis:
                 configure_analysis_options(program, has_pdb, pdb_path)
-                
+
                 print(f"Analyzing {file_path}...")
                 pyghidra.analyze(program)
 
@@ -240,15 +332,21 @@ def extract_functions(file_path, workspace_dir):
             reference_manager = program.getReferenceManager()
             listing = program.getListing()
 
-            # FIND ACTUAL ROOT ENTRY POINTS 
-            USER_ENTRY_NAMES = {"main", "wmain", "WinMain", "wWinMain", "DllMain"}
+            # ------------------------------------------------------------------
+            # FIND ACTUAL ROOT ENTRY POINTS
+            # ------------------------------------------------------------------
             roots = []
-            
             for f in function_manager.getFunctions(True):
-                if f.getName() in USER_ENTRY_NAMES:
+                # "_main" / "__main"-style names are normalized by is_user_entry().
+                # Skip "__main" (the GCC static-ctor runner) -- it is not user code.
+                if f.getName() == "__main":
+                    continue
+                if is_user_entry(f.getName()):
                     roots.append(f)
-            
-            # If stripped or weirdly compiled, fallback to the symbolic entry point
+
+            # If stripped or weirdly compiled, fall back to the binary entry points.
+            # The traversal now walks THROUGH the CRT, so user code is still reached
+            # even when main could not be identified by name.
             if not roots:
                 print("  [info] No standard main found. Falling back to binary Entry Points.")
                 entry_iter = program.getSymbolTable().getExternalEntryPointIterator()
@@ -258,15 +356,45 @@ def extract_functions(file_path, workspace_dir):
                     if func:
                         roots.append(func)
 
-            print(f"Total root functions found to begin traversal: {len(roots)}")
+            # Functions that Stage 2 found pointed at from global data (callback tables,
+            # vtables...) but that no direct call/reference reached. Written by
+            # dump_global_values.py; picked up on the next run of this stage.
+            extra_path = os.path.join(workspace_dir, "missing_function_targets.json")
+            if os.path.isfile(extra_path):
+                try:
+                    have = {r.getEntryPoint().getOffset() for r in roots}
+                    space = program.getAddressFactory().getDefaultAddressSpace()
+                    with open(extra_path, encoding="utf-8") as fh:
+                        extra_items = json.load(fh)
+                    for item in extra_items:
+                        off = int(item["address"], 16)
+                        fn = function_manager.getFunctionAt(space.getAddress(off))
+                        if fn is not None and off not in have:
+                            roots.append(fn)
+                            have.add(off)
+                    print(f"  [info] added roots from {os.path.basename(extra_path)}")
+                except Exception as e:
+                    print(f"  [warn] could not read {extra_path}: {e}")
 
-            #TOP-DOWN GRAPH TRAVERSAL (BFS)
-            extracted_data = []
-            call_graph = {}
+            print(f"Total root functions found to begin traversal: {len(roots)}")
+            for r in roots:
+                print(f"  [root] {r.getName()} @ {r.getEntryPoint()}")
+
+            # ------------------------------------------------------------------
+            # TOP-DOWN GRAPH TRAVERSAL (BFS)
+            #
+            # Key rule: filters decide what gets DECOMPILED/EMITTED, never what gets
+            # WALKED. User code is reached through the CRT
+            # (entry -> __tmainCRTStartup -> main), so every visited function has its
+            # children enqueued before any skip decision is made.
+            # ------------------------------------------------------------------
+            extracted_data = []       # (func_id, full_name, c_code) for emitted functions
+            node_names = {}           # func_id -> full_name for emitted functions
+            all_edges = {}            # func_id -> direct callee ids, for ALL visited functions
             binary_has_cpp = False
-            
+
             skip_counts = {
-                "non_exec": 0, "prefix": 0, "thunk_external": 0, 
+                "non_exec": 0, "prefix": 0, "thunk_external": 0,
                 "decompile_failed": 0, "library_fn": 0
             }
 
@@ -275,7 +403,7 @@ def extract_functions(file_path, workspace_dir):
 
             while queue:
                 function = queue.popleft()
-                
+
                 function = resolve_thunk(function)
                 entry_point = function.getEntryPoint()
                 func_addr = entry_point.getOffset()
@@ -286,11 +414,22 @@ def extract_functions(file_path, workspace_dir):
                 visited_addrs.add(func_addr)
 
                 memory_block = memory.getBlock(entry_point)
-                
+
                 # Check executable section bounds
                 if memory_block is None or not memory_block.isExecute():
                     skip_counts["non_exec"] += 1
                     continue
+
+                # ---- Walk first, filter second -------------------------------
+                func_id = make_function_id(function)
+                callee_ids, children = collect_children(
+                    function, function_manager, reference_manager, listing
+                )
+                all_edges[func_id] = callee_ids
+                for child in children:
+                    if child.getEntryPoint().getOffset() not in visited_addrs:
+                        queue.append(child)
+                # --------------------------------------------------------------
 
                 clean_name = function.getName()
                 lower_name = clean_name.lower()
@@ -301,8 +440,9 @@ def extract_functions(file_path, workspace_dir):
                     skip_counts["thunk_external"] += 1
                     continue
 
-                # Ignored runtime prefixes (Prunes tree from traversing standard library)
-                if not is_exception and lower_name.startswith(IGNORED_PREFIXES):
+                # Ignored runtime functions: not emitted, but their callees were
+                # already enqueued above, so the walk continues through them.
+                if not is_exception and is_ignored_runtime(lower_name):
                     skip_counts["prefix"] += 1
                     continue
 
@@ -332,33 +472,17 @@ def extract_functions(file_path, workspace_dir):
                     elif re.search(r'\b(__thiscall|operator new|operator delete)\b', c_code):
                         binary_has_cpp = True
 
-                func_id = make_function_id(function)
-                callee_ids = []
-
-                # Enqueue direct calls
-                for callee in function.getCalledFunctions(TaskMonitor.DUMMY):
-                    actual_callee = resolve_thunk(callee)
-                    callee_ids.append(make_function_id(actual_callee))
-                    if actual_callee.getEntryPoint().getOffset() not in visited_addrs:
-                        queue.append(actual_callee)
-                
-                # Enqueue functions passed as pointers (Callbacks, ThreadProcs, UI Event Loops)
-                instructions = listing.getInstructions(function.getBody(), True)
-                for inst in instructions:
-                    for ref in reference_manager.getReferencesFrom(inst.getAddress()):
-                        if ref.getReferenceType().isData():
-                            ref_func = function_manager.getFunctionAt(ref.getToAddress())
-                            if ref_func:
-                                actual_ref_func = resolve_thunk(ref_func)
-                                if actual_ref_func.getEntryPoint().getOffset() not in visited_addrs:
-                                    queue.append(actual_ref_func)
-
-                call_graph[func_id] = {
-                    "name": full_name,
-                    "callees": callee_ids,
-                }
-
+                node_names[func_id] = full_name
                 extracted_data.append((func_id, full_name, c_code))
+
+            # Build the exported graph: emitted nodes only, with edges collapsed
+            # through any traversed-but-not-emitted (CRT/libc) functions.
+            emitted_ids = set(node_names.keys())
+            collapsed = collapse_edges(all_edges, emitted_ids)
+            call_graph = {
+                fid: {"name": node_names[fid], "callees": collapsed[fid]}
+                for fid, _, _ in extracted_data
+            }
 
             # Export decompiled source files
             file_ext = ".cpp" if binary_has_cpp else ".c"
@@ -369,13 +493,13 @@ def extract_functions(file_path, workspace_dir):
                 c_file_path = os.path.join(file_output_dir, f"{func_id}{file_ext}")
                 with open(c_file_path, "w", encoding="utf-8") as f:
                     f.write(c_code)
-                    
+
     graph_path = os.path.join(file_output_dir, "call_graph.json")
     with open(graph_path, "w", encoding="utf-8") as f:
         json.dump(call_graph, f, indent=4)
 
     print(f"\nExtracted {len(extracted_data)} top-down reachable functions.")
-    print(f"Traversal skipped: {skip_counts['non_exec']} non-executable, {skip_counts['prefix']} ignored-prefix, "
+    print(f"Traversal skipped: {skip_counts['non_exec']} non-executable, {skip_counts['prefix']} ignored-runtime, "
           f"{skip_counts['thunk_external']} thunk/external, {skip_counts['decompile_failed']} decompile-failed, "
           f"{skip_counts['library_fn']} matched-library-function.")
     print(f"Call graph exported to {graph_path}")

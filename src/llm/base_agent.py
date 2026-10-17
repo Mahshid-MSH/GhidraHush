@@ -14,7 +14,7 @@ class BaseLLMAgent:
 
     BASE_AGENT_VERSION = "v4-fixed-options"
 
-    def __init__(self, model_name=None, base_url=None, delay_between_requests=100):
+    def __init__(self, model_name=None, base_url=None, delay_between_requests=40):
         """
         Initializes the API client with graceful fallbacks.
         Supports Groq, DeepSeek, Ollama, etc. via arguments or env vars.
@@ -40,9 +40,14 @@ class BaseLLMAgent:
         if match:
             return match.group(1).strip()
             
-        if any(k in llm_output for k in ["#include", "void", "int", "struct"]):
-            return llm_output.strip()
-            
+        # No closed code fence. Accept the raw reply only if it looks like a C/C++
+        # function (the old test accepted anything containing "int" -- e.g. any
+        # English sentence with "point" in it -- and wrote the prose to disk as code).
+        text = llm_output.strip()
+        if "```" not in text and "{" in text and "}" in text and (
+                "#include" in text or re.search(r"\w\s*\([^)]*\)\s*\{", text)):
+            return text
+
         return original_code
 
     def _completion_kwargs(self, prompt, temperature, options):
@@ -58,7 +63,7 @@ class BaseLLMAgent:
         }
 
         # Allow overriding max_tokens safely (defaulting to a safer 4096 for code)
-        max_tokens = opts.get("max_tokens", 4096)
+        max_tokens = opts.get("max_tokens", int(os.environ.get("LLM_MAX_TOKENS", "4096")))
         if max_tokens:
             kw["max_tokens"] = max_tokens
 
@@ -138,6 +143,7 @@ class BaseLLMAgent:
                          base_name, options=None):
         """Orchestrator that runs prompt, logs result, and extracts code."""
         response = self.stream_prompt(prompt, options=options)
+        truncated = getattr(self, "_last_meta", {}).get("finish_reason") == "length"
         
         log_dir = os.path.join(workspace_dir, "llm_logs")
         os.makedirs(log_dir, exist_ok=True)
@@ -148,4 +154,10 @@ class BaseLLMAgent:
             f.write(f"=== PROMPT ({len(prompt)} chars) ===\n{prompt}\n\n")
             f.write(f"=== RESPONSE ({len(response)} chars) ===\n{response}\n")
             
+        if truncated:
+            # A reply cut off by max_tokens ends mid-function; accepting it (as the
+            # code did) produces a file that cannot compile. Keep the input instead.
+            print(f"  [LLM] reply TRUNCATED at the token limit for {base_name}; keeping "
+                  f"the input unchanged (raise LLM_MAX_TOKENS to allow longer output)")
+            return original_code
         return self.extract_raw_c_code(response, original_code)

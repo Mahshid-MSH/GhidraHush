@@ -14,6 +14,10 @@ from database.symbol_db import SymbolDB
 from compiler.compiler_service import CompilerService   # the merged service
 from compiler.compilation_order import compilation_order    # the fixed topo sort
 from llm.patch_agent import PatchAgent
+from pathlib import Path
+
+
+from Auxiliary.reports import compilation_report
 from utils.ast_patcher import (
     analyze_ast_types, proactive_header_patch,
     clean_decompiled_code, ast_tools_applicable,
@@ -56,34 +60,50 @@ class CompilerOrchestrator:
 
     # ------------------------------------------------------------------
 
-    def _preflight_header(self):
+    def _preflight_header(self, want_cpp=False):
         """
-        Compile a one-line TU against data_globals.h ONLY. If the header
-        is broken, every function fails for fake reasons and repairs are
-        wasted -- halt the stage instead.
+        Compile one-line TUs against data_globals.h ONLY, then data_globals.c itself.
+        If the header is broken, every function fails for fake reasons and repairs
+        are wasted -- halt the stage instead.
+
+        Checks beyond the original: (1) data_globals.c is compiled and its result is
+        no longer ignored (compile_globals() returned a bool nobody read, so a broken
+        data_globals.c only surfaced at link time); (2) when .cpp files are present the
+        header is also compiled with g++, since constructs that are fine in C
+        (e.g. _Static_assert) can be rejected there.
         """
-        probe = os.path.join(self.workspace, "__hdr_probe__.c")
-        with open(probe, "w", encoding="utf-8") as f:
-            f.write("int __gh_probe__(void);\n")
-        try:
-            ok, errors = self.compiler.compile(probe, self.dir_output)
-        finally:
-            try: os.unlink(probe)
-            except OSError: pass
-        if not ok:
-            raise RuntimeError(
-                "P0 preflight FAILED: data_globals.h does not compile -- "
-                "fix the generator (symbol_db/dump_global_values) first.\n"
-                + errors[:3000])
-        
+        def _check(name, text, label):
+            probe = os.path.join(self.workspace, name)
+            with open(probe, "w", encoding="utf-8") as f:
+                f.write(text)
+            try:
+                ok, errors = self.compiler.compile(probe, self.dir_output)
+            finally:
+                try: os.unlink(probe)
+                except OSError: pass
+            if not ok:
+                raise RuntimeError(
+                    f"P0 preflight FAILED ({label}) -- fix the generator "
+                    f"(symbol_db/dump_global_values) first.\n" + errors[:3000])
+
+        _check("__hdr_probe__.c", "int __gh_probe__(void);\n", "data_globals.h as C")
+        if want_cpp:
+            _check("__hdr_probe__.cpp", 'extern "C" int __gh_probe__(void);\n',
+                   "data_globals.h as C++")
+        src = os.path.join(self.workspace, "data_globals.c")
+        if os.path.isfile(src):
+            ok, errors = self.compiler.compile(src, self.dir_output)
+            if not ok:
+                raise RuntimeError("P0 preflight FAILED (data_globals.c does not "
+                                   "compile)\n" + errors[:3000])
+
     def process_directory(self, target_dir):
         for d in (self.dir_success, self.dir_output, self.dir_logs,
                   self.dir_failed):
             os.makedirs(d, exist_ok=True)
-        self._preflight_header()          # ONCE, after dirs exist
-
         files = [os.path.join(target_dir, f) for f in os.listdir(target_dir)
                  if f.endswith((".c", ".cpp"))]
+        self._preflight_header(want_cpp=any(f.endswith(".cpp") for f in files))  # ONCE
         if not files:
             print(f"No .c/.cpp files found in {target_dir}")
             return
@@ -100,6 +120,7 @@ class CompilerOrchestrator:
         print(f"  artifacts: compiled_successfully/ failed_functions/ "
               f"output_objects/ llm_responses/")
         print(f"{CYAN}{'=' * 60}{RESET}")
+        
         with open(os.path.join(self.workspace, "compile_stats.json"), "w",
                   encoding="utf-8") as f:
             json.dump({
@@ -107,9 +128,52 @@ class CompilerOrchestrator:
                 "totals": dict(self.stats),
                 "functions": self.per_function,
             }, f, indent=2)
+
+        # Inside orchestrator.py, where compile_stats.json is saved:
+        total_repairs = sum(f.get("repairs", 0) for f in self.per_function)
+        summary_payload = {
+            "binary": self._binary_name,
+            "success": self.stats['success'],
+            "failed": self.stats['failed'],
+            "total_repairs": total_repairs,
+            "functions": self.per_function,
+        }
+        
+        # Save JSON as before
+        with open(os.path.join(self.workspace, "compile_stats.json"), "w", encoding="utf-8") as f:
+            json.dump(summary_payload, f, indent=2)
+
+        # Resolve project root (two levels up from orchestrator.py if located in a subfolder, 
+        # or adjust according to your actual folder layout)
+        project_root = Path(__file__).resolve().parent.parent
+        
+        total_repairs = sum(f.get("repairs", 0) for f in self.per_function)
+        summary_payload = {
+            "binary": self._binary_name,
+            "totals": dict(self.stats),
+            "success": self.stats['success'],
+            "failed": self.stats['failed'],
+            "total_repairs": total_repairs,
+            "functions": self.per_function,
+        }
+        
+        # Save JSON once cleanly
+        stats_path = os.path.join(self.workspace, "compile_stats.json")
+        with open(stats_path, "w", encoding="utf-8") as f:
+            json.dump(summary_payload, f, indent=2)
+
+        # Append to Excel Report sheet if available
+        try:
+       
+            report_path = project_root / "Results" / "comparisons.xlsx"
+            rep = compilation_report(str(report_path))
+            if hasattr(rep, "add_compilation_stats"):
+                rep.add_compilation_stats([summary_payload])
+        except Exception as e:
+            print(f"[xlsx warning] Could not write compilation stats to Excel: {e}")
+            
         print(f"[stats] compile_stats.json written "
               f"({self.stats['success']}/{self.stats['success'] + self.stats['failed']} compiled)")
-
     # ------------------------------------------------------------------
     def _process_one(self, filepath):
         filename = os.path.basename(filepath)
@@ -211,7 +275,9 @@ class CompilerOrchestrator:
           the uint8_t(*)[N] -> char* error class entirely)"""
         code = re.sub(r'\b_{0,2}builtin_', '', code)
         for name in SymbolDB(self.workspace).array_global_names():
-            code = re.sub(rf'&{re.escape(name)}\b', name, code)
+            # (?<![&\w]) keeps `a && arr` intact; (?!\s*\[) keeps `&arr[i]` (a pointer to
+            # element i) from being turned into `arr[i]` (the element's VALUE).
+            code = re.sub(rf'(?<![&\w])&{re.escape(name)}\b(?!\s*\[)', name, code)
         return code
 
     # ------------------------------------------------------------------

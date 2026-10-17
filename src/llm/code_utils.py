@@ -7,6 +7,19 @@ _PROTO_NAME_RE = re.compile(r'([A-Za-z_~][A-Za-z0-9_:~]*)\s*\(')
 _PROTO_CTRL_KEYWORDS = {'if', 'for', 'while', 'switch', 'return', 'catch', 'sizeof'}
 
 
+_LITERAL_OR_COMMENT_RE = re.compile(
+    r'"(?:\\.|[^"\\\n])*"'        # "string"
+    r"|'(?:\\.|[^'\\\n])*'"       # 'c'
+    r'|//[^\n]*'                    # // comment
+    r'|/\*.*?\*/', re.DOTALL)       # /* comment */
+
+
+def _apply_replacements(segment, replacements):
+    for pattern, replacement in replacements.items():
+        segment = re.sub(pattern, replacement, segment)
+    return segment
+
+
 def pre_process_ghidra_types(c_code):
     """
     Standardizes Ghidra-specific data types and artifacts before the LLM sees them.
@@ -22,7 +35,7 @@ def pre_process_ghidra_types(c_code):
         r'\bsigned\s+long\s+long\b': 'int64_t',
         r'\bunsigned\s+long\b': 'uint32_t',
         r'\bsigned\s+long\b': 'int32_t',
-        r'\bundefined8\b': 'uintptr_t',      
+        r'\bundefined8\b': 'uint64_t',       # always 8 bytes; uintptr_t is only 4 on x86
         r'\bundefined4\b': 'uint32_t',
         r'\bundefined2\b': 'uint16_t',
         r'\bundefined1\b': 'uint8_t',
@@ -42,9 +55,16 @@ def pre_process_ghidra_types(c_code):
         r'\b__builtin_([a-zA-Z_]\w*)\b': r'\1',   # Clean up Ghidra __builtin intrinsics
         r'\s*__main\(\);': '',                    # Remove MinGW CRT init call    
     }
-    for pattern, replacement in replacements.items():
-        c_code = re.sub(pattern, replacement, c_code)
-    return c_code
+    # The substitutions must only touch CODE. Applied to the whole file they rewrote
+    # string literals and comments too ("How long is a byte?" -> "How int32_t is a
+    # uint8_t?"), silently changing what the program prints, sends and compares.
+    out, last = [], 0
+    for m in _LITERAL_OR_COMMENT_RE.finditer(c_code):
+        out.append(_apply_replacements(c_code[last:m.start()], replacements))
+        out.append(m.group(0))                       # string/char literal or comment: verbatim
+        last = m.end()
+    out.append(_apply_replacements(c_code[last:], replacements))
+    return "".join(out)
 
 
 def build_name_to_id_map(call_graph):

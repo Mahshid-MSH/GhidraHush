@@ -60,37 +60,43 @@ _FUN_RE = re.compile(r'^FUN_([0-9A-Fa-f]+)$')
 def parse_ghidra_type_and_dim(dt):
     """
     Parses a Ghidra data type object and extracts its primitive C type and array dimensions.
-    
-    Why it's here: Ghidra data types (like `undefined1`, `dword`, or custom structs) 
-    must be mapped cleanly to strict C99 primitives (`uint8_t`, `uint32_t`, etc.) 
-    to ensure the generated headers compile without warnings.
+
+    Size-driven (was substring-driven). The old substring tests mis-typed common
+    cases: 'long' in 'longlong'/'ulonglong' -> uint32_t (8-byte values truncated),
+    'void' -> uint32_t (so every recovered FUN_ prototype of a void function
+    CONFLICTED with its real definition), pointers on x64 -> uint32_t, and a struct
+    array `Node[4]` -> uint32_t[4] (16 bytes instead of 128).
     """
     if dt is None:
         return "uint32_t", ""
     name = dt.getName().lower()
-    dim = ""
+    dim, base_name = "", name
     if '[' in name and ']' in name:
         dim = name[name.find('['):]
         base_name = name[:name.find('[')]
-    else:
-        base_name = name
-        
-    if 'undefined1' in base_name or 'byte' in base_name or 'char' in base_name:
-        c_type = "uint8_t"
-    elif 'undefined2' in base_name or 'word' in base_name:
-        c_type = "uint16_t"
-    elif ('undefined4' in base_name or 'dword' in base_name
-          or 'ulong' in base_name or 'long' in base_name):
-        c_type = "uint32_t"
-    elif 'undefined8' in base_name or 'qword' in base_name:
-        c_type = "uint64_t"
-    elif 'float' in base_name:
-        c_type = "float"
-    elif 'double' in base_name:
-        c_type = "double"
-    else:
-        c_type = "uint32_t"
-    return c_type, dim
+    if base_name == 'void':
+        return "void", ""
+
+    elem = dt
+    try:
+        while hasattr(elem, 'getNumElements'):          # Array -> innermost element type
+            elem = elem.getDataType()
+        size = elem.getLength()
+    except Exception:
+        size = -1
+
+    if base_name in ('float', 'double') and size in (4, 8):
+        return ("float" if size == 4 else "double"), dim
+    if size in (1, 2, 4, 8):
+        return f"uint{size * 8}_t", dim
+    # struct/union/odd-sized/x87: keep the exact byte count rather than guessing a scalar
+    try:
+        total = dt.getLength()
+    except Exception:
+        total = -1
+    if total and total > 0:
+        return "uint8_t", f"[{total}]"
+    return "uint32_t", dim
 
 
 def get_c_type_size(c_type):

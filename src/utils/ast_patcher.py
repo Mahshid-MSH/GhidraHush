@@ -231,45 +231,39 @@ class AssignmentVisitor(c_ast.NodeVisitor):
 
 class CodeCleaner(c_ast.NodeVisitor):
     """
-    AST cleaner that strips redundant Ghidra cast artifacts and simplifies 
-    verbose pointer arithmetic into clean array subscript notation (`ptr[offset]`).
+    AST cleaner that simplifies verbose pointer arithmetic into clean array
+    subscript notation (`ptr[offset]`). It no longer strips casts or injects
+    (void*) casts: both changed program behaviour (verified by compiling + running).
     """
     def visit_Assignment(self, node):
-        if isinstance(node.rvalue, c_ast.Constant) and node.rvalue.type == 'int':
-            uintptr_type = c_ast.TypeDecl(declname='', quals=[], align=None, type=c_ast.IdentifierType(['uintptr_t']))
-            void_ptr_type = c_ast.PtrDecl(quals=[], type=c_ast.TypeDecl(declname='', quals=[], align=None, type=c_ast.IdentifierType(['void'])))
-            inner_cast = c_ast.Cast(c_ast.Typename(name=None, quals=[], align=None, type=uintptr_type), node.rvalue)
-            node.rvalue = c_ast.Cast(c_ast.Typename(name=None, quals=[], align=None, type=void_ptr_type), inner_cast)
-
+        # NOTE: this used to wrap every `x = <int literal>` in (void*)(uintptr_t)...
+        # The cleaner knows nothing about the type of `x`, so that turned
+        # `double d; d = 5;` into a compile error and added pointer round-trips to
+        # every integer store. Removed: no information => no rewrite.
         self.generic_visit(node)
 
     def clean_node(self, node):
+        """Rewrites *(a + b) -> a[b]: identical by definition in C (E1[E2] == *(E1+E2)),
+        so it is purely cosmetic. Casts are deliberately KEPT -- stripping them silently
+        changed arithmetic and memory-access semantics (see class docstring)."""
+        def rewrite(child):
+            if (isinstance(child, c_ast.UnaryOp) and child.op == '*'
+                    and isinstance(child.expr, c_ast.BinaryOp) and child.expr.op == '+'):
+                return c_ast.ArrayRef(name=child.expr.left, subscript=child.expr.right)
+            return child
+
         for attr_name in getattr(node, '__slots__', []):
             attr = getattr(node, attr_name)
             if attr is None:
                 continue
-                
             if isinstance(attr, list):
                 for i, child in enumerate(attr):
                     if isinstance(child, c_ast.Node):
                         self.clean_node(child)
-                        
-                        # Strip redundant casts
-                        if isinstance(child, c_ast.Cast):
-                            attr[i] = child.expr
-                        # Simplify *(ptr + offset) -> ptr[offset]
-                        elif isinstance(child, c_ast.UnaryOp) and child.op == '*':
-                            if isinstance(child.expr, c_ast.BinaryOp) and child.expr.op == '+':
-                                attr[i] = c_ast.ArrayRef(name=child.expr.left, subscript=child.expr.right)
-                                
+                        attr[i] = rewrite(child)
             elif isinstance(attr, c_ast.Node):
                 self.clean_node(attr)
-                
-                if isinstance(attr, c_ast.Cast):
-                    setattr(node, attr_name, attr.expr)
-                elif isinstance(attr, c_ast.UnaryOp) and attr.op == '*':
-                    if isinstance(attr.expr, c_ast.BinaryOp) and attr.expr.op == '+':
-                        setattr(node, attr_name, c_ast.ArrayRef(name=attr.expr.left, subscript=attr.expr.right))
+                setattr(node, attr_name, rewrite(attr))
 
 
 # ======================================================================
@@ -328,11 +322,21 @@ def analyze_ast_types(c_code, header_path=None):
         return []
 
 
+_CALLCONV_RE = re.compile(r'\b(__stdcall|__cdecl|__fastcall|__thiscall|WINAPI|APIENTRY|CALLBACK|NTAPI)\b')
+
+
 def clean_decompiled_code(c_code, header_path=None):
     """
     Parses decompiled C bodies, strips Ghidra cast artifacts, simplifies pointer 
     arithmetic, and regenerates clean C code. All parser scaffolding is stripped before output.
     """
+    # pycparser cannot parse calling conventions, so they are stripped before parsing --
+    # and the regenerated text would permanently lack them. A stdcall callback
+    # (ThreadProc, WndProc...) compiled as cdecl corrupts the stack on x86 when
+    # Windows calls it. The cleanup is cosmetic, so skip such files entirely.
+    if _CALLCONV_RE.search(c_code):
+        return c_code
+
     preprocessor_lines = []
     body_lines = []
     
