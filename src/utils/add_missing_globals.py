@@ -1,42 +1,16 @@
 #!/usr/bin/env python3
-"""
-add_missing_globals.py -- Stage 4 (Deterministic Symbol Completion).
+"""Resolve compiler-reported missing symbols from the analyzed Ghidra project.
 
-DISCOVERY: The compiler is the oracle. Stage 3's compilation gates record exactly 
-which identifiers failed to resolve (`compile_manifest.json` -> `missing_symbols`). 
-Windows.h names, keywords, struct members, and calling conventions never appear 
-in that list, so no text-scanning heuristics are needed—and none of the legacy scan's 
-poisoning classes (globals named HANDLE/std/__stdcall, struct members like cFileName) 
-can occur.
-
-RESOLUTION LADDER per missing name:
-  Rung 1: Exact symbol in Ghidra's memory space -> emit from the binary
-          (function -> prototype; data -> typed/byte-array global).
-  Rung 2: Decompiler overlap alias: '_X' over declared global 'X'
-          (e.g., `strcpy(Status,"YES")` compiles to a dword store, which the
-          decompiler renders as `_Status = 0x534559;`). Emitted as a
-          cast-macro via `db.add_alias`: `#define _Status (*(uint32_t*)(Status))`.
-  Rung 3: DAT_<hex> names encode their own address -> resolve directly.
-  Rung 4: FUN_<hex> likewise -> emit the Ghidra-signature prototype
-          (recovering prototypes that the text parser failed to extract).
-  Else:   Recorded in `unresolved_symbols.json` and SKIPPED. Never fabricated: 
-          a placeholder `uintptr_t foo = 0;` compiles cleanly while silently 
-          redirecting program writes to dead memory.
-
-SIZE PINNING: Call-site literals beat boundary inference (`&blob, 0xc2` 
-means 194 bytes even if the boundary scan found 184; `(0x400, Drives)` 
-means the buffer is >=1024 bytes even if typed as a scalar).
-
-REUSE: Opens the ALREADY-ANALYZED Stage-1 shared Ghidra project. Never calls 
-`pyghidra.open_program()` here, which would otherwise re-run a full analysis 
-per function call.
+The compiler manifest supplies missing names. Resolution uses actual Ghidra
+symbols, call-site size evidence, or encoded ``DAT_``/``FUN_`` addresses.
+Unresolved names are recorded instead of assigned fabricated placeholder data.
 """
 
+import json
 import os
 import re
-import sys
-import json
 import struct
+import sys
 
 import pyghidra
 try:
@@ -307,11 +281,11 @@ def append_missing_declarations(header_path, source_path, missing,
 
     for name in missing:
         all_syms = list(symbol_table.getSymbols(name))
-        # Keep memory-space symbols only (filters out stack variables sharing global names)
+        # Exclude stack variables that happen to share a global name.
         symbols = [s for s in all_syms
                    if s.getAddress().getAddressSpace().isMemorySpace()]
 
-        # ---- Rung 2: Decompiler Overlap Alias ('_X' over declared 'X') ----
+        # Resolve an overlap alias such as `_Status` over `Status`.
         if not symbols and name.startswith('_') and name[1:] in db.list_global_names():
             base = name[1:]
             width = 4                       # Default dword store assumption
@@ -328,7 +302,7 @@ def append_missing_declarations(header_path, source_path, missing,
                   f"({WIDTH_TO_TYPE[width]} view)")
             continue
 
-        # ---- Rungs 3 & 4: DAT_ / FUN_ Names Encoding Addresses ----
+        # Resolve synthetic names that encode their own address.
         m = _DAT_RE.match(name) or _FUN_RE.match(name)
         if not symbols and m:
             addr = (program.getAddressFactory().getDefaultAddressSpace()
@@ -368,7 +342,7 @@ def append_missing_declarations(header_path, source_path, missing,
             unresolved.append(name)
             continue
 
-        # ---- Rung 1: Exact Memory-Space Symbol ----
+        # Resolve an exact symbol in the binary's memory space.
         if not symbols:
             # Never fabricate silent placeholders; record as unresolved.
             print(f"  [resolve] '{name}': no memory-space symbol found -- "
@@ -509,7 +483,7 @@ def add_missing_values(workspace_dir=".", path_to_binary=None, program=None, nam
                                     workspace_dir, program)
         return
 
-    # Reuse the existing Stage-1 project to avoid expensive re-analysis
+    # Reuse the analyzed Stage 1 project instead of analyzing the binary again.
     binary_name = os.path.basename(path_to_binary)
     project_location = os.path.join(workspace_dir, "ghidra_project")
     project_name = f"{binary_name}_ghidra"

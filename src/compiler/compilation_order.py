@@ -1,13 +1,10 @@
-"""
-compile_order.py -- callees before callers; cycles fall back to file order.
-Tolerates call_graph entries being either full func_ids or bare names.
-"""
+"""Order functions callee-first, falling back to file order for cycles."""
+import graphlib
 import json
 import os
-import graphlib
 
 
-def compilation_order(target_dir, files):
+def compilation_order(target_dir: str, files: list[str]) -> list[str]:
     by_base = {os.path.splitext(os.path.basename(f))[0]: f for f in files}
     graph_path = os.path.join(target_dir, "call_graph.json")
     if not os.path.exists(graph_path):
@@ -29,4 +26,5 @@ def compilation_order(target_dir, files):
     try:
         return [by_base[n] for n in ts.static_order()]
     except graphlib.CycleError:
-        return sorted(files)   # prototypes-first makes order quality-only
+        # Prototypes-first makes compilation order a quality improvement only.
+        return sorted(files)

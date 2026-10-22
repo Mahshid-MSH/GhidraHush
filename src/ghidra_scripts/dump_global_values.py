@@ -1,66 +1,10 @@
 #!/usr/bin/env python3
-"""
-dump_global_values.py
----------------------
-Stage 2: extracts global variables, custom types and function-pointer
-typedefs referenced by the curated functions, and stores them in the
-SymbolDB (which renders data_globals.h / data_globals.c).
+"""Extract globals and custom types into the Stage 2 symbol database.
 
-Design notes -- which technique comes from which line of work
-=============================================================
-The hard problem in turning a binary's data sections back into compilable C
-is NOT finding the bytes, it is deciding what each cell *means*.  The
-reassembly / rewriting literature calls this "symbolization"; the type-recovery
-literature calls it "type inference".  This script borrows from both:
-
-[DDISASM]  Flores-Montoya & Schulte, "Datalog Disassembly", USENIX Sec '20
-           (arXiv 1906.03969).  A number in a data cell is either a literal or a
-           *symbolic expression* (symbol, symbol+offset).  Evidence is combined
-           rather than trusted individually: value inside a loaded section,
-           value lands on an object START vs. in the MIDDLE of one, alignment,
-           small-integer penalty, plus hard evidence (relocations / analyzer
-           references).  -> `_addr_score`, `_resolve_target`, symbol+offset
-           emission `((char*)&obj + k)`.  Pointers are therefore emitted as
-           `&name`, never as stale absolute addresses.
-
-[RELOC]    RetroWrite (Dinesh et al., S&P '20) and Egalito (Williams-King et
-           al., OSDI '20) use relocation records as ground truth for "this cell
-           is an address".  PE base relocations are imported by Ghidra into its
-           RelocationTable; they are the strongest evidence we have.
-           -> `_build_evidence`.
-
-[SECONDWRITE] ElWazeer et al., "Scalable Variable and Data Type Detection in a
-           Binary Rewriter", PLDI '13; Anand et al., "A Compiler-level
-           Intermediate Representation based Binary Analysis and Rewriting
-           System", EuroSys '13.  The flat data segment is *segmented into
-           objects* from the set of referenced addresses; interior structure
-           comes from observed accesses.  -> `_build_boundaries`, `_owner_start`,
-           `_compute_extent`.  This replaces the old `auto_collate_large_arrays`
-           which did the same job by MUTATING the Ghidra program (and, by
-           flattening to bytes, destroyed every pointer inside).
-
-[TIE/RETYPD] Lee et al., "TIE: Principled Reverse Engineering of Types in
-           Binary Programs", NDSS '11; Noonan et al., "Polymorphic Type
-           Inference for Machine Code" (Retypd), PLDI '16.  Two ideas are used:
-           (1) never claim a more specific type than the evidence supports --
-           unknown regions are the lattice top, raw byte arrays;  (2) recursive
-           types need a declaration that precedes their body.
-           -> `_untyped_*`, forward typedefs in `TypeRegistry`.
-
-[DIRTY]    Chen et al., "Augmenting Decompiler Output with Learned Variable
-           Names and Types", USENIX Sec '22.  Its data-layout encoder exists
-           because padding/alignment decide what a struct *is* in memory.  We
-           do not predict layouts; we make them explicit (`#pragma pack`,
-           explicit pad members) and then VERIFY them with `_Static_assert(
-           sizeof / offsetof)` so a wrong layout fails at compile time.
-
-[RECOMPILABLE] "Refining Decompiled C Code with LLMs" (arXiv 2310.06530)
-           defines success as "accepted by a standard C compiler".  The
-           compiler-oracle in type_probe.py is the same idea applied to SDK
-           type collisions.
-
-Things the old version got wrong that this version fixes are listed next to
-the code that fixes them ("FIX:").
+Objects are planned from symbols and references, pointer values are emitted as
+symbolic references when evidence supports them, and recovered layouts are
+verified with compile-time size/offset assertions. Extraction reads the shared
+Ghidra project without mutating its listing.
 """
 
 import bisect
@@ -68,7 +12,6 @@ import os
 import re
 import shutil
 import struct
-import sys
 import warnings
 from collections import deque
 

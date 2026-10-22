@@ -26,13 +26,9 @@ class SymbolDB:
                 "SELECT name FROM globals WHERE type LIKE '%[%'").fetchall()
         return [r[0] for r in rows]
 
-    def _get_conn(self):
-        return sqlite3.connect(self.db_path)
-
     @contextmanager
     def _conn(self):
-        """Commit-and-CLOSE connection scope. (`with sqlite3.connect(...)` only
-        commits; it never closes, so every helper call used to leak a handle.)"""
+        """Commit on success and always close the SQLite connection."""
         conn = sqlite3.connect(self.db_path)
         try:
             yield conn
@@ -63,14 +59,14 @@ class SymbolDB:
                     is_variadic INTEGER NOT NULL DEFAULT 0
                 )
             """)
-            # Persistent compiler-probe results: is this type name already provided by the SDK headers? Keyed by toolchain identity.
+            # Cache compiler-oracle results by toolchain identity.
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS sdk_type_probes (
                     probe_key TEXT PRIMARY KEY,
                     status TEXT NOT NULL
                 )
             """)
-            # Decompiler overlap aliases ('_Status' over 'Status'): emitted as cast-macros, NOT as second global objects -- two objects cannot legally share an address in C.
+            # Overlap aliases share storage and are emitted as cast macros.
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS global_aliases (
                     alias  TEXT PRIMARY KEY,
@@ -78,16 +74,14 @@ class SymbolDB:
                     width  INTEGER NOT NULL DEFAULT 4
                 )
             """)
-            # Extern declarations for functions that data initialisers point at but that have no
-            # prototype in `functions` (rendered into data_globals.c only; skipped once a real prototype exists).
+            # Declarations needed by data initializers, emitted only in the C source.
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS source_predecls (
                     name TEXT PRIMARY KEY,
                     decl TEXT NOT NULL
                 )
             """)
-            # Load-time "relocations" for pointer cells inside byte blobs whose declared type must stay uint8_t[]
-            # (an address constant cannot be written into a byte array initialiser).
+            # Runtime fixups for pointers stored in byte-array globals.
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS data_fixups (
                     obj         TEXT NOT NULL,
@@ -110,7 +104,7 @@ class SymbolDB:
                     definition TEXT NOT NULL
                 )
             """)
-            # Permanent denylists: persist across runs (unlike globals custom_types, which reset_* wipes each Stage-2 run).
+            # Exclusions persist across Stage 2 resets.
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS excluded_globals (
                     name TEXT PRIMARY KEY
@@ -405,8 +399,7 @@ class SymbolDB:
                            "ORDER BY name")
             functions_list = cursor.fetchall()
 
-        # Single source of truth for the shim; the probe reuses the same
-        # preamble so the probe environment matches the real header.
+        # Keep the probe preamble aligned with the generated header.
         shim_lines = [
             "// --- GHIDRA DECOMPILER SHIM ---",
             "#ifdef __cplusplus",                     # .cpp files are compiled with g++, which
@@ -584,6 +577,8 @@ class SymbolDB:
             else:
                 val = value_or_expr if value_or_expr is not None else "0"
                 if '[' in gtype:
+                    if not val.strip().startswith("{"):
+                        val = f"{{{val}}}"
                     base_type, array_part = gtype.split('[', 1)
                     lines.append(f"{base_type.strip()} {name}[{array_part} "
                                  f"= {val};")

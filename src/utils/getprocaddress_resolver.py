@@ -1,30 +1,13 @@
 #!/usr/bin/env python3
-"""
-ghidra_type_resolver.py
------------------------
-Leverages PyGhidra and low-level P-code analysis to automatically resolve dynamically 
-loaded APIs via `GetProcAddress`, retype their return variables with precise function 
-signatures from GDTs (Ghidra Data Type Archives), and propagate those types downstream 
-to internal function parameters.
-"""
+"""Resolve GetProcAddress results and propagate recovered Ghidra function types."""
 
-import pyghidra
 from ghidra.program.model.pcode import PcodeOp, HighFunctionDBUtil
 from ghidra.program.model.symbol import SourceType
 from ghidra.program.model.data import PointerDataType, FunctionDefinition, TypeDef
 
 
 def propagate_downstream_types(program, decompiler, target_funcs):
-    """
-    Analyzes calls made by target functions to forward resolved function pointer 
-    types to internal downstream functions.
-    
-    Why it's here: When an API or function pointer (such as a resolved Windows API 
-    or custom callback) is passed as an argument to another internal function 
-    (e.g., _SendMail), this function inspects the argument data types and updates 
-    the downstream function's parameter signature from generic 'undefined' to the 
-    precise type.
-    """
+    """Propagate known call-argument types to undefined internal parameters."""
     print("\nStarting Forward Type Propagation to downstream functions...")
     tx_id = program.startTransaction("Propagate Types Downstream")
     
@@ -41,15 +24,15 @@ def propagate_downstream_types(program, decompiler, target_funcs):
                 if op.getOpcode() != PcodeOp.CALL:
                     continue
                     
-                # Identify the target function being called
+                # Identify the called function.
                 target_addr = op.getInput(0).getAddress()
                 target_func = program.getFunctionManager().getFunctionAt(target_addr)
                 
-                # Ignore external libraries and thunks (focus strictly on internal binary functions)
+                # Restrict propagation to internal, non-thunk functions.
                 if not target_func or target_func.isExternal() or target_func.isThunk():
                     continue
                     
-                # Iterate through arguments passed in the call operation
+                # Match call inputs to the target function's parameters.
                 params = target_func.getParameters()
                 
                 for i in range(1, op.getNumInputs()):
@@ -67,13 +50,17 @@ def propagate_downstream_types(program, decompiler, target_funcs):
                         
                     arg_dt_name = arg_dt.getName().lower()
                     
-                    # If the argument type is known and the target parameter is un typed ("undefined")
+                    # Replace only parameters that are still undefined.
                     if "undefined" not in arg_dt_name and "int" not in arg_dt_name:
                         target_param = params[param_idx]
                         param_dt_name = target_param.getDataType().getName().lower()
                         
                         if "undefined" in param_dt_name:
-                            print(f"    [>] Propagating type '{arg_dt.getName()}' to '{target_func.getName()}' (Parameter {param_idx + 1})")
+                            print(
+                                f"    [>] Propagating type '{arg_dt.getName()}' "
+                                f"to '{target_func.getName()}' "
+                                f"(Parameter {param_idx + 1})"
+                            )
                             try:
                                 target_param.setDataType(arg_dt, SourceType.USER_DEFINED)
                             except Exception as e:
@@ -85,14 +72,10 @@ def propagate_downstream_types(program, decompiler, target_funcs):
 
 
 def resolve_getprocaddress_types(program, decompiler):
-    """
-    Automates the resolution of dynamically loaded API calls via `GetProcAddress` 
-    by inspecting P-code, tracing API name string arguments in memory, matching 
-    them against loaded GDT archives, and retyping the resulting function pointers.
-    """
+    """Match GetProcAddress names to GDT types and update result variables."""
     dt_mgr = program.getDataTypeManager()
 
-    # Pre-load known APIs (FunctionDefinitions) and TypeDefs from GDTs
+    # Index function definitions and typedefs from the active data type manager.
     known_apis = {}
     known_typedefs = {}
     all_dts = dt_mgr.getAllDataTypes()
@@ -105,12 +88,10 @@ def resolve_getprocaddress_types(program, decompiler):
         elif isinstance(dt, TypeDef):
             known_typedefs[name_lower] = dt
 
-    print(f" Loaded {len(known_apis)} functions and {len(known_typedefs)} typedefs from DTM/GDTs.")
-
     symbol_table = program.getSymbolTable()
     ref_mgr = program.getReferenceManager()
 
-    # Identify all memory addresses associated with GetProcAddress
+    # Collect GetProcAddress addresses and their call sites.
     gpa_addresses = set()
     for s in symbol_table.getSymbols("GetProcAddress"):
         if s.getAddress():
@@ -151,11 +132,11 @@ def resolve_getprocaddress_types(program, decompiler):
                 if op.getOpcode() not in [PcodeOp.CALL, PcodeOp.CALLIND]:
                     continue
                     
-                # Check if the instruction address belongs to our known GetProcAddress calls
+                # Check whether this is a known GetProcAddress call site.
                 instr_addr = op.getSeqnum().getTarget()
                 is_gpa = (instr_addr in call_instruction_addrs)
                 
-                # Fallback: Check if the target pointer resolves directly to GetProcAddress
+                # Fall back to resolving the call target symbol directly.
                 if not is_gpa:
                     input0 = op.getInput(0)
                     if input0 and input0.isAddress():
@@ -171,7 +152,7 @@ def resolve_getprocaddress_types(program, decompiler):
                 if op.getNumInputs() <= 2:
                     continue
 
-                # Trace the API name string argument (Input 2) across varnodes/registers
+                # Trace the API name argument through common P-code definitions.
                 name_varnode = op.getInput(2)
                 string_addr = None
                 
@@ -197,7 +178,7 @@ def resolve_getprocaddress_types(program, decompiler):
                                 space = program.getAddressFactory().getDefaultAddressSpace()
                                 string_addr = space.getAddress(copy_in.getOffset())
 
-                # Read string from binary memory safely
+                # Read the API name from program memory.
                 api_name = None
                 if string_addr:
                     try:
@@ -226,11 +207,19 @@ def resolve_getprocaddress_types(program, decompiler):
                 fn_ptr_type = None
                 target_lower = api_name.lower()
 
-                matched_dt = known_apis.get(target_lower) or known_apis.get(target_lower + 'a') or known_apis.get(target_lower + 'w')
+                matched_dt = (
+                    known_apis.get(target_lower)
+                    or known_apis.get(target_lower + 'a')
+                    or known_apis.get(target_lower + 'w')
+                )
                 if matched_dt:
                     fn_ptr_type = PointerDataType(matched_dt)
                 else:
-                    td = known_typedefs.get(target_lower) or known_typedefs.get("lp" + target_lower) or known_typedefs.get("p" + target_lower)
+                    td = (
+                        known_typedefs.get(target_lower)
+                        or known_typedefs.get("lp" + target_lower)
+                        or known_typedefs.get("p" + target_lower)
+                    )
                     if td:
                         fn_ptr_type = td
 
@@ -238,7 +227,7 @@ def resolve_getprocaddress_types(program, decompiler):
                     print(f"        No matching TypeDef/FunctionDefinition found for '{api_name}' in GDTs.")
                     continue
 
-                # Apply precise type updates directly to HighVariables
+                # Apply the recovered type to the output variable.
                 output_vn = op.getOutput()
                 if not output_vn:
                     continue
@@ -248,14 +237,22 @@ def resolve_getprocaddress_types(program, decompiler):
                     high_sym = high_var.getSymbol()
                     if high_sym:
                         try:
-                            HighFunctionDBUtil.updateDBVariable(high_sym, None, fn_ptr_type, SourceType.USER_DEFINED)
-                            print(f"            Retyped target symbol '{high_sym.getName()}' to {fn_ptr_type.getName()}")
+                            HighFunctionDBUtil.updateDBVariable(
+                                high_sym, None, fn_ptr_type, SourceType.USER_DEFINED
+                            )
+                            print(
+                                f"            Retyped target symbol "
+                                f"'{high_sym.getName()}' to {fn_ptr_type.getName()}"
+                            )
                         except Exception as e:
                             print(f"            Failed to update DB variable: {e}")
                     else:
                         try:
                             high_var.setDataType(fn_ptr_type, True)
-                            print(f"            Retyped temporary variable to {fn_ptr_type.getName()} (Ephemeral)")
+                            print(
+                                "            Retyped temporary variable to "
+                                f"{fn_ptr_type.getName()} (Ephemeral)"
+                            )
                         except Exception:
                             pass
 

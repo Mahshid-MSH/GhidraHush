@@ -1,9 +1,7 @@
 import os
-import re
 import glob
 import json
 import math
-import random
 from base_agent import BaseLLMAgent
 from prompts import (
     JUNK_CODE_PROMPT,
@@ -146,6 +144,34 @@ TECHNIQUE_PARAM_SPACES = {
     "control_flow_obfuscation": [{"dispatch": d} for d in CF_DISPATCH_PARAMS.keys()],
     "local_context_struct_packaging": [{"grouping": g} for g in STRUCT_PACKING_GROUPING_PARAMS.keys()],
 }
+
+
+def validate_technique_parameters(technique, params):
+    """Validate a single technique configuration before prompt generation."""
+    parameter_space = TECHNIQUE_PARAM_SPACES.get(technique)
+    if parameter_space is None:
+        raise ValueError(f"Unknown evasion technique: {technique}")
+    if isinstance(params, list):
+        if not params:
+            raise ValueError(f"At least one configuration is required for {technique}")
+        return [validate_technique_parameters(technique, item) for item in params]
+    if not isinstance(params, dict):
+        raise ValueError(f"Parameters for {technique} must be an object or a list of objects")
+
+    allowed_values = {}
+    for combination in parameter_space:
+        for key, value in combination.items():
+            allowed_values.setdefault(key, set()).add(value)
+
+    for key, value in params.items():
+        if key not in allowed_values:
+            raise ValueError(f"Unknown parameter '{key}' for {technique}")
+        if value not in allowed_values[key]:
+            choices = ", ".join(sorted(allowed_values[key]))
+            raise ValueError(
+                f"Invalid {key} '{value}' for {technique}; choose from: {choices}"
+            )
+    return params
 
 
 class DefensiveEvasion(BaseLLMAgent):
@@ -327,57 +353,13 @@ class DefensiveEvasion(BaseLLMAgent):
         return code
 
     # ------------------------------------------------------------
-    # _generate_function_subsets
-    # ------------------------------------------------------------
-    def _generate_function_subsets(self, scored_functions, target_count, n_variants=3, strategy="rotating"):
-        """
-        Generate multiple distinct subsets of functions to modify, instead of
-        always picking the same top-N by score.
-        """
-        names_sorted = [f['name'] for f in scored_functions]  # already sorted by score desc
-        total = len(names_sorted)
-        subsets = []
-
-        if total == 0:
-            return [set() for _ in range(n_variants)]
-
-        if strategy == "rotating":
-            for i in range(n_variants):
-                offset = (i * target_count) % total
-                window = (names_sorted * 2)[offset: offset + target_count]
-                subsets.append(set(window))
-
-        elif strategy == "random_seeded":
-            for i in range(n_variants):
-                rng = random.Random(1000 + i)
-                subsets.append(set(rng.sample(names_sorted, min(target_count, total))))
-
-        elif strategy == "stratified":
-            swap_fraction = 0.4
-            current = set(names_sorted[:target_count])
-            subsets.append(set(current))
-            pool = [n for n in names_sorted if n not in current]
-            for i in range(1, n_variants):
-                n_swap = max(1, int(target_count * swap_fraction))
-                rng = random.Random(2000 + i)
-                drop = set(rng.sample(list(current), min(n_swap, len(current)))) if current else set()
-                add = set(rng.sample(pool, min(n_swap, len(pool)))) if pool else set()
-                current = (current - drop) | add
-                subsets.append(set(current))
-        else:
-            raise ValueError(f"Unknown subset strategy: {strategy}")
-
-        return subsets
-
-    # ------------------------------------------------------------
     # process_directory_with_scoring
     # ------------------------------------------------------------
     def process_directory_with_scoring(self, processed_dir, workspace_dir, exe_name,
-                                        techniques=None, n_subset_variants=3,
-                                        subset_strategy="rotating", param_map=None):
+                                        techniques=None, param_map=None):
         """
-        Scores functions, filters external APIs, and automatically generates multiple
-        variants per technique by iterating across all parameter configurations and function subsets.
+        Scores functions, filters external APIs, and automatically generates variants
+        per technique configuration using the top-scored function subset (no subset variants).
         """
         if techniques is None:
             techniques = [
@@ -407,6 +389,8 @@ class DefensiveEvasion(BaseLLMAgent):
 
         for file_path in all_files:
             base_name = os.path.splitext(os.path.basename(file_path))[0]
+            if base_name == "data_globals":
+                continue
             with open(file_path, 'r', encoding='utf-8') as f:
                 loc = len(f.readlines())
 
@@ -436,19 +420,17 @@ class DefensiveEvasion(BaseLLMAgent):
             percentage = 0.15
 
         target_count = math.ceil(total_functions * percentage)
-        print(f"\n--- Selection Criteria ---")
+        print("\n--- Selection Criteria ---")
         print(f"Total Internal Functions: {total_functions}")
         print(f"Target Modification Rate: {percentage * 100}%")
         print(f"Target Function Count: {target_count}")
-        print(f"--------------------------\n")
+        print("--------------------------\n")
 
         scored_functions.sort(key=lambda x: x['score'], reverse=True)
         binary_name = os.path.splitext(exe_name)[0]
 
-        subsets = self._generate_function_subsets(
-            scored_functions, target_count,
-            n_variants=n_subset_variants, strategy=subset_strategy
-        )
+        # Use a single deterministic subset of top-scored functions
+        worthy_function_names = {f['name'] for f in scored_functions[:target_count]}
 
         for tech in techniques:
             param_combinations = param_map.get(tech) if param_map and tech in param_map else TECHNIQUE_PARAM_SPACES.get(tech, [{}])
@@ -456,40 +438,39 @@ class DefensiveEvasion(BaseLLMAgent):
                 param_combinations = [param_combinations]
 
             for params in param_combinations:
+                if tech in TECHNIQUE_PARAM_SPACES:
+                    validate_technique_parameters(tech, params)
                 param_str = "_".join([f"{k}_{v}" for k, v in params.items()])
+                variant_tag = f"_{param_str}" if param_str else ""
                 
-                for variant_idx, worthy_function_names in enumerate(subsets):
-                    subset_suffix = f"__sub_v{variant_idx}" if n_subset_variants > 1 else ""
-                    variant_tag = f"_{param_str}" if param_str else ""
-                    
-                    tech_dir = os.path.join(
-                        workspace_dir, "compiled_successfully", f"{binary_name}_{tech}{variant_tag}{subset_suffix}"
-                    )
-                    os.makedirs(tech_dir, exist_ok=True)
+                tech_dir = os.path.join(
+                    workspace_dir, "compiled_successfully", f"{binary_name}_{tech}{variant_tag}"
+                )
+                os.makedirs(tech_dir, exist_ok=True)
 
-                    print(f"\n--- Generating Variant Directory: {tech_dir} ---")
+                print(f"\n--- Generating Variant Directory: {tech_dir} ---")
 
-                    for file_path in all_files:
-                        base_name = os.path.splitext(os.path.basename(file_path))[0]
-                        language = self.get_language_from_filename(file_path)
-                        dest_path = os.path.join(tech_dir, os.path.basename(file_path))
+                for file_path in all_files:
+                    base_name = os.path.splitext(os.path.basename(file_path))[0]
+                    language = self.get_language_from_filename(file_path)
+                    dest_path = os.path.join(tech_dir, os.path.basename(file_path))
 
-                        with open(file_path, 'r', encoding='utf-8') as f:
-                            code = f.read()
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        code = f.read()
 
-                        if base_name in worthy_function_names:
-                            method = getattr(self, f"apply_{tech}", None)
-                            if method:
-                                print(f"Applying {tech} ({params}) to: {base_name} ({language})")
-                                modified_code = method(
-                                    code, base_name=base_name, language=language,
-                                    params=params
-                                )
-                            else:
-                                print(f"Unknown technique method for {tech}, passing unchanged.")
-                                modified_code = code
-                            with open(dest_path, 'w', encoding='utf-8') as f:
-                                f.write(modified_code)
+                    if base_name in worthy_function_names:
+                        method = getattr(self, f"apply_{tech}", None)
+                        if method:
+                            print(f"Applying {tech} ({params}) to: {base_name} ({language})")
+                            modified_code = method(
+                                code, base_name=base_name, language=language,
+                                params=params
+                            )
                         else:
-                            with open(dest_path, 'w', encoding='utf-8') as f:
-                                f.write(code)
+                            print(f"Unknown technique method for {tech}, passing unchanged.")
+                            modified_code = code
+                        with open(dest_path, 'w', encoding='utf-8') as f:
+                            f.write(modified_code)
+                    else:
+                        with open(dest_path, 'w', encoding='utf-8') as f:
+                            f.write(code)

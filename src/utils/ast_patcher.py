@@ -1,14 +1,8 @@
 #!/usr/bin/env python3
-"""
-ast_patcher.py
---------------
-Parses C source code using `pycparser` to detect functions whose return values 
-are assigned to typed variables, but are incorrectly declared as 'void' in `data_globals.h`. 
-Also strips Ghidra cast artifacts and simplifies complex pointer arithmetic.
+"""Analyze C code and apply conservative AST-based cleanup.
 
-NOTE: `pycparser` is a pure C parser with no preprocessor and no knowledge of system 
-headers. To prevent parsing failures on Windows APIs or custom types, this module 
-injects dynamic parser scaffolding (mock typedefs) and strips them before code generation.
+Parser scaffolding supplies SDK and project types to pycparser and is removed
+before regenerated source is returned. C++ files are excluded from AST cleanup.
 """
 
 import os
@@ -17,26 +11,12 @@ from pycparser import c_parser, c_ast, c_generator
 from database.symbol_db import SymbolDB
 
 
-# Console styling constants for rich logging output (if needed)
-DIM, RED, GREEN, YELLOW, CYAN, RESET = (
-    '\033[2m', '\033[91m', '\033[92m', '\033[93m', '\033[96m', '\033[0m'
-)
-
-
 def ast_tools_applicable(filepath):
-    """
-    Determines whether AST tools can be applied to the target file.
-    
-    Why it's here: `pycparser` only understands standard C99 syntax. C++ constructs 
-    (`std::`, templates, `new`/`delete`, `::` scope resolution) will break the parser. 
-    Thus, AST tools are strictly restricted to `.c` files.
-    """
+    """Return whether the file extension is supported by the C parser."""
     return filepath.endswith(".c")
 
 
-# Functions whose declarations are owned by system headers. AST return-type inference 
-# must NEVER patch these: writing custom return types for standard library/Windows 
-# functions creates conflicting-prototype errors against <string.h>, <stdlib.h>, or windows.h.
+# Declarations owned by system headers must not be patched from call-site inference.
 CRT_PROVIDED = frozenset({
     'strlen', 'strncpy', 'strcpy', 'strcat', 'strcmp', 'strncmp', 'strstr',
     'memcpy', 'memmove', 'memset', 'memcmp', 'malloc', 'calloc', 'realloc',
@@ -45,8 +25,7 @@ CRT_PROVIDED = frozenset({
 })
 
 
-# Static seed for parser scaffolding. These types allow `pycparser` to successfully 
-# parse decompiled binary bodies without requiring full SDK header inclusion.
+# Seed types let pycparser parse decompiled code without full SDK headers.
 FAKE_TYPE_SEED = {
     # stdint/stddef stand-ins
     'uintptr_t', 'intptr_t', 'uint8_t', 'uint16_t', 'uint32_t', 'uint64_t',
@@ -71,12 +50,7 @@ FAKE_TYPE_SEED = {
 
 
 def _collect_fake_types(header_path=None):
-    """
-    Combines static seed types with every typedef and struct tag defined in `data_globals.h`.
-    
-    Why it's here: Ensures custom function pointers, malware structures, and project-specific 
-    types parse cleanly through `pycparser` with zero manual list maintenance.
-    """
+    """Combine seeded parser types with declarations in the project header."""
     names = set(FAKE_TYPE_SEED)
     tags = set()
     
@@ -107,10 +81,7 @@ def _collect_fake_types(header_path=None):
 
 
 def _fake_prelude(header_path=None):
-    """
-    Generates a mock prelude string of dummy `typedef` and `struct` declarations 
-    to prepend during AST parsing, along with a set of names to strip later.
-    """
+    """Build parser-only declarations and return names to remove afterward."""
     names, tags = _collect_fake_types(header_path)
     parts = [f"typedef int {n};" for n in sorted(names)]
     parts += [f"struct {t} {{ int _m; }};" for t in sorted(tags)]
@@ -118,12 +89,7 @@ def _fake_prelude(header_path=None):
 
 
 def _strip_fake_externals(ast, strip_names):
-    """
-    Removes every mock declaration from the parsed top-level AST before code generation.
-    
-    Why it's here: Prevents parser scaffolding (`typedef int HANDLE;`, etc.) from 
-    leaking into regenerated code and conflicting with real system headers.
-    """
+    """Remove parser-only declarations before source generation."""
     def is_fake(node):
         if isinstance(node, c_ast.Typedef) and node.name in strip_names:
             return True
@@ -142,31 +108,31 @@ def sanitize_code_for_pycparser(c_code):
     Strips compiler attributes, comments, placeholder statements, and preprocessor 
     directives that `pycparser` cannot parse.
     """
-    # 1. Strip non-breaking spaces
+    # Normalize non-breaking spaces.
     clean = c_code.replace('\xa0', ' ')
 
-    # 2. Remove single-line (//) and block (/* */) comments
+    # Remove comments.
     clean = re.sub(r'//.*?$', '', clean, flags=re.MULTILINE)
     clean = re.sub(r'/\*.*?\*/', '', clean, flags=re.DOTALL)
 
-    # 3. Remove placeholder statements like "original_statement_1;"
+    # Remove placeholder statements.
     clean = re.sub(r'\boriginal_statement_\d+\s*;', '', clean)
 
-    # 4. Strip ALL preprocessor directives (#include, #pragma, #line, #if, etc.)
+    # Remove preprocessor directives that pycparser cannot process.
     clean = re.sub(r'^\s*#.*?$', '', clean, flags=re.MULTILINE)
 
-    # 5. Strip standard Ghidra and Windows compiler attributes/macros
+    # Strip Ghidra and Windows calling-convention annotations.
     clean = re.sub(r'\b(__stdcall|__cdecl|__fastcall|__thiscall|WINAPI|APIENTRY|CALLBACK|NTAPI)\b', '', clean)
     clean = re.sub(r'\b__declspec\([^)]*\)', '', clean)
 
-    # 6. Convert MSVC integer primitives to standard C primitives
+    # Convert MSVC integer types to standard C types.
     clean = re.sub(r'\b__int64\b', 'long long', clean)
     clean = re.sub(r'\b__int32\b', 'int', clean)
     clean = re.sub(r'\b__int16\b', 'short', clean)
     clean = re.sub(r'\b__int8\b', 'char', clean)
     clean = re.sub(r'\b__forceinline\b', 'inline', clean)
 
-    # 7. Remove stray backslashes at line ends (common in Ghidra output)
+    # Remove line-continuation artifacts.
     clean = re.sub(r'\\\n', '\n', clean)
 
     return clean

@@ -2,10 +2,10 @@
 {
   "finish_reason": "stop",
   "attempts": 1,
-  "response_chars": 2241
+  "response_chars": 2571
 }
 
-=== PROMPT (5094 chars) ===
+=== PROMPT (5341 chars) ===
 
         You are an expert C developer generating synthesized code variants.
 
@@ -75,141 +75,147 @@
 
         INPUT CODE:
         #include "data_globals.h"
-#include <stdint.h>
 #include <stdbool.h>
-#include <string.h>
-#include <windows.h>
 
-/* Missing external function prototypes */
-extern char ** ___p__acmdln(void);
-extern int __ismbblead(int);
+/* Forward declarations for CRT/internal functions used without prototypes */
+char ** __p__acmdln(void);
+int __ismbblead(int);
 
 int main(int argc, _TCHAR **argv, _TCHAR **envp)
 {
-    char *cmdPtr;
+    char *cmd_ptr;
     char ch;
-    uint32_t *pAcmdln;
+    uint32_t *acmdln_ptr;
     int i;
-    char *nextPtr;
-    bool inDoubleQuote;
-    STARTUPINFO si;
+    char *next_ptr;
+    bool in_double_quote;
+    LPSTARTUPINFOA si_ptr;
+    uint8_t si_buffer[sizeof(STARTUPINFO)];
+    STARTUPINFO StartupInfo;   /* retained from original */
 
-    inDoubleQuote = false;
-    pAcmdln = (uint32_t *)___p__acmdln();
-    cmdPtr = (char *)*pAcmdln;
-    if (cmdPtr != NULL) {
-        while (1) {
-            ch = *cmdPtr;
+    in_double_quote = false;
+    acmdln_ptr = (uint32_t *)__p__acmdln();
+    cmd_ptr = (char *)*acmdln_ptr;
+    if (cmd_ptr != (char *)0) {
+        do {
+            ch = *cmd_ptr;
             if (ch < '!') {
                 if (ch == '\0')
                     break;
-                if (!inDoubleQuote)
-                    goto skip_spaces;
-                inDoubleQuote = true;
+                if (!in_double_quote)
+                    goto label_skip_spaces;
+                in_double_quote = true;
             } else if (ch == '"') {
-                inDoubleQuote = !inDoubleQuote;
+                in_double_quote = (bool)(in_double_quote ^ 1);
             }
             i = __ismbblead((int)ch);
             if (i != 0) {
-                cmdPtr = cmdPtr + (cmdPtr[1] != '\0');
+                cmd_ptr = cmd_ptr + (cmd_ptr[1] != '\0');
             }
-            cmdPtr = cmdPtr + 1;
-        }
+            cmd_ptr = cmd_ptr + 1;
+        } while (1);
     }
-    goto after_skip;
-skip_spaces:
+    goto label_end;
+label_skip_spaces:
     if (ch != '\0') {
         do {
-            nextPtr = cmdPtr + 1;
-            cmdPtr = cmdPtr + 1;
-            if (*nextPtr == '\0')
+            next_ptr = cmd_ptr + 1;
+            cmd_ptr = cmd_ptr + 1;
+            if (*next_ptr == '\0')
                 break;
-        } while (*nextPtr < '!');
+        } while (*next_ptr < '!');
     }
-after_skip:
-    memset(&si, 0, sizeof(si));
-    GetStartupInfoA(&si);
+label_end:
+    si_ptr = (LPSTARTUPINFOA)si_buffer;
+    for (i = 0x11; i != 0; i = i - 1) {
+        si_ptr->cb = 0;
+        si_ptr = (LPSTARTUPINFOA)&si_ptr->lpReserved;
+    }
+    GetStartupInfoA((LPSTARTUPINFOA)si_buffer);
     _WinMain_16();
-    i = 0; /* main returns 0 on success */
-    return i;
+    return 0;
 }
 
         
 
-=== RESPONSE (2241 chars) ===
+=== RESPONSE (2571 chars) ===
 ```c
 #include "data_globals.h"
-#include <stdint.h>
 #include <stdbool.h>
-#include <string.h>
-#include <windows.h>
 
-/* Missing external function prototypes */
-extern char ** ___p__acmdln(void);
-extern int __ismbblead(int);
+/* Forward declarations for CRT/internal functions used without prototypes */
+char ** __p__acmdln(void);
+int __ismbblead(int);
 
 #pragma optimize("", off)
 int main(int argc, _TCHAR **argv, _TCHAR **envp)
 {
-    /* Variable aliasing via volatile buffers and pointers */
-    char* volatile cmdPtr_buf[2] = {0, (char*)0};
-    char* volatile *p_cmdPtr = &cmdPtr_buf[0];
+    /* Variable transformations */
+    char* volatile cmd_ptr_buf[2] = {0, (char*)0};
+    char* volatile *p_cmd_ptr = &cmd_ptr_buf[0];
 
     volatile char ch_buf[2] = {0, (char)0};
     volatile char *p_ch = (volatile char *)&ch_buf[0];
 
-    uint32_t* volatile pAcmdln_buf[2] = {0, (uint32_t*)0};
-    uint32_t* volatile *p_pAcmdln = &pAcmdln_buf[0];
+    uint32_t* volatile acmdln_ptr_buf[2] = {0, (uint32_t*)0};
+    uint32_t* volatile *p_acmdln_ptr = &acmdln_ptr_buf[0];
 
     volatile int i_buf[2] = {0, (int)0};
     volatile int *p_i = (volatile int *)&i_buf[0];
 
-    char* volatile nextPtr_buf[2] = {0, (char*)0};
-    char* volatile *p_nextPtr = &nextPtr_buf[0];
+    char* volatile next_ptr_buf[2] = {0, (char*)0};
+    char* volatile *p_next_ptr = &next_ptr_buf[0];
 
-    volatile bool inDoubleQuote_buf[2] = {false, (bool)0};
-    volatile bool *p_inDoubleQuote = (volatile bool *)&inDoubleQuote_buf[0];
+    volatile bool in_double_quote_buf[2] = {0, (bool)0};
+    volatile bool *p_in_double_quote = (volatile bool *)&in_double_quote_buf[0];
 
-    STARTUPINFO si;
+    LPSTARTUPINFOA volatile si_ptr_buf[2] = {0, (LPSTARTUPINFOA)0};
+    LPSTARTUPINFOA volatile *p_si_ptr = &si_ptr_buf[0];
 
-    (*p_inDoubleQuote) = false;
-    (*p_pAcmdln) = (uint32_t *)___p__acmdln();
-    (*p_cmdPtr) = (char *)*(*p_pAcmdln);
-    if ((*p_cmdPtr) != NULL) {
-        while (1) {
-            (*p_ch) = *(*p_cmdPtr);
+    uint8_t si_buffer[sizeof(STARTUPINFO)];
+    STARTUPINFO StartupInfo;   /* retained from original */
+
+    *p_in_double_quote = false;
+    *p_acmdln_ptr = (uint32_t *)__p__acmdln();
+    *p_cmd_ptr = (char *)*(*p_acmdln_ptr);
+    if ((*p_cmd_ptr) != (char *)0) {
+        do {
+            *p_ch = *(*p_cmd_ptr);
             if ((*p_ch) < '!') {
                 if ((*p_ch) == '\0')
                     break;
-                if (!(*p_inDoubleQuote))
-                    goto skip_spaces;
-                (*p_inDoubleQuote) = true;
+                if (!(*p_in_double_quote))
+                    goto label_skip_spaces;
+                *p_in_double_quote = true;
             } else if ((*p_ch) == '"') {
-                (*p_inDoubleQuote) = !(*p_inDoubleQuote);
+                *p_in_double_quote = (bool)((*p_in_double_quote) ^ 1);
             }
-            (*p_i) = __ismbblead((int)(*p_ch));
+            *p_i = __ismbblead((int)(*p_ch));
             if ((*p_i) != 0) {
-                (*p_cmdPtr) = (*p_cmdPtr) + (((*p_cmdPtr)[1]) != '\0');
+                *p_cmd_ptr = (*p_cmd_ptr) + ((*p_cmd_ptr)[1] != '\0');
             }
-            (*p_cmdPtr) = (*p_cmdPtr) + 1;
-        }
+            *p_cmd_ptr = (*p_cmd_ptr) + 1;
+        } while (1);
     }
-    goto after_skip;
-skip_spaces:
+    goto label_end;
+label_skip_spaces:
     if ((*p_ch) != '\0') {
         do {
-            (*p_nextPtr) = (*p_cmdPtr) + 1;
-            (*p_cmdPtr) = (*p_cmdPtr) + 1;
-            if (*(*p_nextPtr) == '\0')
+            *p_next_ptr = (*p_cmd_ptr) + 1;
+            *p_cmd_ptr = (*p_cmd_ptr) + 1;
+            if (*(*p_next_ptr) == '\0')
                 break;
-        } while (*(*p_nextPtr) < '!');
+        } while (*(*p_next_ptr) < '!');
     }
-after_skip:
-    memset(&si, 0, sizeof(si));
-    GetStartupInfoA(&si);
+label_end:
+    *p_si_ptr = (LPSTARTUPINFOA)si_buffer;
+    for ((*p_i) = 0x11; (*p_i) != 0; (*p_i) = (*p_i) - 1) {
+        (*p_si_ptr)->cb = 0;
+        *p_si_ptr = (LPSTARTUPINFOA)&(*p_si_ptr)->lpReserved;
+    }
+    GetStartupInfoA((LPSTARTUPINFOA)si_buffer);
     _WinMain_16();
-    (*p_i) = 0; /* main returns 0 on success */
-    return (*p_i);
+    return 0;
 }
 #pragma optimize("", on)
 ```

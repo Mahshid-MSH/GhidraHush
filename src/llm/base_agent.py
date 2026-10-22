@@ -1,10 +1,11 @@
+import json
 import os
 import re
 import time
-import json
+from typing import Any, Optional
+
 import openai
 from openai import OpenAI
-import httpx 
 
 
 class BaseLLMAgent:
@@ -14,35 +15,36 @@ class BaseLLMAgent:
 
     BASE_AGENT_VERSION = "v4-fixed-options"
 
-    def __init__(self, model_name=None, base_url=None, delay_between_requests=40):
+    def __init__(
+        self,
+        model_name: Optional[str] = None,
+        base_url: Optional[str] = None,
+        delay_between_requests: Optional[float] = 40,
+    ) -> None:
         """
         Initializes the API client with graceful fallbacks.
         Supports Groq, DeepSeek, Ollama, etc. via arguments or env vars.
         """
-        self.base_url = (base_url or os.environ.get("LLM_BASE_URL"))
-        
-        self.model_name = (model_name or os.environ.get("LLM_MODEL"))
-        
-        self.api_key = (os.environ.get("LLM_API_KEY"))
-        
+        self.base_url = base_url or os.environ.get("LLM_BASE_URL")
+        self.model_name = model_name or os.environ.get("LLM_MODEL")
+        self.api_key = os.environ.get("LLM_API_KEY")
         self.delay_between_requests = (
             delay_between_requests
             if delay_between_requests is not None
-            else float(os.environ.get("LLM_PACING_SECONDS", "2")))
-            
+            else float(os.environ.get("LLM_PACING_SECONDS", "2"))
+        )
+
         self.client = OpenAI(base_url=self.base_url, api_key=self.api_key)
         print(f"Connected to {self.base_url} using model {self.model_name} "
               f"[base_agent {self.BASE_AGENT_VERSION}]")
 
-    def extract_raw_c_code(self, llm_output, original_code):
+    def extract_raw_c_code(self, llm_output: str, original_code: str) -> str:
         """Strips conversational markdown fences to isolate the C code."""
         match = re.search(r"```[a-zA-Z]*\s*\n(.*?)```", llm_output, re.DOTALL)
         if match:
             return match.group(1).strip()
-            
-        # No closed code fence. Accept the raw reply only if it looks like a C/C++
-        # function (the old test accepted anything containing "int" -- e.g. any
-        # English sentence with "point" in it -- and wrote the prose to disk as code).
+
+        # Accept unfenced text only when it resembles a C/C++ function.
         text = llm_output.strip()
         if "```" not in text and "{" in text and "}" in text and (
                 "#include" in text or re.search(r"\w\s*\([^)]*\)\s*\{", text)):
@@ -50,7 +52,9 @@ class BaseLLMAgent:
 
         return original_code
 
-    def _completion_kwargs(self, prompt, temperature, options):
+    def _completion_kwargs(
+        self, prompt: str, temperature: float, options: Optional[dict[str, Any]]
+    ) -> dict[str, Any]:
         """
         Constructs the payload sent to the OpenAI-compatible API,
         properly respecting passed options (like max_tokens).
@@ -69,7 +73,12 @@ class BaseLLMAgent:
 
         return kw
 
-    def stream_prompt(self, prompt, options=None, max_retries=5):
+    def stream_prompt(
+        self,
+        prompt: str,
+        options: Optional[dict[str, Any]] = None,
+        max_retries: int = 5,
+    ) -> str:
         """Executes LLM request with fault tolerance and exponential backoff."""
         options = options or {}
         temperature = options.get("temperature", 0)
@@ -79,10 +88,12 @@ class BaseLLMAgent:
                 result, finish = self._stream_once(prompt, temperature, options)
 
                 if not result.strip():
-                    print(f"\n[LLM] EMPTY response (attempt {attempt + 1}/"
-                          f"{max_retries}, finish_reason={finish})")
-                    
-                    if attempt >= 1:          
+                    print(
+                        f"\n[LLM] EMPTY response (attempt {attempt + 1}/"
+                        f"{max_retries}, finish_reason={finish})"
+                    )
+
+                    if attempt >= 1:
                         try:
                             result, finish = self._nonstream_once(
                                 prompt, temperature, options)
@@ -96,10 +107,12 @@ class BaseLLMAgent:
 
                 if self.delay_between_requests > 0:
                     time.sleep(self.delay_between_requests)
-                    
-                self._last_meta = {"finish_reason": finish,
-                                   "attempts": attempt + 1,
-                                   "response_chars": len(result)}
+
+                self._last_meta = {
+                    "finish_reason": finish,
+                    "attempts": attempt + 1,
+                    "response_chars": len(result),
+                }
                 return result
 
             except (
@@ -109,18 +122,25 @@ class BaseLLMAgent:
             ) as e:
                 print(f"\n[LLM ERROR] {type(e).__name__}: {e}")
                 wait_time = (2 ** attempt) + 1
-                print(f"Retrying in {wait_time}s (attempt {attempt + 1}/{max_retries})...")
+                print(
+                    f"Retrying in {wait_time}s "
+                    f"(attempt {attempt + 1}/{max_retries})..."
+                )
                 time.sleep(wait_time)
 
         raise RuntimeError(
             f"LLM returned no usable content after {max_retries} attempts "
-            f"(model={self.model_name}, base_url={self.base_url}).")
+            f"(model={self.model_name}, base_url={self.base_url})."
+        )
 
-    def _stream_once(self, prompt, temperature, options=None):
+    def _stream_once(
+        self, prompt: str, temperature: float, options: Optional[dict[str, Any]] = None
+    ) -> tuple[str, Optional[str]]:
         """Makes a single streaming API request."""
         resp = self.client.chat.completions.create(
             **self._completion_kwargs(prompt, temperature, options),
-            stream=True)
+            stream=True,
+        )
         result, finish = "", None
         for chunk in resp:
             if not chunk.choices:
@@ -132,32 +152,45 @@ class BaseLLMAgent:
                 finish = chunk.choices[0].finish_reason
         return result, finish
 
-    def _nonstream_once(self, prompt, temperature, options=None):
+    def _nonstream_once(
+        self, prompt: str, temperature: float, options: Optional[dict[str, Any]] = None
+    ) -> tuple[str, Optional[str]]:
         """Makes a standard blocking API request as a fallback."""
         resp = self.client.chat.completions.create(
             **self._completion_kwargs(prompt, temperature, options),
-            stream=False)
+            stream=False,
+        )
         return (resp.choices[0].message.content or ""), resp.choices[0].finish_reason
 
-    def process_llm_task(self, prompt, original_code, workspace_dir, log_prefix,
-                         base_name, options=None):
+    def process_llm_task(
+        self,
+        prompt: str,
+        original_code: str,
+        workspace_dir: str,
+        log_prefix: str,
+        base_name: str,
+        options: Optional[dict[str, Any]] = None,
+    ) -> str:
         """Orchestrator that runs prompt, logs result, and extracts code."""
         response = self.stream_prompt(prompt, options=options)
         truncated = getattr(self, "_last_meta", {}).get("finish_reason") == "length"
-        
+
         log_dir = os.path.join(workspace_dir, "llm_logs")
         os.makedirs(log_dir, exist_ok=True)
-        
+
         log_file = os.path.join(log_dir, f"{log_prefix}_{base_name}.log")
         with open(log_file, "w", encoding="utf-8") as f:
-            f.write(f"=== META ===\n{json.dumps(getattr(self, '_last_meta', {}), indent=2)}\n\n")
+            metadata = json.dumps(getattr(self, "_last_meta", {}), indent=2)
+            f.write(f"=== META ===\n{metadata}\n\n")
             f.write(f"=== PROMPT ({len(prompt)} chars) ===\n{prompt}\n\n")
             f.write(f"=== RESPONSE ({len(response)} chars) ===\n{response}\n")
-            
+
         if truncated:
-            # A reply cut off by max_tokens ends mid-function; accepting it (as the
-            # code did) produces a file that cannot compile. Keep the input instead.
-            print(f"  [LLM] reply TRUNCATED at the token limit for {base_name}; keeping "
-                  f"the input unchanged (raise LLM_MAX_TOKENS to allow longer output)")
+            # Truncated code is incomplete; preserve the original instead.
+            print(
+                f"  [LLM] reply TRUNCATED at the token limit for {base_name}; "
+                "keeping the input unchanged (raise LLM_MAX_TOKENS to allow "
+                "longer output)"
+            )
             return original_code
         return self.extract_raw_c_code(response, original_code)

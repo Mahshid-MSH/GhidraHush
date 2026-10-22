@@ -3,24 +3,19 @@ import hashlib
 import json
 import os
 import re
-import sys
-import tempfile
 from collections import deque
 
-# PyGhidra VM Initialization
+# Start the PyGhidra JVM before importing Ghidra APIs.
 import pyghidra
 pyghidra.start("-Xmx8g")
 
-# Ghidra API Imports
+# Ghidra APIs
 from ghidra.app.decompiler import DecompInterface, DecompileOptions
-from ghidra.app.plugin.core.analysis import PdbUniversalAnalyzer
 from ghidra.program.model.data import FileDataTypeManager
-from ghidra.program.model.pcode import HighFunctionDBUtil
-from ghidra.program.model.symbol import SourceType
 from ghidra.util.task import TaskMonitor
 from java.io import File
 
-# Local Project Utilities
+# Project utilities
 from utils.getprocaddress_resolver import (
     propagate_downstream_types,
     resolve_getprocaddress_types,
@@ -31,8 +26,7 @@ from utils.getprocaddress_resolver import (
 # ---------------------------------------------------------------------------
 TARGET_EXCEPTIONS = ["winmain", "entry"]
 
-# Names of user-level entry points. Compared after stripping leading
-# underscores (32-bit MinGW/MSVC often name it "_main").
+# User entry points, normalized without leading underscores.
 USER_ENTRY_NAMES = {"main", "wmain", "winmain", "wwinmain", "dllmain"}
 
 # True PREFIXES (compared against the lowercased raw name).
@@ -41,11 +35,10 @@ IGNORED_PREFIXES = (
 )
 IGNORED_PREFIXES_LOWER = tuple(p.lower() for p in IGNORED_PREFIXES)
 
-# PREFIXES compared against the *normalized* name (lowercase, leading "_" stripped).
+# Prefixes checked after normalization.
 IGNORED_NORMALIZED_PREFIXES = ("findpesection", "pei386")
 
-# EXACT names (compared against the normalized name). These used to be prefixes,
-# which silently swallowed user functions such as "free_list" or "exit_handler".
+# Exact matches avoid excluding user functions such as ``free_list``.
 _IGNORED_EXACT_RAW = (
     # Standard C Library: String & Memory Operations
     "strcat", "strncat", "strcpy", "strncpy", "strlen", "strnlen", "strstr",
@@ -102,7 +95,7 @@ def is_user_entry(name):
 # Helpers
 # ---------------------------------------------------------------------------
 def make_function_id(function):
-    """Generates a stable, collision-free identifier for a Ghidra Function with length protection."""
+    """Build a stable function ID, shortening long names with a hash."""
     qualified_name = function.getName(True)
     safe_name = re.sub(r'[^A-Za-z0-9_~]', '_', qualified_name)
     addr_str = str(function.getEntryPoint())
@@ -115,7 +108,7 @@ def make_function_id(function):
 
 
 def resolve_thunk(function):
-    """Resolves thunk (jump-stub) chains to return the actual target Function implementation."""
+    """Return a thunk's implementation when available."""
     if function is not None and function.isThunk():
         target = function.getThunkedFunction(True)
         if target is not None:
@@ -124,14 +117,7 @@ def resolve_thunk(function):
 
 
 def collect_children(function, function_manager, reference_manager, listing):
-    """
-    Returns (callee_ids, children).
-
-    callee_ids : IDs of directly called functions (used for call-graph edges).
-    children   : every function reachable from this one in a single step, i.e.
-                 direct calls PLUS functions whose address is taken (callbacks,
-                 ThreadProcs, window procs...). These are what we enqueue.
-    """
+    """Return direct callee IDs and called or referenced child functions."""
     callee_ids = []
     children = []
 
@@ -151,12 +137,7 @@ def collect_children(function, function_manager, reference_manager, listing):
 
 
 def collapse_edges(all_edges, emitted_ids):
-    """
-    Builds the exported call graph. Functions that were traversed but not emitted
-    (CRT startup, libc, ...) are collapsed out: an edge A -> crt -> B becomes A -> B,
-    so the graph has no dangling callee IDs and still shows that
-    WinMainCRTStartup eventually leads to main.
-    """
+    """Collapse traversed-but-unemitted functions from exported call edges."""
     collapsed = {}
     for fid in emitted_ids:
         result = []
@@ -241,7 +222,10 @@ def load_gdt_archives(program, gdt_dir="gdt_archives"):
     gdt_files = glob.glob(os.path.join(abs_gdt_dir, "*.gdt"))
 
     if not gdt_files:
-        print(f"No custom GDT archives found in {abs_gdt_dir}. Proceeding with default types.")
+        print(
+            f"No custom GDT archives found in {abs_gdt_dir}. "
+            "Proceeding with default types."
+        )
         return
 
     print(f"Found {len(gdt_files)} custom GDT archive(s). Loading into program context...")
@@ -285,7 +269,10 @@ def extract_functions(file_path, workspace_dir):
     os.makedirs(project_location, exist_ok=True)
     try:
         project_cm = pyghidra.open_project(project_location, project_name, create=False)
-        print(f"Opened existing shared Ghidra project at {project_location}/{project_name}")
+        print(
+            "Opened existing shared Ghidra project at "
+            f"{project_location}/{project_name}"
+        )
     except FileNotFoundError:
         project_cm = pyghidra.open_project(project_location, project_name, create=True)
         print(f"Created shared Ghidra project at {project_location}/{project_name}")
@@ -300,7 +287,10 @@ def extract_functions(file_path, workspace_dir):
             with loader.load() as load_results:
                 load_results.save(TaskMonitor.DUMMY)
         else:
-            print(f"{program_path} already exists in the shared project -- reusing analyzed program.")
+            print(
+                f"{program_path} already exists in the shared project -- "
+                "reusing analyzed program."
+            )
 
         with pyghidra.program_context(project, program_path) as program:
             if needs_full_analysis:
@@ -323,7 +313,10 @@ def extract_functions(file_path, workspace_dir):
                     program.getDomainFile().save(TaskMonitor.DUMMY)
                     print("Saved enriched analysis back to the shared project.")
                 except Exception as e:
-                    print(f"  [warn] Could not save analysis back to the shared project: {e}")
+                    print(
+                        "  [warn] Could not save analysis back to the "
+                        f"shared project: {e}"
+                    )
             else:
                 decompiler = setup_decompiler(program)
 
@@ -348,7 +341,10 @@ def extract_functions(file_path, workspace_dir):
             # The traversal now walks THROUGH the CRT, so user code is still reached
             # even when main could not be identified by name.
             if not roots:
-                print("  [info] No standard main found. Falling back to binary Entry Points.")
+                print(
+                    "  [info] No standard main found. "
+                    "Falling back to binary Entry Points."
+                )
                 entry_iter = program.getSymbolTable().getExternalEntryPointIterator()
                 while entry_iter.hasNext():
                     addr = entry_iter.next()
@@ -356,9 +352,7 @@ def extract_functions(file_path, workspace_dir):
                     if func:
                         roots.append(func)
 
-            # Functions that Stage 2 found pointed at from global data (callback tables,
-            # vtables...) but that no direct call/reference reached. Written by
-            # dump_global_values.py; picked up on the next run of this stage.
+            # Include function targets discovered in Stage 2 global data.
             extra_path = os.path.join(workspace_dir, "missing_function_targets.json")
             if os.path.isfile(extra_path):
                 try:
@@ -383,10 +377,8 @@ def extract_functions(file_path, workspace_dir):
             # ------------------------------------------------------------------
             # TOP-DOWN GRAPH TRAVERSAL (BFS)
             #
-            # Key rule: filters decide what gets DECOMPILED/EMITTED, never what gets
-            # WALKED. User code is reached through the CRT
-            # (entry -> __tmainCRTStartup -> main), so every visited function has its
-            # children enqueued before any skip decision is made.
+            # Enqueue children before filtering so traversal can pass through CRT
+            # and library functions to reach user code.
             # ------------------------------------------------------------------
             extracted_data = []       # (func_id, full_name, c_code) for emitted functions
             node_names = {}           # func_id -> full_name for emitted functions
@@ -461,7 +453,10 @@ def extract_functions(file_path, workspace_dir):
 
                 if not is_exception and "/* Library Function" in c_code:
                     skip_counts["library_fn"] += 1
-                    print(f"  [info] {clean_name} @ {entry_point} matched library signature -- excluded.")
+                    print(
+                        f"  [info] {clean_name} @ {entry_point} matched "
+                        "library signature -- excluded."
+                    )
                     continue
 
                 # C++ Heuristic Check
@@ -486,7 +481,10 @@ def extract_functions(file_path, workspace_dir):
 
             # Export decompiled source files
             file_ext = ".cpp" if binary_has_cpp else ".c"
-            fmt_msg = "C++ indicators detected. Exporting as .cpp..." if binary_has_cpp else "Exporting as .c..."
+            fmt_msg = (
+                "C++ indicators detected. Exporting as .cpp..."
+                if binary_has_cpp else "Exporting as .c..."
+            )
             print(fmt_msg)
 
             for func_id, full_name, c_code in extracted_data:
@@ -499,7 +497,11 @@ def extract_functions(file_path, workspace_dir):
         json.dump(call_graph, f, indent=4)
 
     print(f"\nExtracted {len(extracted_data)} top-down reachable functions.")
-    print(f"Traversal skipped: {skip_counts['non_exec']} non-executable, {skip_counts['prefix']} ignored-runtime, "
-          f"{skip_counts['thunk_external']} thunk/external, {skip_counts['decompile_failed']} decompile-failed, "
-          f"{skip_counts['library_fn']} matched-library-function.")
+    print(
+        f"Traversal skipped: {skip_counts['non_exec']} non-executable, "
+        f"{skip_counts['prefix']} ignored-runtime, "
+        f"{skip_counts['thunk_external']} thunk/external, "
+        f"{skip_counts['decompile_failed']} decompile-failed, "
+        f"{skip_counts['library_fn']} matched-library-function."
+    )
     print(f"Call graph exported to {graph_path}")

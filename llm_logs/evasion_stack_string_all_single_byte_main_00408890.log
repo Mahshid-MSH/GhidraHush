@@ -1,0 +1,212 @@
+=== META ===
+{
+  "finish_reason": "stop",
+  "attempts": 1,
+  "response_chars": 1684
+}
+
+=== PROMPT (6664 chars) ===
+
+        You are an expert C developer generating synthesized code variants.
+
+        ### YOUR OBJECTIVE
+        Apply "Stack-String XOR Obfuscation" to the provided C function. You must eliminate human-readable ASCII and Unicode string literals by converting them into stack-allocated character arrays decoded lazily right before usage. 
+        To ensure MSVC does not optimize this away via constant folding, you MUST use `volatile` arrays and disable optimizations.
+
+        ### STRICT SELECTION CRITERIA
+        1. **SELECTIVE TARGETING:** Target EVERY string literal of length 3 characters or more, including minor formatting strings, excluding single-character literals.
+        2. DO NOT target `#include` directives.
+        3. DO NOT target single character literals (e.g., `'A'`).
+
+        ### TRANSFORMATION RULES
+        1. **DISABLE OPTIMIZATIONS:** You MUST insert `#pragma optimize("", off)` before the helper function, and `#pragma optimize("", on)` after the main function closes.
+        2. **CENTRALIZED DECRYPTION HELPER:** Define a static decryption helper function above the target function that accepts a `volatile char*`:
+        `static void xor_decrypt(volatile char *buf, size_t len, unsigned char key) { for (size_t i = 0; i < len; i++) { buf[i] ^= key; } }`
+        3. **KEY SCHEME:** Assign a DIFFERENT, unique 1-byte XOR key (e.g., `0x3E`, `0x7A`, `0x1F`) to each target string literal across the function.
+        4. **VOLATILE CHARACTER LITERAL INITIALIZATION:** For each selected string, initialize a stack array using `volatile char` and XORed characters: `volatile char sz_str_1[] = {'c'^KEY, ...};`
+        5. **NULL TERMINATION:** Always include the null terminator as the final element, written as `0x00 ^ KEY`.
+        6. **LAZY JUST-IN-TIME DECRYPTION:** Call `xor_decrypt(sz_str, sizeof(sz_str), KEY);` immediately before the string is passed into an API call.
+        7. **API CASTING:** When passing the `volatile char` array into a standard function or Windows API, you MUST cast it back to `(char*)` (or `reinterpret_cast<char*>` in C++) to avoid strict volatile qualifier compiler warnings.
+
+        ### STRUCTURAL EXAMPLE (MIMIC THIS EXACTLY)
+
+        **Original Code:**
+```c
+        HMODULE hMod = GetModuleHandleA("kernel32.dll");
+        if (hMod) {
+            CopyFileA("C:\\test.txt", "C:\\Windows\\Temp\\test.txt", FALSE);
+            return 1;
+        }
+```
+
+        **Transformed Code:**
+```c
+        #pragma optimize("", off)
+        static void xor_decrypt(volatile char *buf, size_t len, unsigned char key) {
+            for (size_t i = 0; i < len; i++) {
+                buf[i] ^= key;
+            }
+        }
+
+        HMODULE get_module_example(void) {
+            // "kernel32.dll" XOR'd with key 0x3E
+            volatile char sz_str_1[] = { 'k'^0x3E, 'e'^0x3E, 'r'^0x3E, 'n'^0x3E, 'e'^0x3E, 'l'^0x3E, '3'^0x3E, '2'^0x3E, '.'^0x3E, 'd'^0x3E, 'l'^0x3E, 'l'^0x3E, 0x00^0x3E };
+            xor_decrypt(sz_str_1, sizeof(sz_str_1), 0x3E);
+            HMODULE hMod = GetModuleHandleA((char*)sz_str_1); // C-style cast (works in both C and C++)
+            // In C++ you may also use reinterpret_cast<char*>(sz_str_1)
+
+            if (hMod) {
+                // Lazy initialization and decryption using distinct keys (0x7A, 0x1F)
+                volatile char sz_str_2[] = { 'C'^0x7A, ':'^0x7A, '\\'^0x7A, 't'^0x7A, 'e'^0x7A, 's'^0x7A, 't'^0x7A, '.'^0x7A, 't'^0x7A, 'x'^0x7A, 't'^0x7A, 0x00^0x7A };
+                volatile char sz_str_3[] = { 'C'^0x1F, ':'^0x1F, '\\'^0x1F, 'W'^0x1F, 'i'^0x1F, 'n'^0x1F, 'd'^0x1F, 'o'^0x1F, 'w'^0x1F, 's'^0x1F, '\\'^0x1F, 'T'^0x1F, 'e'^0x1F, 'm'^0x1F, 'p'^0x1F, '\\'^0x1F, 't'^0x1F, 'e'^0x1F, 's'^0x1F, 't'^0x1F, '.'^0x1F, 't'^0x1F, 'x'^0x1F, 't'^0x1F, 0x00^0x1F };
+                
+                xor_decrypt(sz_str_2, sizeof(sz_str_2), 0x7A);
+                xor_decrypt(sz_str_3, sizeof(sz_str_3), 0x1F);
+                
+                CopyFileA((char*)sz_str_2, (char*)sz_str_3, FALSE);
+                return 1;
+            }
+            return 0;
+        }
+        #pragma optimize("", on)
+```
+
+        ### OUTPUT CONSTRAINTS (CRITICAL)
+        - You MUST wrap all generated code in `#pragma optimize("", off)` and `#pragma optimize("", on)`.
+        - You MUST use `volatile char` for the stack arrays and `volatile char *` for the helper function argument.
+        - You MUST cast the array to `(char*)` (or `reinterpret_cast<char*>` in C++) when using it in standard functions or APIs.
+        - Follow the key scheme described above for each string transformed in the function.
+        - Decrypt strings lazily right before they are used.
+        - DO NOT OUTPUT ANY EXPLANATION, ANALYSIS, OR CONVERSATIONAL TEXT.
+        - Return ONLY the exact, modified source code inside a single markdown code block (```c ... ```).
+        - If no prominent string literals exist, return the original code wrapped in the markdown block without any changes.
+
+        INPUT CODE:
+        #include "data_globals.h"
+#include <stdbool.h>
+
+/* Forward declarations for CRT/internal functions used without prototypes */
+char ** __p__acmdln(void);
+int __ismbblead(int);
+
+int main(int argc, _TCHAR **argv, _TCHAR **envp)
+{
+    char *cmd_ptr;
+    char ch;
+    uint32_t *acmdln_ptr;
+    int i;
+    char *next_ptr;
+    bool in_double_quote;
+    LPSTARTUPINFOA si_ptr;
+    uint8_t si_buffer[sizeof(STARTUPINFO)];
+    STARTUPINFO StartupInfo;   /* retained from original */
+
+    in_double_quote = false;
+    acmdln_ptr = (uint32_t *)__p__acmdln();
+    cmd_ptr = (char *)*acmdln_ptr;
+    if (cmd_ptr != (char *)0) {
+        do {
+            ch = *cmd_ptr;
+            if (ch < '!') {
+                if (ch == '\0')
+                    break;
+                if (!in_double_quote)
+                    goto label_skip_spaces;
+                in_double_quote = true;
+            } else if (ch == '"') {
+                in_double_quote = (bool)(in_double_quote ^ 1);
+            }
+            i = __ismbblead((int)ch);
+            if (i != 0) {
+                cmd_ptr = cmd_ptr + (cmd_ptr[1] != '\0');
+            }
+            cmd_ptr = cmd_ptr + 1;
+        } while (1);
+    }
+    goto label_end;
+label_skip_spaces:
+    if (ch != '\0') {
+        do {
+            next_ptr = cmd_ptr + 1;
+            cmd_ptr = cmd_ptr + 1;
+            if (*next_ptr == '\0')
+                break;
+        } while (*next_ptr < '!');
+    }
+label_end:
+    si_ptr = (LPSTARTUPINFOA)si_buffer;
+    for (i = 0x11; i != 0; i = i - 1) {
+        si_ptr->cb = 0;
+        si_ptr = (LPSTARTUPINFOA)&si_ptr->lpReserved;
+    }
+    GetStartupInfoA((LPSTARTUPINFOA)si_buffer);
+    _WinMain_16();
+    return 0;
+}
+
+        
+
+=== RESPONSE (1684 chars) ===
+```c
+#include "data_globals.h"
+#include <stdbool.h>
+
+/* Forward declarations for CRT/internal functions used without prototypes */
+char ** __p__acmdln(void);
+int __ismbblead(int);
+
+int main(int argc, _TCHAR **argv, _TCHAR **envp)
+{
+    char *cmd_ptr;
+    char ch;
+    uint32_t *acmdln_ptr;
+    int i;
+    char *next_ptr;
+    bool in_double_quote;
+    LPSTARTUPINFOA si_ptr;
+    uint8_t si_buffer[sizeof(STARTUPINFO)];
+    STARTUPINFO StartupInfo;   /* retained from original */
+
+    in_double_quote = false;
+    acmdln_ptr = (uint32_t *)__p__acmdln();
+    cmd_ptr = (char *)*acmdln_ptr;
+    if (cmd_ptr != (char *)0) {
+        do {
+            ch = *cmd_ptr;
+            if (ch < '!') {
+                if (ch == '\0')
+                    break;
+                if (!in_double_quote)
+                    goto label_skip_spaces;
+                in_double_quote = true;
+            } else if (ch == '"') {
+                in_double_quote = (bool)(in_double_quote ^ 1);
+            }
+            i = __ismbblead((int)ch);
+            if (i != 0) {
+                cmd_ptr = cmd_ptr + (cmd_ptr[1] != '\0');
+            }
+            cmd_ptr = cmd_ptr + 1;
+        } while (1);
+    }
+    goto label_end;
+label_skip_spaces:
+    if (ch != '\0') {
+        do {
+            next_ptr = cmd_ptr + 1;
+            cmd_ptr = cmd_ptr + 1;
+            if (*next_ptr == '\0')
+                break;
+        } while (*next_ptr < '!');
+    }
+label_end:
+    si_ptr = (LPSTARTUPINFOA)si_buffer;
+    for (i = 0x11; i != 0; i = i - 1) {
+        si_ptr->cb = 0;
+        si_ptr = (LPSTARTUPINFOA)&si_ptr->lpReserved;
+    }
+    GetStartupInfoA((LPSTARTUPINFOA)si_buffer);
+    _WinMain_16();
+    return 0;
+}
+```

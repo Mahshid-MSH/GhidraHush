@@ -2,10 +2,10 @@
 {
   "finish_reason": "stop",
   "attempts": 1,
-  "response_chars": 3172
+  "response_chars": 3425
 }
 
-=== PROMPT (6531 chars) ===
+=== PROMPT (6430 chars) ===
 
             You are an expert C developer generating synthesized code variants.
             Target architecture: x86
@@ -94,144 +94,145 @@
                 // ... all variables declared inside this branch ...
             }
             ### INPUT CODE:
-            
-#include "data_globals.h"
+            #include "data_globals.h"
 #include <windows.h>
 #include <stdint.h>
 #include <string.h>
 
 uint32_t _GetSpecialFolder(LPBYTE buffer, LPCSTR valueName)
 {
-    LONG status;
-    uint32_t result;
-    DWORD bufferSize;
-    HKEY hKey[3];
-
-    bufferSize = 0x104;
-    memset(buffer, 0, 0x104);
-    status = RegOpenKeyExA((HKEY)0x80000001,
-                           "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders",
-                           0, KEY_READ, hKey);
-    if (status == 0) {
-        status = RegQueryValueExA(hKey[0], valueName, NULL, NULL, buffer, &bufferSize);
-        if (status == 0) {
-            RegCloseKey(hKey[0]);
-            result = 1;
-        } else {
-            RegCloseKey(hKey[0]);
-            result = 0;
-        }
-    } else {
-        result = 0;
+  int32_t status;
+  uint32_t result;
+  uint32_t dataSize;
+  HKEY hKey[3];
+  dataSize = 0x104;
+  memset(buffer, 0, 0x104);
+  status = RegOpenKeyExA((HKEY) 0x80000001, "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders", 0, KEY_READ, hKey);
+  if (status == 0)
+  {
+    status = RegQueryValueExA(hKey[0], valueName, NULL, NULL, buffer, &dataSize);
+    if (status == 0)
+    {
+      RegCloseKey(hKey[0]);
+      result = 1;
     }
-    return result;
+    else
+    {
+      RegCloseKey(hKey[0]);
+      result = 0;
+    }
+  }
+  else
+  {
+    result = 0;
+  }
+  return result;
 }
+
+
             Return ONLY the complete, modified source code inside a single markdown code block.
             Use ```c according to the detected input language. 
             
 
-=== RESPONSE (3172 chars) ===
+=== RESPONSE (3425 chars) ===
 ```c
 #include "data_globals.h"
 #include <windows.h>
 #include <stdint.h>
 #include <string.h>
-#include <stdio.h>   // Added for sprintf_s
+#include <stdio.h>   // for sprintf_s
 
 uint32_t _GetSpecialFolder(LPBYTE buffer, LPCSTR valueName)
 {
-    LONG status;
+    int32_t status;
     uint32_t result;
-    DWORD bufferSize;
+    uint32_t dataSize;
     HKEY hKey[3];
 
-    // --- INSERTED DEAD BRANCH 1 (Pattern A: Math Invariant) ---
+    /* -------------------------------------------------------------
+       INSERTED DEAD BRANCH 1 (Pattern A – Math Invariant)
+       ------------------------------------------------------------- */
     volatile int dummy_x_1 = 7;
     if ((dummy_x_1 * (dummy_x_1 + 1)) % 2 != 0) {
-        // Dummy System Information queries (Category A)
-        volatile SYSTEM_INFO sysInfo;
-        GetSystemInfo(&sysInfo);
+        /* Dummy logic – Category A (System info queries) */
+        SYSTEM_INFO sysInfo;
+        GetSystemInfo(&sysInfo);                     // Windows API
+        SYSTEMTIME sysTime;
+        GetLocalTime(&sysTime);                      // Windows API
 
-        volatile SYSTEMTIME sysTime;
-        GetLocalTime(&sysTime);
-
-        // Dummy buffer manipulation
         volatile char dummyBuf[128];
-        for (int i = 0; i < 2; ++i) {
-            dummyBuf[i] = (char)(sysInfo.dwNumberOfProcessors + i);
+        for (int i = 0; i < 4; ++i) {
+            dummyBuf[i] = (char)((sysInfo.dwNumberOfProcessors + i) ^ (sysTime.wSecond));
         }
 
-        // Simple FNV‑1a hash over dummyBuf (Category C)
+        /* Simple FNV‑1a hash over the dummy buffer */
         unsigned int hash = 2166136261U;
         for (int i = 0; i < 128; ++i) {
             hash ^= (unsigned char)dummyBuf[i];
             hash *= 16777619U;
         }
-        (void)hash;   // suppress unused warning
+        volatile unsigned int dummyHash = hash;      // prevent optimisation
 
-        // Dummy arithmetic loop
-        for (int i = 0; i < 3; ++i) {
-            volatile int temp = i * dummy_x_1;
-            (void)temp;
-        }
-
-        // Clean up dummy data
-        SecureZeroMemory(dummyBuf, sizeof(dummyBuf));
-        memset(&sysInfo, 0, sizeof(sysInfo));
+        /* Clean up dummy data */
+        memset(dummyBuf, 0, sizeof(dummyBuf));       // C runtime
+        SecureZeroMemory(&sysInfo, sizeof(sysInfo)); // Windows API
+        SecureZeroMemory(&sysTime, sizeof(sysTime)); // Windows API
     }
-    // --- END OF DEAD BRANCH 1 ---
 
-    bufferSize = 0x104;
+    dataSize = 0x104;
     memset(buffer, 0, 0x104);
     status = RegOpenKeyExA((HKEY)0x80000001,
                            "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders",
                            0, KEY_READ, hKey);
-    if (status == 0) {
-        status = RegQueryValueExA(hKey[0], valueName, NULL, NULL, buffer, &bufferSize);
-        if (status == 0) {
+    if (status == 0)
+    {
+        status = RegQueryValueExA(hKey[0], valueName, NULL, NULL, buffer, &dataSize);
+        if (status == 0)
+        {
             RegCloseKey(hKey[0]);
             result = 1;
-        } else {
+        }
+        else
+        {
             RegCloseKey(hKey[0]);
             result = 0;
         }
-    } else {
+    }
+    else
+    {
         result = 0;
     }
 
-    // --- INSERTED DEAD BRANCH 2 (Pattern B: System Query) ---
+    /* -------------------------------------------------------------
+       INSERTED DEAD BRANCH 2 (Pattern B – System Query)
+       ------------------------------------------------------------- */
     if (GetPriorityClass(GetCurrentProcess()) == 0xFFFFFFFF) {
-        // Dummy memory and string operations (Category B)
-        volatile char *pBuf = (char*)malloc(256);
+        /* Dummy logic – Category B (Memory & String operations) */
+        volatile size_t bufSize = 256;
+        char *pBuf = (char *)malloc(bufSize);
         if (pBuf) {
-            volatile const char *msg = "DummyString";
-            size_t len = strlen(msg);
-            if (len < 256) {
-                memcpy(pBuf, msg, len);
-                pBuf[len] = '\0';
+            memset(pBuf, 'A', bufSize);                     // C runtime
+            char *pCopy = (char *)malloc(bufSize);
+            if (pCopy) {
+                memcpy(pCopy, pBuf, bufSize);               // C runtime
+
+                /* Format a small string */
+                char small[64];
+                sprintf_s(small, sizeof(small), "Len:%zu", strlen(pBuf)); // C runtime
+
+                volatile int dummyVal = (int)strlen(small);
+                for (int i = 0; i < 3; ++i) {
+                    dummyVal ^= i;                          // dummy computation
+                }
+
+                memset(pCopy, 0, bufSize);
+                free(pCopy);
             }
-
-            // Use sprintf_s to format a string
-            char formatted[128];
-            sprintf_s(formatted, sizeof(formatted), "Len=%zu", len);
-
-            // Dummy computation using lengths
-            volatile size_t total = strlen(formatted) + len;
-            (void)total;   // suppress unused warning
-
-            // Securely erase temporary buffers
-            SecureZeroMemory(pBuf, 256);
-            SecureZeroMemory(formatted, sizeof(formatted));
-            free((void*)pBuf);
+            memset(pBuf, 0, bufSize);
+            free(pBuf);
         }
-
-        // Additional dummy loop
-        for (int i = 0; i < 2; ++i) {
-            volatile int dummy = i * 42;
-            (void)dummy;
-        }
+        SecureZeroMemory(&bufSize, sizeof(bufSize));        // Windows API
     }
-    // --- END OF DEAD BRANCH 2 ---
 
     return result;
 }

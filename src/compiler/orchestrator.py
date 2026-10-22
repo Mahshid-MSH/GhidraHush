@@ -1,26 +1,17 @@
-"""
-orchestrator.py -- compile-fix loop over extracted functions.
-Per file: preprocess (AST-clean for .c, regex-only for .cpp) -> compile
-(gcc/g++ chosen by extension) -> on failure, LLM repair with prioritized
-errors + relevant header context -> on success, sync the prototype back
-into data_globals.h. Non-interactive by default (AUTO_APPROVE=0 restores
-the approval prompt for single-sample debugging sessions).
-"""
-import os
-import shutil
 import json
+import os
 import re
-from database.symbol_db import SymbolDB
-from compiler.compiler_service import CompilerService   # the merged service
-from compiler.compilation_order import compilation_order    # the fixed topo sort
-from llm.patch_agent import PatchAgent
+import shutil
 from pathlib import Path
 
-
-from Auxiliary.reports import compilation_report
+from database.symbol_db import SymbolDB
+from compiler.compilation_order import compilation_order
+from compiler.compiler_service import CompilerService
+from llm.patch_agent import PatchAgent
 from utils.ast_patcher import (
-    analyze_ast_types, proactive_header_patch,
-    clean_decompiled_code, ast_tools_applicable,
+    analyze_ast_types,
+    clean_decompiled_code,
+    proactive_header_patch,
 )
 from llm.code_utils import pre_process_ghidra_types, extract_prototype
 
@@ -29,8 +20,7 @@ DIM, RED, GREEN, YELLOW, CYAN, RESET = (
 
 
 def say(label, text, color=DIM, max_lines=14):
-    """Echo multi-line evidence (compiler errors, LLM context) to the console
-    with a colored tag. Truncated but never silent."""
+    """Print colored, optionally truncated diagnostic text."""
     lines = text.strip().splitlines()
     print(f"{color}{label}{RESET}")
     for line in lines[:max_lines]:
@@ -38,10 +28,15 @@ def say(label, text, color=DIM, max_lines=14):
     if len(lines) > max_lines:
         print(f"{color}  | ... ({len(lines)} total lines){RESET}")
 
-
-
 class CompilerOrchestrator:
-    def __init__(self, model_name, base_url, max_retries, workspace_dir=".",binary_name=""):
+    def __init__(
+        self,
+        model_name,
+        base_url,
+        max_retries,
+        workspace_dir=".",
+        binary_name="",
+    ):
         self.workspace = os.path.abspath(workspace_dir)
         self.compiler = CompilerService(self.workspace)
         self.agent = PatchAgent(model_name, base_url)
@@ -55,23 +50,11 @@ class CompilerOrchestrator:
         self.stats = {"success": 0, "failed": 0}
         self._binary_name = binary_name or os.path.basename(os.environ.get("INPUT_EXE_PATH", ""))
         self.per_function = []
-        
-
 
     # ------------------------------------------------------------------
 
     def _preflight_header(self, want_cpp=False):
-        """
-        Compile one-line TUs against data_globals.h ONLY, then data_globals.c itself.
-        If the header is broken, every function fails for fake reasons and repairs
-        are wasted -- halt the stage instead.
-
-        Checks beyond the original: (1) data_globals.c is compiled and its result is
-        no longer ignored (compile_globals() returned a bool nobody read, so a broken
-        data_globals.c only surfaced at link time); (2) when .cpp files are present the
-        header is also compiled with g++, since constructs that are fine in C
-        (e.g. _Static_assert) can be rejected there.
-        """
+        """Check the shared header and globals source before compiling functions."""
         def _check(name, text, label):
             probe = os.path.join(self.workspace, name)
             with open(probe, "w", encoding="utf-8") as f:
@@ -88,8 +71,11 @@ class CompilerOrchestrator:
 
         _check("__hdr_probe__.c", "int __gh_probe__(void);\n", "data_globals.h as C")
         if want_cpp:
-            _check("__hdr_probe__.cpp", 'extern "C" int __gh_probe__(void);\n',
-                   "data_globals.h as C++")
+            _check(
+                "__hdr_probe__.cpp",
+                'extern "C" int __gh_probe__(void);\n',
+                "data_globals.h as C++",
+            )
         src = os.path.join(self.workspace, "data_globals.c")
         if os.path.isfile(src):
             ok, errors = self.compiler.compile(src, self.dir_output)
@@ -98,12 +84,18 @@ class CompilerOrchestrator:
                                    "compile)\n" + errors[:3000])
 
     def process_directory(self, target_dir):
-        for d in (self.dir_success, self.dir_output, self.dir_logs,
-                  self.dir_failed):
-            os.makedirs(d, exist_ok=True)
+        for directory in (
+            self.dir_success, self.dir_output, self.dir_logs, self.dir_failed
+        ):
+            os.makedirs(directory, exist_ok=True)
+        for filename in ("data_globals.h", "data_globals.c"):
+            src_path = os.path.join(self.workspace, filename)
+            dst_path = os.path.join(target_dir, filename)
+            if os.path.isfile(src_path):
+                shutil.copy2(src_path, dst_path)
         files = [os.path.join(target_dir, f) for f in os.listdir(target_dir)
                  if f.endswith((".c", ".cpp"))]
-        self._preflight_header(want_cpp=any(f.endswith(".cpp") for f in files))  # ONCE
+        self._preflight_header(want_cpp=any(f.endswith(".cpp") for f in files))
         if not files:
             print(f"No .c/.cpp files found in {target_dir}")
             return
@@ -114,39 +106,15 @@ class CompilerOrchestrator:
             self._process_one(filepath)
 
         print(f"\n{CYAN}{'=' * 60}{RESET}")
-        print(f"{BOLD if False else ''}Compile stage summary:{RESET}")
+        print("Compile stage summary:")
         print(f"  {GREEN}compiled:  {self.stats['success']}{RESET}")
         print(f"  {RED}failed:    {self.stats['failed']}{RESET}")
-        print(f"  artifacts: compiled_successfully/ failed_functions/ "
-              f"output_objects/ llm_responses/")
+        print(
+            "  artifacts: compiled_successfully/ failed_functions/ "
+            "output_objects/ llm_responses/"
+        )
         print(f"{CYAN}{'=' * 60}{RESET}")
-        
-        with open(os.path.join(self.workspace, "compile_stats.json"), "w",
-                  encoding="utf-8") as f:
-            json.dump({
-                "binary": self._binary_name,
-                "totals": dict(self.stats),
-                "functions": self.per_function,
-            }, f, indent=2)
 
-        # Inside orchestrator.py, where compile_stats.json is saved:
-        total_repairs = sum(f.get("repairs", 0) for f in self.per_function)
-        summary_payload = {
-            "binary": self._binary_name,
-            "success": self.stats['success'],
-            "failed": self.stats['failed'],
-            "total_repairs": total_repairs,
-            "functions": self.per_function,
-        }
-        
-        # Save JSON as before
-        with open(os.path.join(self.workspace, "compile_stats.json"), "w", encoding="utf-8") as f:
-            json.dump(summary_payload, f, indent=2)
-
-        # Resolve project root (two levels up from orchestrator.py if located in a subfolder, 
-        # or adjust according to your actual folder layout)
-        project_root = Path(__file__).resolve().parent.parent
-        
         total_repairs = sum(f.get("repairs", 0) for f in self.per_function)
         summary_payload = {
             "binary": self._binary_name,
@@ -156,24 +124,21 @@ class CompilerOrchestrator:
             "total_repairs": total_repairs,
             "functions": self.per_function,
         }
-        
-        # Save JSON once cleanly
-        stats_path = os.path.join(self.workspace, "compile_stats.json")
-        with open(stats_path, "w", encoding="utf-8") as f:
-            json.dump(summary_payload, f, indent=2)
 
-        # Append to Excel Report sheet if available
+        # Safely attempt to write to the repository-level Excel report.
         try:
-       
+            from Auxiliary.compilation_report import CompilationReport
+            project_root = Path(__file__).resolve().parents[2]
             report_path = project_root / "Results" / "comparisons.xlsx"
-            rep = compilation_report(str(report_path))
-            if hasattr(rep, "add_compilation_stats"):
-                rep.add_compilation_stats([summary_payload])
+
+            rep = CompilationReport(str(report_path), sheet_name="Compilation Stats")
+            rep.add_compilation_stats([summary_payload])
+            print(
+                "[xlsx] Compilation stats saved to sheet 'Compilation Stats' "
+                f"in {report_path.name}"
+            )
         except Exception as e:
-            print(f"[xlsx warning] Could not write compilation stats to Excel: {e}")
-            
-        print(f"[stats] compile_stats.json written "
-              f"({self.stats['success']}/{self.stats['success'] + self.stats['failed']} compiled)")
+            print(f"[xlsx warning] Skipping Excel reporting (pandas/openpyxl missing or error: {e})")
     # ------------------------------------------------------------------
     def _process_one(self, filepath):
         filename = os.path.basename(filepath)
@@ -232,7 +197,7 @@ class CompilerOrchestrator:
             say("compiler stderr:", errors, RED, max_lines=12)
             if attempt >= self.max_retries:
                 break
-            repairs += 1 
+            repairs += 1
             if not self._repair_cycle(filepath, errors, filename, attempt,
                                       is_cpp):
                 self._repair_cycle(filepath, errors, filename, attempt, is_cpp)
@@ -291,16 +256,39 @@ class CompilerOrchestrator:
         db = SymbolDB(self.workspace)
 
         pending_protos = []
+        applied_protos = []  # Declared ONCE at the top
+
         implicated = set(re.findall(r'\b[A-Za-z_]\w*\b', error_block or ""))
         for patch in patches:
             proto = str(patch.get("replace", "")).strip()
-            m = re.search(r'([A-Za-z_~][\w:]*)\s*\(', proto)
-            if m and m.group(1).split('::')[-1] in implicated:
-                pending_protos.append((m.group(1).split('::')[-1], proto))
-            else:
-                print(f"[DB patch] SKIPPED (no compiler error names this "
-                      f"function -- guess, not evidence): {proto}")
-        if not fixed_code.strip() and not pending_protos:
+
+            # Case 1: Function Prototype (contains parentheses)
+            if '(' in proto and ')' in proto:
+                m = re.search(r'([A-Za-z_~][\w:]*)\s*\(', proto)
+                if m and m.group(1).split('::')[-1] in implicated:
+                    pending_protos.append((m.group(1).split('::')[-1], proto))
+
+            # Case 2: Global Variable Declaration (e.g., extern const uint8_t _VirusBody[];)
+            elif proto.startswith("extern "):
+                m = re.search(r'extern\s+(?:const\s+)?([\w\*]+)\s+([A-Za-z_]\w*)(?:\s*\[.*?\])?\s*;', proto)
+                if m:
+                    gtype, gname = m.groups()
+                    is_array = '[' in proto
+                    actual_type = f"{gtype}[]" if is_array else gtype
+                    db.add_or_update_global(gname, gtype=actual_type, is_string=False)
+                    applied_protos.append(gname)
+                    print(f"[DB patch] Updated global variable '{gname}' -> {actual_type}")
+
+            # Case 3: Custom Type / Struct Definition
+            elif proto.startswith(("typedef", "struct", "union", "enum")):
+                m = re.search(r'(?:struct|union|enum)\s+([A-Za-z_]\w*)', proto)
+                if m:
+                    tname = m.group(1)
+                    db.add_custom_type(tname, proto)
+                    applied_protos.append(tname)
+                    print(f"[DB patch] Added/Updated custom type '{tname}'")
+
+        if not fixed_code.strip() and not pending_protos and not applied_protos:
             return False
 
         # Snapshot everything we might have to roll back.
@@ -317,7 +305,7 @@ class CompilerOrchestrator:
                       f"for {sorted(set(fabricated))} -- resolver-only names."
                       f"{RESET}")
                 return False
-        applied_protos = []
+
         try:
             for name, proto in pending_protos:
                 db.parse_and_upsert_prototype(proto)
@@ -339,7 +327,7 @@ class CompilerOrchestrator:
             if ok:
                 if applied_protos:
                     print(f"[DB patch] verified with caller: "
-                          f"{[p for _, p in pending_protos]}")
+                          f"{[p for p in applied_protos]}")
                 self.compiler.compile_globals()
                 return True
             # Failed -> full rollback: DB, header, AND caller code.
@@ -369,7 +357,7 @@ class CompilerOrchestrator:
                     f.write(broken_code)
             print(f"[repair] exception during apply, rolled back: {e}")
             return False
-        
+
     def _repair_cycle(self, filepath, errors, filename, attempt, is_cpp):
         with open(filepath, encoding="utf-8") as f:
             broken_code = f.read()

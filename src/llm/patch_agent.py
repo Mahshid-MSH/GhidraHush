@@ -1,6 +1,6 @@
-import os
-import json
 import re
+import json
+import os
 from base_agent import BaseLLMAgent
 from prompts import get_whole_function_prompt, get_surgical_prompt
 
@@ -11,26 +11,10 @@ DIM, RED, GREEN, YELLOW, CYAN, RESET = (
 
 
 class PatchAgent(BaseLLMAgent):
-    """
-    Automated Compiler Error Correction Agent.
-    
-    Why this exists: Even after multi-pass beautification, decompiled code often 
-    fails compilation due to subtle type mismatches, missing declarations, or 
-    syntax errors. When the compiler (`gcc`/`g++`) throws an error log, this agent 
-    reads the log, isolates the core issue, and queries the LLM to patch the code 
-    until it compiles cleanly.
-    """
+    """Repair compiler errors by prioritizing diagnostics and querying an LLM."""
 
     def extract_highest_priority_error(self, full_error_log):
-        """
-        Parses compiler output into isolated blocks, groups them by function, 
-        and prioritizes structural errors over minor warnings.
-        
-        Why it's here: If a C file has 50 compiler errors, feeding all of them 
-        to an LLM simultaneously causes it to hallucinate or get confused. This method 
-        hunts down the *root-cause* error (like an undeclared identifier or conflicting 
-        types) and targets that first.
-        """
+        """Group diagnostics and select the highest-priority compiler error."""
         lines = full_error_log.strip().split('\n')
         blocks = []
         current_block = []
@@ -96,56 +80,21 @@ class PatchAgent(BaseLLMAgent):
         return blocks[0]
 
     def retrieve_header_context(self, header_path, c_code, error_log):
-        """
-        Extracts only header declarations from `data_globals.h` that are relevant 
-        to symbols referenced in the code or error logs.
-        
-        Why it's here: `data_globals.h` can grow to thousands of lines as functions 
-        are processed. Injecting the entire file into every prompt wastes context 
-        tokens. This scanner filters the header down to only the exact variables 
-        and prototypes needed to fix the current error.
-        """
         if not os.path.exists(header_path):
             return "// data_globals.h not found"
 
-        tokens = set(re.findall(r'\b[a-zA-Z_]\w*\b', c_code + "\n" + error_log))
-        c_keywords = {
-            'if', 'else', 'for', 'while', 'return', 'int', 'char', 'void', 
-            'struct', 'typedef', 'const', 'unsigned', 'uintptr_t', 'sizeof'
-        }
-        search_tokens = tokens - c_keywords
-
-        relevant_lines = []
         with open(header_path, 'r', encoding='utf-8') as f:
-            for line in f:
-                line_str = line.strip()
-                if not line_str or line_str.startswith('//'):
-                    continue
-                    
-                # Layout checks exist for the compiler, not the model: every one mentions the
-                # struct name, so they matched on nearly every token and bloated the prompt.
-                if line_str.startswith(('GH_STATIC_ASSERT', '_Static_assert')):
-                    continue
+            header_content = f.read()
 
-                if line_str.startswith('#include') or line_str.startswith('#define'):
-                    relevant_lines.append(line_str)
-                    continue
+        # Include the full header when it fits comfortably in the prompt.
+        if len(header_content) < 12000:
+            return header_content
 
-                for token in search_tokens:
-                    if re.search(rf'\b{re.escape(token)}\b', line_str):
-                        relevant_lines.append(line_str)
-                        break
-
-        # Deduplicate and preserve order
-        seen = set()
-        deduped_lines = [x for x in relevant_lines if not (x in seen or seen.add(x))]
-        return "\n".join(deduped_lines)
+        # Truncate very large headers to keep prompt size bounded.
+        return header_content[:12000] + "\n// ... (truncated)"
 
     def build_whole_function_prompt(self, c_code, error_log, retrieved_header_context, attempt=1, lang="C"):
-        """
-        Constructs the comprehensive prompt instructing the LLM to fix the broken function 
-        while adhering to strict C/C++ language rules.
-        """
+        """Build the language-specific whole-function repair prompt."""
         lang_rules = (
             "LANGUAGE RULES (C++ / g++ -fpermissive):\n"
             "- reinterpret_cast ONLY between pointer and integer types; "
@@ -166,7 +115,9 @@ class PatchAgent(BaseLLMAgent):
     def build_surgical_prompt(self, c_code, error_log, retrieved_header_context, attempt=1):
         """Prepares line-numbered code for localized bug fixes."""
         lines = c_code.split('\n')
-        line_numbered_code = "\n".join(f"{i+1:3d} | {line}" for i, line in enumerate(lines))
+        line_numbered_code = "\n".join(
+            f"{index + 1:3d} | {line}" for index, line in enumerate(lines)
+        )
         return get_surgical_prompt(line_numbered_code, error_log, retrieved_header_context)
 
     def apply_function_patch(self, c_code, full_fixed_code):
@@ -179,14 +130,7 @@ class PatchAgent(BaseLLMAgent):
         return full_fixed_code, True
 
     def _coerce_response(self, raw):
-        """
-        Safely parses LLM output into a structured dictionary, with robust fallbacks 
-        if the model fails to return valid JSON.
-        
-        Why it's here: LLMs frequently ignore instructions to "respond in valid JSON" 
-        and instead output raw markdown code blocks. This method attempts to extract 
-        JSON; if that fails, it gracefully intercepts bare code and wraps it in the expected format.
-        """
+        """Parse structured LLM output, with a fallback for bare source code."""
         text = self._strip_fences(raw).strip()
         try:
             return json.loads(text)
@@ -205,14 +149,14 @@ class PatchAgent(BaseLLMAgent):
         if text.lstrip().startswith(("{", "int ", "void ", "#include")):
             return {
                 "reasoning": "non-JSON response accepted as code",
-                "full_fixed_code": text, 
-                "header_patches": []
+                "full_fixed_code": text,
+                "header_patches": [],
             }
             
         return {
             "reasoning": f"unparseable: {text[:200]}",
-            "full_fixed_code": "", 
-            "header_patches": []
+            "full_fixed_code": "",
+            "header_patches": [],
         }
 
     def _strip_fences(self, text):
@@ -221,31 +165,24 @@ class PatchAgent(BaseLLMAgent):
         return m.group(1) if m else text
 
     def fix_with_llm(self, c_code, error_log, header_path, attempt, is_cpp=False):
-        """
-        Orchestrates the error-fixing workflow by assembling the prompt, setting 
-        adaptive temperatures, and invoking the LLM.
-        
-        Why it's here: On the first attempt, temperature is set to `0.0` for deterministic 
-        corrections. If the fix fails, temperature increases incrementally (`0.2`, `0.4`, etc.) 
-        on subsequent attempts to encourage creative problem-solving for stubborn compilation errors.
-        """
+        """Request a repair, increasing temperature on later attempts."""
         lang = "C++" if is_cpp else "C"
         isolated = self.extract_highest_priority_error(error_log)   # Priority focus
         header_ctx = self.retrieve_header_context(header_path, c_code, error_log)
 
         # Compact full error list: one line per error, capped to avoid context bloat
         all_errors = "\n".join(
-            l.strip() for l in error_log.splitlines() if "error:" in l
+            line.strip() for line in error_log.splitlines() if "error:" in line
         )[:3500]
 
         prompt = self.build_whole_function_prompt(
-            c_code, 
+            c_code,
             f"PRIORITY ERROR (fix first):\n{isolated}\n\n"
             f"ALL OTHER ERRORS (must also be fixed; the file must "
             f"compile completely):\n{all_errors}",
-            header_ctx, 
-            attempt, 
-            lang=lang
+            header_ctx,
+            attempt,
+            lang=lang,
         )
         
         # Adaptive temperature scaling per retry attempt

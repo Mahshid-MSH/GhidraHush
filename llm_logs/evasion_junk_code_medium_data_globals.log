@@ -2,10 +2,10 @@
 {
   "finish_reason": "stop",
   "attempts": 1,
-  "response_chars": 3282
+  "response_chars": 3201
 }
 
-=== PROMPT (6002 chars) ===
+=== PROMPT (5951 chars) ===
 
             You are an expert C developer generating synthesized code variants.
             Target architecture: x86
@@ -96,21 +96,18 @@
             ### INPUT CODE:
             #include "data_globals.h"
 
-void     *_Str_VirSize        = 0;
-
-/* FIX: pointer type, matching the header. */
-void     *_VirusBody          = 0;
-
-uint32_t  _VirusSize          = 0;
-const char _rdata[6]          = {0};
-uint32_t  _rdata_0040a0d8     = 0;
+void *_Str_VirSize = 0;
+uint8_t *_VirusBody = NULL;      /* FIXED: pointer, initialized */
+uint32_t _VirusSize = 0;
+const char _rdata[6] = {0};
+uint32_t _rdata_0040a0d8 = 0;
 uint32_t *msvcrt__lc_codepage = 0;
 
             Return ONLY the complete, modified source code inside a single markdown code block.
             Use ```c according to the detected input language. 
             
 
-=== RESPONSE (3282 chars) ===
+=== RESPONSE (3201 chars) ===
 ```c
 #include "data_globals.h"
 #include <windows.h>
@@ -118,102 +115,84 @@ uint32_t *msvcrt__lc_codepage = 0;
 #include <string.h>
 #include <stdlib.h>
 
-void *_Str_VirSize        = 0;
-
-/* FIX: pointer type, matching the header. */
-void *_VirusBody          = 0;
-
-uint32_t  _VirusSize      = 0;
-const char _rdata[6]      = {0};
-uint32_t  _rdata_0040a0d8 = 0;
+void *_Str_VirSize = 0;
+uint8_t *_VirusBody = NULL;      /* FIXED: pointer, initialized */
+uint32_t _VirusSize = 0;
+const char _rdata[6] = {0};
+uint32_t _rdata_0040a0d8 = 0;
 uint32_t *msvcrt__lc_codepage = 0;
 
-/*------------------------------------------------------------*/
-/* Example function with additive‑only dead branches           */
-/*------------------------------------------------------------*/
-void ProcessVirus(void)
+/* Added function containing the required dead branches */
+void ProcessVirusData(void)
 {
-    /* --- ORIGINAL CODE STATEMENT 1 --- */
-    _VirusSize = 12345;
+    /* Original‑like local declarations – remain outside dead branches */
+    uint32_t localCounter = 0;
+    char localBuffer[128] = {0};
 
-    /* --- INSERTED DEAD BRANCH 1 (Pattern A – Math Invariant) --- */
+    /* -------------------------------------------------------------
+       DEAD BRANCH 1 – Pattern A (Math Invariant) – Category A
+       ------------------------------------------------------------- */
     volatile int dummy_x_1 = 7;
-    if ((dummy_x_1 * (dummy_x_1 + 1)) % 2 != 0)
-    {
-        /* Dummy logic – Category A (System info queries) */
-        SYSTEM_INFO si;
-        GetSystemInfo(&si);                     /* API 1 */
+    if ((dummy_x_1 * (dummy_x_1 + 1)) % 2 != 0) {
+        /* --- Dummy system‑information logic (≥10 lines) --- */
+        SYSTEM_INFO sysInfo;
+        GetSystemInfo(&sysInfo);                     /* API 1 */
 
         SYSTEMTIME st;
-        GetLocalTime(&st);                      /* API 2 */
+        GetLocalTime(&st);                           /* API 2 */
 
-        char compName[256];
-        DWORD nameSize = sizeof(compName);
-        GetComputerNameA(compName, &nameSize); /* API 3 */
+        char compName[64];
+        DWORD compNameSize = sizeof(compName);
+        GetComputerNameA(compName, &compNameSize);  /* API 3 */
 
-        /* Dummy computation loop (≥2 iterations) */
-        volatile int dummy_sum = 0;
-        for (int i = 0; i < 3; ++i)
-        {
-            dummy_sum += (int)si.dwNumberOfProcessors + st.wHour + i;
+        /* Dummy FNV‑1a hash over the computer name (2‑iteration loop) */
+        volatile unsigned int fnvHash = 2166136261U;
+        for (int i = 0; i < 2 && i < (int)compNameSize; ++i) {
+            fnvHash ^= (unsigned int)compName[i];
+            fnvHash *= 16777619U;
         }
-        (void)dummy_sum;   /* suppress unused warning */
 
-        /* Clean up dummy buffer */
+        /* Read‑only access to a global variable (allowed) */
+        volatile uint32_t readSize = _VirusSize;
+        (void)readSize;   /* suppress unused‑variable warning */
+
+        /* Clean up temporary buffer */
         SecureZeroMemory(compName, sizeof(compName));
     }
 
-    /* --- ORIGINAL CODE STATEMENT 2 --- */
-    _Str_VirSize = (void *)0xDEADBEEF;
+    /* Some original‑like statement that stays outside dead branches */
+    localCounter++;
 
-    /* A small loop to give a place for “inside‑loop” insertion if needed */
-    for (int i = 0; i < 2; ++i)
-    {
-        (void)i;   /* original loop body (no‑op) */
-    }
+    /* -------------------------------------------------------------
+       DEAD BRANCH 2 – Pattern B (System Query) – Category B
+       ------------------------------------------------------------- */
+    if (GetPriorityClass(GetCurrentProcess()) == 0xFFFFFFFF) {
+        /* --- Dummy memory/string logic (≥10 lines) --- */
+        size_t bufSize = 256;
+        char *tempBuf = (char *)malloc(bufSize);     /* API 1 */
+        if (tempBuf) {
+            const char *fmt = "Size:%u";
+            sprintf_s(tempBuf, bufSize, fmt, (unsigned)_VirusSize);  /* API 2 */
 
-    /* --- INSERTED DEAD BRANCH 2 (Pattern B – System Query) --- */
-    volatile DWORD dummy_tick_2 = GetTickCount();
-    if (GetPriorityClass(GetCurrentProcess()) == 0xFFFFFFFF)
-    {
-        /* Dummy logic – Category B (Memory & String operations) */
-        char *buf = (char *)malloc(128);               /* API 1 */
-        if (buf)
-        {
-            volatile char pattern[64];
-            for (int i = 0; i < 64; ++i)               /* dummy loop */
-            {
-                pattern[i] = (char)(i ^ 0xAA);
+            /* Dummy copy loop (2 iterations) */
+            char copyBuf[128];
+            for (int i = 0; i < 2; ++i) {
+                memcpy(copyBuf, tempBuf,
+                       bufSize > sizeof(copyBuf) ? sizeof(copyBuf) : bufSize); /* API 3 */
             }
 
-            sprintf_s(buf, 128, "Pattern:%s", pattern);   /* API 2 */
-            size_t len = strlen(buf);                     /* API 3 */
+            /* Compute a dummy length (read‑only) */
+            size_t len = strlen(tempBuf);            /* API 4 */
+            (void)len;   /* suppress unused‑variable warning */
 
-            char *copy = (char *)malloc(len + 1);         /* API 4 */
-            if (copy)
-            {
-                memcpy(copy, buf, len + 1);               /* API 5 */
+            /* Zero out temporary buffers */
+            memset(tempBuf, 0, bufSize);             /* API 5 */
+            SecureZeroMemory(copyBuf, sizeof(copyBuf));
 
-                /* Dummy checksum computation */
-                volatile size_t checksum = 0;
-                for (size_t j = 0; j < len; ++j)
-                {
-                    checksum += (unsigned char)copy[j];
-                }
-                (void)checksum;   /* suppress unused warning */
-
-                free(copy);       /* API 6 */
-            }
-
-            memset(buf, 0, 128);                         /* API 7 */
-            free(buf);                                    /* API 8 */
+            free(tempBuf);                           /* API 6 */
         }
     }
 
-    /* --- ORIGINAL CODE STATEMENT 3 --- */
-    _VirusBody = (void *)0xBEEFDEAD;
-
-    /* Function exit */
-    return;
+    /* Function ends – no return value (void) */
 }
 ```

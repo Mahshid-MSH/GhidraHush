@@ -6,4 +6,6 @@ matplotlib
 python-dotenv
 PyYAML
 openpyxl>=3.0.0
+pandas
 openai
+requests

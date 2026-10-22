@@ -461,11 +461,16 @@ Your task is to fix compiler errors by outputting the ENTIRE corrected source co
 ### REQUIRED JSON FORMAT:
 You must respond ONLY with a valid JSON object matching this exact schema. If no header patch is needed, leave the list empty [].
 {
-    "reasoning": "Explain whether this is a structural or type error, and exactly what you changed.",
-    "full_fixed_code": "The complete, fully corrected C code string, including all includes and the full function block.",
+    "reasoning": "Explain the error and what you changed in the code or data_globals.h.",
+    "full_fixed_code": "The complete, fully corrected C/C++ code string.",
     "header_patches": [
         {
-            "replace": "int FUN_00401000(char *a);" 
+            "description": "Fix global array type for _VirusBody",
+            "replace": "extern const uint8_t _VirusBody[];"
+        },
+        {
+            "description": "Fix function prototype return type",
+            "replace": "uint32_t _GetSpecialFolder(LPBYTE param_1, LPCSTR param_2);"
         }
     ]
 }
@@ -518,14 +523,18 @@ You must respond ONLY with a valid JSON object matching this exact schema:
 """
 
 def get_whole_function_prompt(c_code: str, error_log: str, retrieved_header_context: str) -> str:
-    return WHOLE_FUNCTION_PATCH_PROMPT.replace("{c_code}", c_code)\
-                                      .replace("{error_log}", error_log)\
-                                      .replace("{retrieved_header_context}", retrieved_header_context)
+    return (
+        WHOLE_FUNCTION_PATCH_PROMPT.replace("{c_code}", c_code)
+        .replace("{error_log}", error_log)
+        .replace("{retrieved_header_context}", retrieved_header_context)
+    )
 
 def get_surgical_prompt(line_numbered_code: str, error_log: str, retrieved_header_context: str) -> str:
-    return SURGICAL_PATCH_PROMPT.replace("{line_numbered_code}", line_numbered_code)\
-                                .replace("{error_log}", error_log)\
-                                .replace("{retrieved_header_context}", retrieved_header_context)
+    return (
+        SURGICAL_PATCH_PROMPT.replace("{line_numbered_code}", line_numbered_code)
+        .replace("{error_log}", error_log)
+        .replace("{retrieved_header_context}", retrieved_header_context)
+    )
 
 
 def get_pass_1_prompt(is_cpp: bool, var_rule: str) -> str:

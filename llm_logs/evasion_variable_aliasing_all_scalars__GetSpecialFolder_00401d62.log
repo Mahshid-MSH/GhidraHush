@@ -2,10 +2,10 @@
 {
   "finish_reason": "stop",
   "attempts": 1,
-  "response_chars": 1258
+  "response_chars": 1230
 }
 
-=== PROMPT (4448 chars) ===
+=== PROMPT (4380 chars) ===
 
         You are an expert C developer generating synthesized code variants.
 
@@ -81,40 +81,38 @@
 
 uint32_t _GetSpecialFolder(LPBYTE buffer, LPCSTR valueName)
 {
-    LONG      status;
-    uint32_t  result;
-    DWORD     bufferSize;
-    HKEY      hKey = NULL;
-
-    bufferSize = 0x104;
-    memset(buffer, 0, 0x104);
-
-    status = RegOpenKeyExA(
-        (HKEY)0x80000001,
-        "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders",
-        0,
-        KEY_READ,
-        &hKey);
-
-    if (status == 0) {
-        status = RegQueryValueExA(hKey, valueName, NULL, NULL, buffer, &bufferSize);
-        RegCloseKey(hKey);
-
-        if (status == 0) {
-            result = 1;
-        } else {
-            result = 0;
-        }
-    } else {
-        result = 0;
+  int32_t status;
+  uint32_t result;
+  uint32_t dataSize;
+  HKEY hKey[3];
+  dataSize = 0x104;
+  memset(buffer, 0, 0x104);
+  status = RegOpenKeyExA((HKEY) 0x80000001, "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders", 0, KEY_READ, hKey);
+  if (status == 0)
+  {
+    status = RegQueryValueExA(hKey[0], valueName, NULL, NULL, buffer, &dataSize);
+    if (status == 0)
+    {
+      RegCloseKey(hKey[0]);
+      result = 1;
     }
-
-    return result;
+    else
+    {
+      RegCloseKey(hKey[0]);
+      result = 0;
+    }
+  }
+  else
+  {
+    result = 0;
+  }
+  return result;
 }
+
 
         
 
-=== RESPONSE (1258 chars) ===
+=== RESPONSE (1230 chars) ===
 ```c
 #include "data_globals.h"
 #include <windows.h>
@@ -124,38 +122,34 @@ uint32_t _GetSpecialFolder(LPBYTE buffer, LPCSTR valueName)
 #pragma optimize("", off)
 uint32_t _GetSpecialFolder(LPBYTE buffer, LPCSTR valueName)
 {
-    volatile LONG status_buf[2] = {0, (LONG)0};
-    volatile LONG *p_status = (volatile LONG *)&status_buf[0];
+    volatile int32_t status_buf[2] = {0, (int32_t)0};
+    volatile int32_t *p_status = (volatile int32_t *)&status_buf[0];
     volatile uint32_t result_buf[2] = {0, (uint32_t)0};
     volatile uint32_t *p_result = (volatile uint32_t *)&result_buf[0];
-    volatile DWORD bufferSize_buf[2] = {0, (DWORD)0};
-    volatile DWORD *p_bufferSize = (volatile DWORD *)&bufferSize_buf[0];
-    HKEY volatile hKey_buf[2] = {NULL, (HKEY)0};
-    HKEY volatile *p_hKey = &hKey_buf[0];
-
-    (*p_bufferSize) = 0x104;
+    volatile uint32_t dataSize_buf[2] = {0, (uint32_t)0};
+    volatile uint32_t *p_dataSize = (volatile uint32_t *)&dataSize_buf[0];
+    HKEY hKey[3];
+    (*p_dataSize) = 0x104;
     memset(buffer, 0, 0x104);
-
-    (*p_status) = RegOpenKeyExA(
-        (HKEY)0x80000001,
-        "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders",
-        0,
-        KEY_READ,
-        p_hKey);
-
-    if ((*p_status) == 0) {
-        (*p_status) = RegQueryValueExA((*p_hKey), valueName, NULL, NULL, buffer, p_bufferSize);
-        RegCloseKey((*p_hKey));
-
-        if ((*p_status) == 0) {
+    (*p_status) = RegOpenKeyExA((HKEY)0x80000001, "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders", 0, KEY_READ, hKey);
+    if ((*p_status) == 0)
+    {
+        (*p_status) = RegQueryValueExA(hKey[0], valueName, NULL, NULL, buffer, (LPDWORD)p_dataSize);
+        if ((*p_status) == 0)
+        {
+            RegCloseKey(hKey[0]);
             (*p_result) = 1;
-        } else {
+        }
+        else
+        {
+            RegCloseKey(hKey[0]);
             (*p_result) = 0;
         }
-    } else {
+    }
+    else
+    {
         (*p_result) = 0;
     }
-
     return (*p_result);
 }
 #pragma optimize("", on)
