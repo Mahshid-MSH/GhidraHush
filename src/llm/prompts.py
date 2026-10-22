@@ -30,98 +30,13 @@ PASS_1_PROMPT_CPP = """You are an expert C++ programmer refactoring Ghidra pseud
 5. **REMOVE COMPILER ARTIFACTS**: Strip `__stdcall`, `ExceptionList`, `__security_cookie`, stack-check loops, and dead canary variables.
 6. **PRESERVE LOGIC**: Maintain all side effects and logical flow.
 7. **GLOBAL SYMBOLS**: Keep global names intact (`DAT_`, `s_`). Do NOT define structs or auxiliary types locally.
+9. ** GLOBAL REDEFINITION**: ALL the global data are already defined elsewhere. You shall not define them again inside the file.
 8. **DEFER C++ RECONSTRUCTION**: Do not transform explicit `this` pointer arithmetic into high-level class abstractions during this pass.
 9. **OUTPUT**: Return ONLY valid C++ code wrapped in ```cpp backticks. No commentary.
 
 ### INPUT CODE
 ___C_CODE_PLACEHOLDER___
 """
-
-PASS_2_PROMPT_C = """You are an expert C programmer fixing memory pointers, casts, and API calls in Ghidra pseudo-code.
-
-### STRICT RULES
-
-1. **POINTER RECOVERY**: Cast integer types used as address offsets to appropriate pointer types.
-2. **ARRAY & BUFFER INDEXING**: Convert expressions like `*(char *)((uintptr_t)i + Buffer)` to `Buffer[i]`.
-3. **GLOBAL ADDRESSES**: Cast fixed numeric addresses to appropriate pointer types (e.g., `(const char *)0x140008164`).
-4. **WIN32 CONSTANTS & MACROS**:
-- Replace registry handle magic numbers: `(HKEY)0x80000000` -> `HKEY_CLASSES_ROOT`, `(HKEY)0x80000001` -> `HKEY_CURRENT_USER`, `(HKEY)0x80000002` -> `HKEY_LOCAL_MACHINE`.
-- Replace Win32 access masks: `0xf003f` -> `KEY_ALL_ACCESS`, `0x20019` -> `KEY_READ`.
-5. **CRT FUNCTION NORMALIZATION**:
-- Replace non-standard MSVC function aliases with ISO C standards (e.g., replace `_snprintf` with `snprintf`, `_stricmp` with `stricmp`/`strcasecmp`).
-6. **CONST CORRECTNESS**: Apply `const char *` where string literals are assigned.
-7. **FUNCTION POINTERS**: Properly cast function pointer calls before invocation.
-{context_block}
-8. **NO LOCAL TYPE DEFINITIONS**: Do NOT define structs, unions, enums, or function prototypes locally.
-9. **OUTPUT**: Return ONLY valid C code inside ```c backticks.
-
-### INPUT CODE
-___C_CODE_PLACEHOLDER___
-"""
-
-PASS_2_PROMPT_CPP = """You are an expert C++ programmer fixing memory references, C++ style casts (`static_cast`, `reinterpret_cast`), and API calls.
-
-### STRICT RULES
-
-1. **C++ CASTS**: Replace raw C-style pointer casts with `reinterpret_cast` or `static_cast`.
-2. **WIN32 CONSTANTS & MACROS**: Convert raw hex literals for registry keys/access masks (`0x80000002` -> `HKEY_LOCAL_MACHINE`, `0xf003f` -> `KEY_ALL_ACCESS`).
-3. **CRT FUNCTION NORMALIZATION**: Replace MSVC specific aliases like `_snprintf` with standard `snprintf` or `std::snprintf`.
-4. **NO LOCAL TYPES**: Do NOT define external structs or function prototypes locally.
-{context_block}
-5. **OUTPUT**: Return ONLY valid C++ code inside ```cpp backticks.
-
-### INPUT CODE
-___C_CODE_PLACEHOLDER___
-"""
-
-PASS_3_PROMPT_C = """You are an expert C reverse engineer ensuring decompiled code compiles cleanly.
-
-### HARD REQUIREMENTS
-
-1. **HEADER INCLUSIONS**:
-- `#include "data_globals.h"` MUST be the very first line.
-- Include standard system headers directly after `data_globals.h` based on APIs used in the body:
-    * If Win32 APIs/types (`HKEY`, `DWORD`, `CHAR`, `GetUserNameA`, `RegCreateKeyExA`) are present: `#include <windows.h>`
-    * If string functions (`memcpy`, `strncpy`, `strstr`) are present: `#include <string.h>`
-    * If formatting functions (`snprintf`, `printf`) are present: `#include <stdio.h>`
-    * If memory/utility functions (`malloc`, `free`, `exit`) are present: `#include <stdlib.h>`
-    * If x86 intrinsics (`__inword`, `__rdtsc`, `__cpuid`) are present: `#include <intrin.h>`
-2. **NO STRUCT OR PROTOTYPE DEFINITIONS**: NEVER define structs, unions, enums, or function prototypes locally. Assume they exist in `data_globals.h` or included system headers.
-3. **TRANSLATE GHIDRA ARTIFACTS**:
-- `CONCATxy(hi, lo)`: Convert to explicit bitwise shifts and masks: `(((uint64_t)(hi) << 32) | (uint32_t)(lo))`.
-- `SUBxy(val, n)`: Convert to shift and cast: `(uint<y*8>_t)((val) >> (n * 8))`.
-- `local_X._0_1_`: Convert to explicit bitwise shift/mask operations on `local_X`.
-- `goto`/`LAB_xxx`: Restructure into clean loops/conditionals ONLY if flow equivalence is guaranteed. Keep `goto` if non-trivial or irreducible.
-4. **EXCEPTION HANDLING COMPATIBILITY**:
-- Do NOT mix C++ `try/catch` and MSVC Structured Exception Handling (`__try` / `__except`) in the same block. For Win32 hardware exception checking (like `__inword`), use SEH (`__try / __except`) exclusively without C++ `try/catch`.
-5. **ONE FUNCTION ONLY**: Output only the `#include` directives and the target function inside ```c backticks.
-
-### INPUT CODE
-___C_CODE_PLACEHOLDER___
-"""
-
-PASS_3_PROMPT_CPP = """You are an expert C++ reverse engineer ensuring decompiled C++ code compiles cleanly (C++17 standard).
-
-### HARD REQUIREMENTS
-
-1. **HEADER INCLUSIONS**:
-- `#include "data_globals.h"` MUST be the very first line.
-- Include required headers immediately following `data_globals.h`:
-    * Win32 types (`HKEY`, `DWORD`, `CHAR`, `GetUserNameA`, etc.): `#include <windows.h>`
-    * Formatting (`snprintf`): `#include <cstdio>`
-    * String ops (`strstr`, `strncpy`): `#include <cstring>`
-    * Standard containers/strings: `#include <string>`, `#include <vector>`
-    * MSVC/x86 Intrinsics (`__inword`, `__readfsdword`): `#include <intrin.h>`
-2. **NO STRUCT OR PROTOTYPE DEFINITIONS**: NEVER define custom structs, classes, enums, or external prototypes locally.
-3. **EXCEPTION HANDLING COMPATIBILITY**:
-- NEVER nest MSVC SEH blocks (`__try` / `__except`) inside C++ `try` / `catch` blocks. If SEH is used for hardware checks (e.g., `__inword`), remove the redundant outer C++ `try / catch` structure.
-4. **TRANSLATE GHIDRA ARTIFACTS**: Rewrite bitwise macros (`CONCATxy`, `SUBxy`) into explicit C++ arithmetic masks.
-5. **ONE FUNCTION ONLY**: Output only the `#include` directives and the target function inside ```cpp backticks.
-
-### INPUT CODE
-___C_CODE_PLACEHOLDER___
-"""
-
 
 JUNK_CODE_PROMPT = """
             You are an expert {lang_word} developer generating synthesized code variants.
@@ -135,14 +50,14 @@ JUNK_CODE_PROMPT = """
             - You may add required `#include` directives at the beginning of the file only if needed; do not remove or modify existing includes.
 
             ### MANDATORY VOLUME AND PLACEMENT
-            - Insert **at least 2 dead branches** in the given function.
+            - Insert ___BRANCH_COUNT___ dead branches in the given function.
             - Place them at **different locations**: after variable declarations, before loops, inside loops (but not around original statements), and before return statements.
-            - Each dead branch must contain **at least 10 lines** of dummy code.
+            - Each dead branch must contain **at least ___MIN_LINES___ lines** of dummy code.
             - Each dead branch must use a **different opaque predicate pattern** from the list below.
-            - Each dead branch must use a **different category** from the list below.
+            - Restrict opaque predicates to this allowed set only: ___ALLOWED_PATTERNS___.
 
             ### OPAQUE PREDICATE REQUIREMENTS
-            Use only the following patterns, one per branch. Do NOT use `if (0)` or `volatile int v = 0; if (v)`.
+            Use only the patterns listed in ___ALLOWED_PATTERNS___ above, one per branch. Do NOT use `if (0)` or `volatile int v = 0; if (v)`.
             Do NOT use registry APIs in dead branches.
 
             Pattern A (Math Invariant):
@@ -174,7 +89,7 @@ JUNK_CODE_PROMPT = """
             - End each body with `memset` or `SecureZeroMemory` on dummy buffers to appear realistic.
             - Ensure no variable shadowing or redefinition.
 
-            CATEGORIES (choose one per branch, no repeats within the same function)
+            CATEGORIES (choose only from the allowed set in ___ALLOWED_PATTERNS___, no repeats within the same function)
 
             A: System info queries
             GetSystemInfo, GetLocalTime, GetUserNameA, GetComputerNameA
@@ -224,7 +139,7 @@ STACK_STRING_PROMPT = """
         To ensure MSVC does not optimize this away via constant folding, you MUST use `volatile` arrays and disable optimizations.
 
         ### STRICT SELECTION CRITERIA
-        1. **SELECTIVE TARGETING:** Target prominent or sensitive string literals (e.g., DLL names, API names, file paths, registry keys, network endpoints). Leave minor formatting strings (e.g., `"%s"`, `"\\n"`) alone.
+        1. **SELECTIVE TARGETING:** ___SELECTION_RULE___
         2. DO NOT target `#include` directives.
         3. DO NOT target single character literals (e.g., `'A'`).
 
@@ -232,7 +147,7 @@ STACK_STRING_PROMPT = """
         1. **DISABLE OPTIMIZATIONS:** You MUST insert `#pragma optimize("", off)` before the helper function, and `#pragma optimize("", on)` after the main function closes.
         2. **CENTRALIZED DECRYPTION HELPER:** Define a static decryption helper function above the target function that accepts a `volatile char*`:
         `static void xor_decrypt(volatile char *buf, size_t len, unsigned char key) {{ for (size_t i = 0; i < len; i++) {{ buf[i] ^= key; }} }}`
-        3. **PER-STRING KEY ROTATION:** Assign a DIFFERENT, unique 1-byte XOR key (e.g., `0x3E`, `0x7A`, `0x1F`) to each target string literal across the function to eliminate single-key signatures.
+        3. **KEY SCHEME:** ___KEY_SCHEME_RULE___
         4. **VOLATILE CHARACTER LITERAL INITIALIZATION:** For each selected string, initialize a stack array using `volatile char` and XORed characters: `volatile char sz_str_1[] = {{'c'^KEY, ...}};`
         5. **NULL TERMINATION:** Always include the null terminator as the final element, written as `0x00 ^ KEY`.
         6. **LAZY JUST-IN-TIME DECRYPTION:** Call `xor_decrypt(sz_str, sizeof(sz_str), KEY);` immediately before the string is passed into an API call.
@@ -241,16 +156,16 @@ STACK_STRING_PROMPT = """
         ### STRUCTURAL EXAMPLE (MIMIC THIS EXACTLY)
 
         **Original Code:**
-        ```{code_fence}
+```{code_fence}
         HMODULE hMod = GetModuleHandleA("kernel32.dll");
         if (hMod) {{
             CopyFileA("C:\\\\test.txt", "C:\\\\Windows\\\\Temp\\\\test.txt", FALSE);
             return 1;
         }}
-        ```
+```
 
         **Transformed Code:**
-        ```{code_fence}
+```{code_fence}
         #pragma optimize("", off)
         static void xor_decrypt(volatile char *buf, size_t len, unsigned char key) {{
             for (size_t i = 0; i < len; i++) {{
@@ -279,13 +194,13 @@ STACK_STRING_PROMPT = """
             return 0;
         }}
         #pragma optimize("", on)
-        ```
+```
 
         ### OUTPUT CONSTRAINTS (CRITICAL)
         - You MUST wrap all generated code in `#pragma optimize("", off)` and `#pragma optimize("", on)`.
         - You MUST use `volatile char` for the stack arrays and `volatile char *` for the helper function argument.
         - You MUST cast the array to `(char*)` (or `reinterpret_cast<char*>` in C++) when using it in standard functions or APIs.
-        - Generate a UNIQUE 1-byte XOR key for each string transformed in the function.
+        - Follow the key scheme described above for each string transformed in the function.
         - Decrypt strings lazily right before they are used.
         - DO NOT OUTPUT ANY EXPLANATION, ANALYSIS, OR CONVERSATIONAL TEXT.
         - Return ONLY the exact, modified source code inside a single markdown code block (```{code_fence} ... ```).
@@ -300,12 +215,12 @@ VARIABLE_ALIASING_PROMPT = """
 
         ### YOUR OBJECTIVE
         Apply "Aggressive Variable Aliasing via Pointer Indirection" to the provided {lang_word} function. 
-        You must heavily mutate the Data Flow Graph (DFG) by transforming EVERY eligible local variable into a heap-style pointer abstraction on the stack. 
+        You must heavily mutate the Data Flow Graph (DFG) by transforming eligible local variables into a heap-style pointer abstraction on the stack. 
         To ensure MSVC does not optimize away these indirections, you MUST wrap the function in optimization pragmas and use the `volatile` keyword.
 
         ### STRICT SELECTION CRITERIA
-        1. Target some local scalar variables in the function (e.g., `int`, `DWORD`, `HANDLE`, `size_t`, `char`, `LPVOID`, `HMODULE`).
-        2. Target loop counters (e.g., the `i` in `for (int i = 0; ...)`). 
+        1. ___SCALAR_RULE___
+        2. ___LOOP_COUNTER_RULE___
         3. DO NOT target function parameters.
         4. DO NOT target arrays (e.g., `char buf[256]`), structs (e.g., `SYSTEM_INFO si`), or globally scoped variables.
 
@@ -315,7 +230,7 @@ VARIABLE_ALIASING_PROMPT = """
         2. **Uninitialized Variables:** `TYPE var;` becomes `volatile TYPE var_buf[2] = {{0, (TYPE)0}}; volatile TYPE *p_var = (volatile TYPE *)&var_buf[0];`
         3. **Initialized Variables:** `TYPE var = val;` becomes `volatile TYPE var_buf[2] = {{val, (TYPE)0}}; volatile TYPE *p_var = (volatile TYPE *)&var_buf[0];`
         4. **Loop Variables:** Extract inline loop declarations (`for(int i=0;)`) to the outer scope before the loop, initialize the volatile buffer/pointer, and use the dereference inside the loop parameters.
-        5. **Substitution:** Substitute EVERY subsequent read or write of the variable within the function scope with the parenthesized dereferenced pointer `(*p_var)`.
+        5. **Substitution:** Substitute EVERY subsequent read or write of a targeted variable within the function scope with the parenthesized dereferenced pointer `(*p_var)`.
         6. **Pointer Preservation:** If the original variable was already a pointer (e.g., `char* pStr`), ensure the pointer itself is marked volatile (e.g., `char* volatile pStr_buf...`).
 
         ### STRUCTURAL VARIANTS (MIMIC THESE EXACTLY)
@@ -323,44 +238,44 @@ VARIABLE_ALIASING_PROMPT = """
         **Variant 1: Standard Initialization**
         Original: `HANDLE hProc = NULL;`
         Transformed: 
-        ```{code_fence}
+```{code_fence}
         volatile HANDLE hProc_buf[2] = {{NULL, (HANDLE)0}};
         volatile HANDLE *p_hProc = (volatile HANDLE *)&hProc_buf[0];
-        ```
+```
 
         **Variant 2: Uninitialized Declaration**
         Original: `DWORD bytesWritten;`
         Transformed:
-        ```{code_fence}
+```{code_fence}
         volatile DWORD bytesWritten_buf[2] = {{0, (DWORD)0}};
         volatile DWORD *p_bytesWritten = (volatile DWORD *)&bytesWritten_buf[0];
-        ```
+```
 
         **Variant 3: Inline Loop Counters**
         Original:
-        ```{code_fence}
+```{code_fence}
         for (int i = 0; i < max_len; i++) {{ ... }}
-        ```
+```
         Transformed:
-        ```{code_fence}
+```{code_fence}
         volatile int i_buf[2] = {{0, (int)0}};
         volatile int *p_i = (volatile int *)&i_buf[0];
         for ((*p_i) = 0; (*p_i) < (*p_max_len); (*p_i)++) {{ ... }}
-        ```
+```
 
         **Variant 4: Existing Pointers**
         Original: `char* pStr = "test";`
         Transformed:
-        ```{code_fence}
+```{code_fence}
         char* volatile pStr_buf[2] = {{"test", (char*)0}};
         char* volatile *p_pStr = &pStr_buf[0];
-        ```
+```
 
         ### OUTPUT CONSTRAINTS (CRITICAL)
         - You MUST wrap the function in `#pragma optimize("", off)` and `#pragma optimize("", on)`.
         - DO NOT OUTPUT ANY EXPLANATION, ANALYSIS, OR CONVERSATIONAL TEXT.
         - Return ONLY the exact, modified source code inside a single markdown code block (```{code_fence} ... ```).
-        - Transform as many variables as structurally possible without breaking standard {lang_word} syntax.
+        - Transform variables strictly according to the selection criteria above, without breaking standard {lang_word} syntax.
 
         INPUT CODE:
         {c_code}
@@ -375,11 +290,7 @@ CONTROL_FLOW_PROMPT = """
         To ensure MSVC does not unflatten the control flow via block reordering or constant propagation, you MUST disable optimizations for the target function.
 
         ### CONSTRAINTS
-        1. FEATURE ISOLATION: Implement EXACTLY ONE of the following techniques matching the target architecture rules.
-
-        Target architecture rules:
-        - Opaque conditional jump using MSVC __asm blocks and volatile condition checks (x86 only; not available on x64).
-        - Control Flow Flattening using a volatile state variable and a goto-based dispatcher (NO switch statements).
+        1. FEATURE ISOLATION: Implement EXACTLY the following technique: ___DISPATCH_INSTRUCTION___
 
         2. DISABLE OPTIMIZATIONS: You MUST insert `#pragma optimize("", off)` immediately before the function signature, and `#pragma optimize("", on)` immediately after the function closes.
 
@@ -402,8 +313,10 @@ CONTROL_FLOW_PROMPT = """
         If using **Control Flow Flattening**, restructure the original block sequence into a `goto`-based state machine. 
         DO NOT use a `while-switch` loop. Mimic this exact layout:
 
-        ```{code_fence}
+```{code_fence}
         #pragma optimize("", off)
+        #include <windows.h>
+        
         int target_function(void) {{
             volatile int dummy_state = 1;
 
@@ -429,7 +342,7 @@ CONTROL_FLOW_PROMPT = """
             return 0;
         }}
         #pragma optimize("", on)
-        ```
+```
 
         Rules for Control Flow Flattening:
         - Split the original function body into logical blocks while preserving exact execution order.
@@ -453,9 +366,9 @@ LOCAL_CONTEXT_STRUCT_PROMPT = """
             You are an expert {lang_word} developer generating synthesized code variants.
 
             ### YOUR OBJECTIVE
-            Apply "Local Context Struct Packaging" to the provided {lang_word} function. You must bundle all locally scoped variables into a single, locally defined structure. To ensure the compiler does not optimize this structure away, you must wrap the function in MSVC optimization pragmas and declare the structure instance as `volatile`. 
+            Apply "Local Context Struct Packaging" to the provided {lang_word} function. You must bundle locally scoped variables into a single, locally defined structure. To ensure the compiler does not optimize this structure away, you must wrap the function in MSVC optimization pragmas and declare the structure instance as `volatile`. 
             ### STRICT SELECTION CRITERIA
-            1. Target **EVERY** locally declared variable (e.g., scalars, pointers, arrays, handles).
+            1. ___SELECTION_RULE___
             2. Target inline loop counters (e.g., the `i` in `for(int i = 0; ...)`).
             3. DO NOT target function parameters (arguments passed into the function).
             4. DO NOT target `static` variables or globally scoped variables.
@@ -464,16 +377,17 @@ LOCAL_CONTEXT_STRUCT_PROMPT = """
             1. **DISABLE OPTIMIZATIONS:** You MUST insert `#pragma optimize("", off)` immediately before the function signature, and `#pragma optimize("", on)` immediately after the function closes.
             2. **STRUCT DEFINITION:** At the very beginning of the function body, define a structure named `struct _LocalCtx`.
             3. **VOLATILE INSTANTIATION:** You MUST instantiate the structure with the `volatile` keyword as `volatile struct _LocalCtx ctx;`.
-            4. Move all targeted variable declarations into the `struct _LocalCtx` definition.
+            4. ___GROUPING_RULE___
             5. **CRITICAL:** C structures do NOT allow inline initialization. You MUST separate the declaration (inside the struct) from the assignment (after the struct instantiation).
             6. For variables that were initialized at declaration (e.g., `int count = 10;`), move `int count;` into the struct, and write `ctx.count = 10;` immediately after the struct is instantiated.
             7. For inline loop counters (`for(int i = 0;)`), move `int i;` into the struct, and update the loop to `for(ctx.i = 0; ...)`.
-            8. Substitute EVERY subsequent usage of the variables in the function with the `ctx.` prefix (e.g., `var_name` becomes `ctx.var_name`).
+            8. Substitute EVERY subsequent usage of the targeted variables in the function with the `ctx.` prefix (e.g., `var_name` becomes `ctx.var_name`).
 
             ### STRUCTURAL EXAMPLE (MIMIC THIS EXACTLY)
 
             **Original Code:**
-            ```{code_fence}
+```{code_fence}
+            #include <windows.h>
             int parse_data(char* input, DWORD size) {{
                 HANDLE hHeap = GetProcessHeap();
                 int count = 0;
@@ -485,11 +399,12 @@ LOCAL_CONTEXT_STRUCT_PROMPT = """
                 }}
                 return count;
             }}
-            ```
+```
             
             **Transformed Code:**
-            ```{code_fence}
+```{code_fence}
             #pragma optimize("", off)
+            #include <windows.h>
             int parse_data(char* input, DWORD size) {{
                 volatile struct _LocalCtx {{
                     HANDLE hHeap;
@@ -509,7 +424,7 @@ LOCAL_CONTEXT_STRUCT_PROMPT = """
                 return ctx.count;
             }}
             #pragma optimize("", on)
-            ```
+```
 
             ### OUTPUT CONSTRAINTS (CRITICAL)
             You MUST wrap the function in #pragma optimize("", off) and #pragma optimize("", on).
@@ -524,16 +439,105 @@ LOCAL_CONTEXT_STRUCT_PROMPT = """
             {c_code}
             """
 
+WHOLE_FUNCTION_PATCH_PROMPT = """You are a C/C++ bug-fixing assistant.
+Your task is to fix compiler errors by outputting the ENTIRE corrected source code.
+
+### RELEVANT GLOBAL HEADER CONTEXT (data_globals.h):
+{retrieved_header_context}
+
+### COMPILER ERRORS:
+{error_log}
+
+### BROKEN SOURCE CODE:
+{c_code}
+
+### INSTRUCTIONS:
+1. IDENTIFY THE ERROR TYPE: Is this a structural error (too many/few arguments, undeclared) or a type error?
+2. HEADER PATCHES: If the error involves an invalid cast from a function returning `void`, or mismatched arguments, you MUST write a new prototype in `header_patches` to fix the return type or signature. 
+3. TYPES SECOND: Explicitly cast all global variables, raw memory addresses, and DAT_... variables to the exact types expected.
+4. UNDECLARED VARIABLES & SCOPE: If an error states a variable is undeclared, you MUST add its declaration at the VERY TOP of the function block. NEVER declare variables inside `if` blocks, `for` loops, or `do-while` loops, as they will lose scope.
+5. RETURN COMPLETE CODE: You must return the entirety of the C code provided above, with your fixes seamlessly integrated. Do not truncate the code.
+
+### REQUIRED JSON FORMAT:
+You must respond ONLY with a valid JSON object matching this exact schema. If no header patch is needed, leave the list empty [].
+{
+    "reasoning": "Explain the error and what you changed in the code or data_globals.h.",
+    "full_fixed_code": "The complete, fully corrected C/C++ code string.",
+    "header_patches": [
+        {
+            "description": "Fix global array type for _VirusBody",
+            "replace": "extern const uint8_t _VirusBody[];"
+        },
+        {
+            "description": "Fix function prototype return type",
+            "replace": "uint32_t _GetSpecialFolder(LPBYTE param_1, LPCSTR param_2);"
+        }
+    ]
+}
+"""
+
+SURGICAL_PATCH_PROMPT = """You are a C/C++ bug-fixing assistant. DO NOT rewrite the entire function.
+Your task is to fix compiler errors by outputting SURGICAL LINE REPLACEMENTS in JSON format.
+
+### RELEVANT GLOBAL HEADER CONTEXT (data_globals.h):
+{retrieved_header_context}
+
+### COMPILER ERRORS:
+{error_log}
+
+### BROKEN FUNCTION SOURCE CODE:
+{line_numbered_code}
+
+### INSTRUCTIONS:
+1. IDENTIFY THE ERROR TYPE: Is this a structural error (too many/few arguments, undeclared) or a type error (cast warning, pointer mismatch)?
+2. SIGNATURES FIRST: If the error is "too many/few arguments" OR "invalid use of void expression", Ghidra guessed the global signature incorrectly. The call site inside the function is the absolute source of truth. You MUST issue a "header_patches" replacement to make the global header match the call site.
+- If it's called with zero arguments, change the header to accept `(void)`.
+- If it's called with more arguments than the header has, change the header to a variadic function `(char *format, ...)` or add generic `uintptr_t` parameters.
+- If the code tries to assign a void function to a typed variable, change the header's return type from void to match the exact type of the variable it is being assigned to or cast to.        
+- If a function is called with zero arguments in the body, you MUST rewrite its header patch to accept (void).
+3. TYPES SECOND: Only if the error is specifically about incompatible pointers or typecasts should you issue a "function_patches" replacement to add things like `(WCHAR *)` or `&`.
+4. ONE FIX AT A TIME: Do not attempt to fix unmentioned errors. Address ONLY the compiler error provided.
+5. Do NOT declare or redefine standard C library functions (such as strlen, strncpy, malloc, etc.). Assume all necessary standard headers (like <string.h>, <windows.h>) are already included. If the decompiled code contains a custom implementation of a standard function, you MUST rename it by adding a custom_ prefix (e.g., custom_strlen, custom_strncpy) to avoid conflicts with the standard library
+6. Treat all C warnings as errors. You must explicitly cast all global variables, raw memory addresses, and DAT_... variables to the exact types expected by the function signatures. When calling Windows API functions, explicitly cast arguments to Windows data types (e.g., cast to (LPSTR) or (LPCSTR) for strings, (LPDWORD) for pointer-to-DWORD, (LPVOID) for generic pointers). Do NOT rely on implicit conversions between integers and pointers, or between different pointer types. Always write the explicit cast (e.g., GetUserNameA((LPSTR)DAT_00409f8c, (LPDWORD)&DAT_004099e0);).
+7. If a #include of a POSIX header (netdb.h, unistd.h, sys/socket.h, ...) fails with 'No such file or directory', that header does not exist on Windows:
+REMOVE the include line entirely, and rely on data_globals.h/windows.h
+(already force-included) for the same-named functions -- most POSIX network functions (gethostname, gethostbyname, socket, connect, send, recv) exist with identical names in winsock2.h.
+
+### REQUIRED JSON FORMAT:
+You must respond ONLY with a valid JSON object matching this exact schema:
+{
+"reasoning": "Explain whether this is a structural or type error, and what needs fixing.",
+"function_patches": [
+    {
+    "line_number": <integer line number from the provided code>,
+    "old_line": "<exact current line of code>",
+    "new_line": "<corrected line of code>"
+    }
+],
+"header_patches": [
+    {
+    "replace": "<the fully corrected prototype, e.g., int FUN_00401000(char *a);>"
+    }
+]
+}
+"""
+
+def get_whole_function_prompt(c_code: str, error_log: str, retrieved_header_context: str) -> str:
+    return (
+        WHOLE_FUNCTION_PATCH_PROMPT.replace("{c_code}", c_code)
+        .replace("{error_log}", error_log)
+        .replace("{retrieved_header_context}", retrieved_header_context)
+    )
+
+def get_surgical_prompt(line_numbered_code: str, error_log: str, retrieved_header_context: str) -> str:
+    return (
+        SURGICAL_PATCH_PROMPT.replace("{line_numbered_code}", line_numbered_code)
+        .replace("{error_log}", error_log)
+        .replace("{retrieved_header_context}", retrieved_header_context)
+    )
+
 
 def get_pass_1_prompt(is_cpp: bool, var_rule: str) -> str:
     template = PASS_1_PROMPT_CPP if is_cpp else PASS_1_PROMPT_C
     return template.replace("{var_rule}", var_rule)
 
-
-def get_pass_2_prompt(is_cpp: bool, context_block: str) -> str:
-    template = PASS_2_PROMPT_CPP if is_cpp else PASS_2_PROMPT_C
-    return template.replace("{context_block}", context_block)
-
-
-def get_pass_3_prompt(is_cpp: bool) -> str:
-    return PASS_3_PROMPT_CPP if is_cpp else PASS_3_PROMPT_C

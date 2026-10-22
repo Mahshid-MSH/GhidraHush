@@ -8,7 +8,6 @@ cd "$SCRIPT_DIR" || exit 1
 COMPOSE_FILE="docker-compose.yaml"
 ENV_FILE=".env"
 WORKSPACE_BASE_DIR="workspace"
-WORKSPACE_PREFIX="run"
 
 # --- Colors ---
 CYAN='\033[96m'
@@ -39,6 +38,59 @@ update_env_var() {
     else
         echo "${key}='${value}'" >> "$ENV_FILE"
     fi
+}
+
+prompt_menu_choice() {
+    local prompt="$1"
+    local valid_choices="$2"
+    local answer
+
+    while true; do
+        echo -e "$prompt"
+        read -r -p "Choice: " answer
+        answer="${answer//[[:space:]]/}"
+        if [[ "$answer" =~ ^($valid_choices)$ ]]; then
+            REPLY="$answer"
+            return
+        fi
+        echo -e "${RED}Invalid choice. Try again.${RESET}"
+    done
+}
+
+prompt_menu_choices() {
+    local prompt="$1"
+    local valid_choices="$2"
+    local answer
+    local choice
+    local -A seen
+    local -a choices
+    local valid
+
+    while true; do
+        echo -e "$prompt"
+        read -r -p "Choices (comma-separated): " answer
+        answer="${answer//[[:space:]]/}"
+        if [[ "$answer" =~ ^[0-9]+(,[0-9]+)*$ ]]; then
+            REPLY_CHOICES=()
+            seen=()
+            valid=1
+            IFS=',' read -r -a choices <<< "$answer"
+            for choice in "${choices[@]}"; do
+                if [[ ! "$choice" =~ ^($valid_choices)$ ]]; then
+                    valid=0
+                    break
+                fi
+                if [[ -z "${seen[$choice]+x}" ]]; then
+                    REPLY_CHOICES+=("$choice")
+                    seen[$choice]=1
+                fi
+            done
+            if [[ "$valid" -eq 1 ]]; then
+                return
+            fi
+        fi
+        echo -e "${RED}Invalid choice list. Enter valid option numbers separated by commas.${RESET}"
+    done
 }
 
 # --- Read Completed Stage from .env ---
@@ -107,8 +159,9 @@ show_menu() {
     desc[3]="Beautify & refactor extracted C code (LLM)"
     desc[4]="Resolve & add missing global declarations"
     desc[5]="Apply defensive evasion techniques"
+    desc[6]="Evaluate fixed/generated binaries (CAPE / VT)"
 
-    for stage in {1..5}; do
+    for stage in {1..6}; do
         if check_stage "$stage"; then
             status="${GREEN}[✓]${RESET}"
         else
@@ -134,7 +187,9 @@ if [[ ! -f "$raw_input_exe" ]]; then
     echo -e "${RED}${BOLD}Error:${RESET} ${RED}Specified executable '$raw_input_exe' does not exist.${RESET}"
     exit 1
 fi
-
+target_exe_name=$(basename "$raw_input_exe")
+binary_base_name="${target_exe_name%.*}"
+WORKSPACE_PREFIX="$binary_base_name"
 workspace_dir=$(get_or_create_workspace)
 echo -e "${GREEN}Allocated workspace: ${BOLD}${workspace_dir}${RESET}"
 
@@ -150,18 +205,19 @@ update_env_var "LAST_COMPLETED_STAGE" "0"
 while true; do
     show_menu "$workspace_dir"
     
-    read -p "$(echo -e "${YELLOW}${BOLD}Select stage to start/resume from (0-5): ${RESET}")" choice
+    read -p "$(echo -e "${YELLOW}${BOLD}Select stage to start/resume from (0-6): ${RESET}")" choice
     
     if [[ "$choice" == "0" ]]; then
         echo -e "${RED}Exiting pipeline.${RESET}"
         exit 0
     fi
     
-    if [[ "$choice" =~ ^[1-5]$ ]]; then
+    if [[ "$choice" =~ ^[1-6]$ ]]; then
         echo -e "${GREEN}Starting pipeline from stage $choice inside Docker...${RESET}"
         
         # --- Handle Dynamic Evasion Selection for Stage 5 ---
         EVASION_ENV=""
+        EVASION_PARAMS="{}"
         if [[ "$choice" == "5" ]]; then
             echo -e "\n${YELLOW}${BOLD}Available Evasion Techniques:${RESET}"
             echo -e "  1. Junk Code Insertion (Opaque Predicates)"
@@ -184,17 +240,110 @@ while true; do
 	     esac
             done
             
-            # Join the array into a comma-separated string for the env var
+            # Join selected techniques for the app and collect one configuration
+            # for each technique selected.
             EVASION_ENV=$(IFS=, ; echo "${TECH_NAMES[*]}")
             
             if [[ -z "$EVASION_ENV" ]]; then
                 echo -e "${RED}No valid techniques selected. Aborting Stage 5.${RESET}"
                 continue
             fi
+
+            EVASION_PARAMS_JSON=""
+            for tech in "${TECH_NAMES[@]}"; do
+                case "$tech" in
+                    junk_code_insertion)
+                        prompt_menu_choices "${CYAN}Junk-code density (choose one or more):\n  1. Sparse\n  2. Medium\n  3. Dense${RESET}" "1|2|3"
+                        config='['
+                        for density_choice in "${REPLY_CHOICES[@]}"; do
+                            case "$density_choice" in
+                                1) density="sparse" ;;
+                                2) density="medium" ;;
+                                3) density="dense" ;;
+                            esac
+                            [[ "$config" == '[' ]] || config+=','
+                            config+="{\"density\":\"$density\"}"
+                        done
+                        config+=']'
+                        ;;
+                    stack_string_xor_obfuscation)
+                        prompt_menu_choices "${CYAN}String coverage (choose one or more):\n  1. API/DLL names only\n  2. Sensitive strings\n  3. All strings${RESET}" "1|2|3"
+                        coverage_choices=("${REPLY_CHOICES[@]}")
+                        prompt_menu_choices "${CYAN}XOR key scheme (choose one or more):\n  1. Single-byte key\n  2. Rotating multi-byte key${RESET}" "1|2"
+                        key_choices=("${REPLY_CHOICES[@]}")
+                        config='['
+                        for coverage_choice in "${coverage_choices[@]}"; do
+                            case "$coverage_choice" in
+                                1) coverage="api_names_only" ;;
+                                2) coverage="sensitive_only" ;;
+                                3) coverage="all" ;;
+                            esac
+                            for key_choice in "${key_choices[@]}"; do
+                                case "$key_choice" in
+                                    1) key_scheme="single_byte" ;;
+                                    2) key_scheme="rotating" ;;
+                                esac
+                                [[ "$config" == '[' ]] || config+=','
+                                config+="{\"coverage\":\"$coverage\",\"key_scheme\":\"$key_scheme\"}"
+                            done
+                        done
+                        config+=']'
+                        ;;
+                    aggressive_variable_aliasing)
+                        prompt_menu_choices "${CYAN}Variable-aliasing scope (choose one or more):\n  1. All eligible scalars\n  2. Loop counters only\n  3. Pointers only${RESET}" "1|2|3"
+                        config='['
+                        for scope_choice in "${REPLY_CHOICES[@]}"; do
+                            case "$scope_choice" in
+                                1) scope="all_scalars" ;;
+                                2) scope="loop_counters_only" ;;
+                                3) scope="pointers_only" ;;
+                            esac
+                            [[ "$config" == '[' ]] || config+=','
+                            config+="{\"scope\":\"$scope\"}"
+                        done
+                        config+=']'
+                        ;;
+                    control_flow_obfuscation)
+                        prompt_menu_choices "${CYAN}Control-flow strategy (choose one or more):\n  1. Goto-based flattening\n  2. Opaque jump${RESET}" "1|2"
+                        config='['
+                        for dispatch_choice in "${REPLY_CHOICES[@]}"; do
+                            case "$dispatch_choice" in
+                                1) dispatch="goto_flattening" ;;
+                                2) dispatch="opaque_jump" ;;
+                            esac
+                            [[ "$config" == '[' ]] || config+=','
+                            config+="{\"dispatch\":\"$dispatch\"}"
+                        done
+                        config+=']'
+                        ;;
+                    local_context_struct_packaging)
+                        prompt_menu_choices "${CYAN}Struct field ordering (choose one or more):\n  1. Declaration order\n  2. Group by type\n  3. Access frequency${RESET}" "1|2|3"
+                        config='['
+                        for grouping_choice in "${REPLY_CHOICES[@]}"; do
+                            case "$grouping_choice" in
+                                1) grouping="by_declaration_order" ;;
+                                2) grouping="by_type" ;;
+                                3) grouping="by_access_frequency" ;;
+                            esac
+                            [[ "$config" == '[' ]] || config+=','
+                            config+="{\"grouping\":\"$grouping\"}"
+                        done
+                        config+=']'
+                        ;;
+                esac
+                if [[ -n "$EVASION_PARAMS_JSON" ]]; then
+                    EVASION_PARAMS_JSON+=","
+                fi
+                EVASION_PARAMS_JSON+="\"$tech\":$config"
+            done
+            EVASION_PARAMS="{$EVASION_PARAMS_JSON}"
         fi
         
-        # Pass the EVASION_TECHNIQUES via environment variable to Docker
-        docker compose -f "$COMPOSE_FILE" run --rm -e EVASION_TECHNIQUES="$EVASION_ENV" app python3 ./src/entry.py \
+        # Pass selected techniques and their configuration to the app container.
+        docker compose -f "$COMPOSE_FILE" run --rm \
+            -e EVASION_TECHNIQUES="$EVASION_ENV" \
+            -e EVASION_PARAMS="$EVASION_PARAMS" \
+            app python3 ./src/entry.py \
             --stage "$choice" \
             --workspace "$workspace_dir" \
             --exe "$copied_exe_path"
