@@ -112,6 +112,8 @@ Replace the stage number, workspace, and executable path with the intended value
 
 ## Stages
 
+![GhidraHush banner](assets/GhidraHush_stages.jpeg)
+
 | Stage | Operation | Main result |
 | --- | --- | --- |
 | 1 | Analyze and decompile with Ghidra; build a reachable-function call graph. | `extracted_functions/<binary>/` |
